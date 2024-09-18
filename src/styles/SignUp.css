@@ -1,0 +1,49 @@
+/* SignUp.css */
+
+
+.root {
+    margin-top: 80px;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url('../../public/SignUpBG.png');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+
+.glassForm {
+    background: rgba(255, 255, 255, 0.7); /* Slight transparency */
+    backdrop-filter: blur(10px); /* Glass effect with blur */
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+.avatar {
+    margin: 10px;
+    background-color: #f50057;
+}
+
+.signInText {
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.inputField {
+    margin-bottom: 16px;
+}
+
+.submitButton {
+    margin: 24px 0 16px;
+}
+
+.rememberMe {
+    margin-bottom: 16px;
+}

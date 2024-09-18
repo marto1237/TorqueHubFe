@@ -1,0 +1,58 @@
+/* Navbar styling */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px; /* Default height */
+    z-index: 100;
+    background-color: rgba(0, 0, 0, 0.9); /* Semi-transparent background */
+}
+
+/* Background styling */
+.background {
+    background-image: url('../../public/HomePageImage.jpg');
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); /* Text shadow for readability */
+    padding-top: 80px; /* Space for navbar */
+}
+
+/* Text styling */
+.typewriter-text {
+    font-weight: bold;
+    font-size: 3rem;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.cursor {
+    font-size: 3rem;
+    font-weight: bold;
+}
+
+/* Media query for mobile devices */
+@media (max-width: 600px) {
+    .navbar {
+        height: 50px; /* Reduce height of the navbar for mobile */
+    }
+
+    .background {
+        padding-top: 60px; /* Adjust padding to account for smaller navbar */
+    }
+
+    .typewriter-text {
+        font-size: 2rem; /* Reduce font size for mobile screens */
+    }
+
+    .cursor {
+        font-size: 2rem; /* Reduce cursor size for mobile screens */
+    }
+}

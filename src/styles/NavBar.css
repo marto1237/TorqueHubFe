@@ -1,0 +1,113 @@
+/* Logo for large and medium screens */
+.logo-md {
+    height: 80px;
+    display: none;
+    margin-right: 1rem;
+}
+
+@media (min-width: 960px) {
+    .logo-md {
+        display: flex;
+    }
+}
+
+/* Logo for small screens */
+.logo-xs {
+    height: 80px;
+    display: flex;
+    margin-right: 1rem;
+}
+
+@media (min-width: 960px) {
+    .logo-xs {
+        display: none;
+    }
+}
+
+/* Typography for large screens */
+.typography-md {
+    margin-right: 10rem;
+    display: none;
+    font-family: monospace;
+    font-weight: 700;
+    letter-spacing: 0.3rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+@media (min-width: 960px) {
+    .typography-md {
+        display: flex;
+    }
+}
+
+/* Typography for small screens */
+.typography-xs {
+    margin-right: 2rem;
+    display: flex;
+    flex-grow: 1;
+    font-family: monospace;
+    font-weight: 700;
+    letter-spacing: 0.3rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+@media (min-width: 960px) {
+    .typography-xs {
+        display: none;
+    }
+}
+
+/* Menu button for small screens */
+.menu-btn-xs {
+    flex-grow: 1;
+    display: flex;
+}
+
+@media (min-width: 960px) {
+    .menu-btn-xs {
+        display: none;
+    }
+}
+
+/* Pages buttons for large and medium screens */
+.pages-btn-md {
+    flex-grow: 1;
+    display: none;
+}
+
+@media (min-width: 960px) {
+    .pages-btn-md {
+        display: flex;
+    }
+}
+
+.pages-btn-md .btn {
+    margin: 0 1rem;
+    color: inherit; /* Ensure button text color adapts to theme */
+    display: block;
+}
+
+/* Login/SignUp buttons container */
+.login-signup-container {
+    display: flex;
+    gap: 1rem;
+}
+
+/* AppBar styles */
+.MuiAppBar-root {
+    background-color: inherit; /* Allow theme to set the background color */
+}
+
+.MuiIconButton-root {
+    color: inherit; /* Allow theme to set icon color */
+}
+
+.MuiMenuItem-root {
+    color: inherit; /* Allow theme to set menu item color */
+}
+
+.MuiTypography-root {
+    color: inherit; /* Allow theme to set typography color */
+}
