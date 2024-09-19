@@ -22,6 +22,8 @@ const LogIn = lazy(() => import('./components/auth/Login'));
 const CarList = lazy(() => import('./components/cars/CarList'));
 const CarForm = lazy(() => import('./components/cars/CarForm'));
 const CreateQuestionPage = lazy(() => import('./pages/CreateQuestionPage'));
+const Event = lazy(() => import('./pages/EventPage'));
+const Profile = lazy(() => import('./components/profile/MyProfile'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -53,10 +55,12 @@ const App = () => {
                     <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/signup" element={<SignUp />} />
-                        <Route path="/login" element={<LogIn />} />
+                        <Route path="/login" element={<LogIn  />} />
                         <Route path="/carlist" element={<CarList />} />
                         <Route path="/carform" element={<CarForm />} />
                         <Route path="/askquestion" element={<CreateQuestionPage />} />
+                        <Route path="/events" element={<Event />} />
+                        <Route path="/profile" element={<Profile />} />
                     </Routes>
                 </Suspense>
 

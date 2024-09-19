@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import AppBar from '@mui/material/AppBar';
-import Box from '@mui/material/Box';
-import Badge from '@mui/material/Badge';
-import Toolbar from '@mui/material/Toolbar';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import MenuIcon from '@mui/icons-material/Menu';
-import Container from '@mui/material/Container';
-import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
-import MenuItem from '@mui/material/MenuItem';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import ControlPointIcon from '@mui/icons-material/ControlPoint';
 import MailIcon from '@mui/icons-material/Mail';
+import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import {
+    AppBar, Box, Badge, Toolbar, IconButton, Typography, Menu, MenuItem,
+    Avatar, Button, Tooltip, Container, Divider, ListItemText, ListItemIcon
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import '../../styles/NavBar.css';
@@ -31,10 +23,18 @@ function NavBar({ toggleTheme }) {
     const [navBarVisible, setNavBarVisible] = useState(true);
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
+    const [anchorElNotif, setAnchorElNotif] = useState(null);
     const [loggedIn, setLoggedIn] = React.useState(false);
 
     const navigate = useNavigate();
     const theme = useTheme(); // Use theme
+
+
+    const [notifications, setNotifications] = useState([
+        { id: 1, title: "Reboot required", description: "Server needs to be rebooted", date: "4 Jun 2021", unread: true },
+        { id: 2, title: "Server unreachable", description: "We were unable to connect to this server", date: "2 Jun 2021", unread: true },
+        { id: 3, title: "Move completed", description: "The site has been cloned to server 50gb-testing", date: "1 Jun 2021", unread: false },
+    ]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -74,6 +74,7 @@ function NavBar({ toggleTheme }) {
 
     const handleLogin = () => {
         navigate('/login');
+        //setLoggedIn(true);
     };
 
     const handleLogout = () => {
@@ -82,6 +83,22 @@ function NavBar({ toggleTheme }) {
 
     const handleSignUp = () => {
         navigate('/signup');
+    };
+
+    const handleEventClick= () => {
+        navigate('/events');
+    };
+    const handleMyProfileClick = () => {
+        navigate('/profile');
+    }
+
+
+    const handleOpenNotifMenu = (event) => {
+        setAnchorElNotif(event.currentTarget);
+    };
+
+    const handleCloseNotifMenu = () => {
+        setAnchorElNotif(null);
     };
 
     return (
@@ -193,6 +210,7 @@ function NavBar({ toggleTheme }) {
                         </Button>
                         <Button
                             color="inherit"
+                            onClick={handleEventClick}
                             sx={{
                                 mr: 2,
                                 color: theme.palette.mode === 'light' ? 'black' : 'white',
@@ -202,6 +220,7 @@ function NavBar({ toggleTheme }) {
                             }}
                         >
                             Events
+
                         </Button>
                         <Button
                             color="inherit"
@@ -244,18 +263,53 @@ function NavBar({ toggleTheme }) {
                     {/* Notification and email for large screens */}
                     {loggedIn && (
                         <>
-                            <MenuItem>
-                                <IconButton
-                                    size="large"
-                                    aria-label="show 17 new notifications"
-                                    color={theme.palette.mode === 'light' ? 'default' : 'inherit'}
-                                >
-                                    <Badge badgeContent={17} color="error">
-                                        <NotificationsIcon
-                                            sx={{ color: theme.palette.mode === 'light' ? 'black' : 'white' }}
+                        <MenuItem>
+                            <IconButton
+                                size="large"
+                                aria-label="show notifications"
+                                color="inherit"
+                                onClick={handleOpenNotifMenu}
+                            >
+                                <Badge badgeContent={notifications.filter(n => n.unread).length} color="error">
+                                    <NotificationsIcon sx={{ color: theme.palette.mode === 'light' ? 'black' : 'white' }}/>
+                                </Badge>
+                            </IconButton>
+
+                            {/* Notification dropdown */}
+                            <Menu
+                                anchorEl={anchorElNotif}
+                                anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                                keepMounted
+                                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                                open={Boolean(anchorElNotif)}
+                                onClose={handleCloseNotifMenu}
+                                sx={{ mt: '45px' }}
+                            >
+                                <Typography variant="h6" sx={{ px: 2, py: 1 }}>
+                                    Notifications
+                                </Typography>
+                                <Divider />
+
+                                {notifications.map((notif) => (
+                                    <MenuItem key={notif.id} onClick={handleCloseNotifMenu} sx={{ py: 2 }}>
+                                        <ListItemIcon>
+                                            <Avatar sx={{ bgcolor: notif.unread ? 'error.main' : 'grey.500' }} />
+                                        </ListItemIcon>
+                                        <ListItemText
+                                            primary={notif.title}
+                                            secondary={notif.description}
+                                            sx={{ ml: 1 }}
                                         />
-                                    </Badge>
-                                </IconButton>
+                                        <Typography variant="caption" sx={{ color: 'grey.600', ml: 'auto' }}>
+                                            {notif.date}
+                                        </Typography>
+                                    </MenuItem>
+                                ))}
+                                <Divider />
+                                <MenuItem onClick={handleCloseNotifMenu}>
+                                    <Typography textAlign="center">Mark all as read</Typography>
+                                </MenuItem>
+                            </Menu>
                             </MenuItem>
                             <MenuItem>
                                 <IconButton
@@ -270,6 +324,7 @@ function NavBar({ toggleTheme }) {
                                     </Badge>
                                 </IconButton>
                             </MenuItem>
+
                         </>
                     )}
 
@@ -298,7 +353,7 @@ function NavBar({ toggleTheme }) {
                                     open={Boolean(anchorElUser)}
                                     onClose={handleCloseUserMenu}
                                 >
-                                    <MenuItem onClick={handleCloseUserMenu}>
+                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleMyProfileClick()  }}>
                                         <AccountCircle sx={{ mr: 2 }} /> My Profile
                                     </MenuItem>
                                     <MenuItem onClick={handleCloseUserMenu}>
@@ -313,8 +368,8 @@ function NavBar({ toggleTheme }) {
                                     <MenuItem onClick={handleCloseUserMenu}>
                                         <ManageAccountsIcon sx={{ mr: 2 }} /> Account Settings
                                     </MenuItem>
-                                    <MenuItem onClick={() => { handleLogout(); handleCloseUserMenu(); }}>
-                                        <Typography color="error">Logout</Typography>
+                                    <MenuItem sx={{ justifyContent: 'center' }} onClick={() => { handleLogout(); handleCloseUserMenu(); }}>
+                                        <Button variant="contained" color="error">Logout</Button>
                                     </MenuItem>
                                 </Menu>
                             </>
@@ -339,10 +394,10 @@ function NavBar({ toggleTheme }) {
                                     color="primary"
                                     onClick={handleSignUp}
                                     sx={{
-                                        backgroundColor: theme.palette.primary.main,
-                                        color: theme.palette.text.primary,
+                                        backgroundColor: theme.palette.mode === 'light' ? '#1565c0' : '#e53935', // Blue in light mode, red in dark mode
+                                        color: '#FFFFFF', // White text in both themes
                                         '&:hover': {
-                                            backgroundColor: theme.palette.primary.dark,
+                                            backgroundColor: theme.palette.mode === 'light' ? '#004ba0' : '#d32f2f', // Darker blue on hover in light theme, darker red in dark theme
                                         },
                                     }}
                                 >

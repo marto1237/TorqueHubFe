@@ -10,6 +10,7 @@ import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles'; // Correct hook to access the theme
 import '../../styles/SignUp.css';
 
 function Copyright() {
@@ -26,8 +27,10 @@ function Copyright() {
 }
 
 export default function SignUp() {
+    const theme = useTheme(); // Get the current theme using the useTheme hook
+
     return (
-        <div className="root" >
+        <div className="root">
             <CssBaseline />
             <div className="glassForm">
                 <Avatar className="avatar">
@@ -81,7 +84,13 @@ export default function SignUp() {
                         type="submit"
                         fullWidth
                         variant="contained"
-                        color="primary"
+                        sx={{
+                            backgroundColor: theme.palette.mode === 'light' ? '#1565c0' : '#e53935', // Blue in light mode, red in dark mode
+                            color: '#FFFFFF', // White text in both themes
+                            '&:hover': {
+                                backgroundColor: theme.palette.mode === 'light' ? '#004ba0' : '#d32f2f', // Darker blue on hover in light theme, darker red in dark theme
+                            },
+                        }}
                         className="submitButton"
                     >
                         Sign Up

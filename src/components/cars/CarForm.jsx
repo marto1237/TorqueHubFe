@@ -210,7 +210,22 @@ const QuestionPage = () => {
                         value={answer}
                         onChange={(e) => setAnswer(e.target.value)}
                         placeholder="Write your answer here..."
-                        sx={{ marginTop: '10px', marginBottom: '10px', backgroundColor: theme.palette.background.default, color: theme.palette.text.primary }}
+                        sx={{ marginTop: '10px', marginBottom: '10px',
+                            '& .MuiInputBase-input': {
+                                color: theme.palette.mode === 'dark' ? '#FFFFFF' : theme.palette.text.primary,  // Text color
+                            },
+                            '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: theme.palette.mode === 'dark' ? '#FFFFFF' : theme.palette.text.primary,  // Border color
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: theme.palette.mode === 'dark' ? '#FFFFFF' : theme.palette.text.primary,  // Border color on hover
+                            },
+                            '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: theme.palette.mode === 'dark' ? '#FFFFFF' : theme.palette.primary.main,  // Border color on focus
+                            },
+                            '& label.Mui-focused': {
+                                color: theme.palette.mode === 'dark' ? '#FFFFFF' : theme.palette.text.primary,  // Label color on focus
+                            },}}
                     />
                     <Button variant="contained" color="primary" onClick={handleAnswerSubmit}>
                         Submit Answer

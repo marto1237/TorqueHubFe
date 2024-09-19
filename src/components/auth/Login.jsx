@@ -25,7 +25,7 @@ function Copyright() {
     );
 }
 
-export default function SignUp() {
+export default function Login() {
     return (
         <div className="root" >
             <CssBaseline />
@@ -73,7 +73,7 @@ export default function SignUp() {
                         color="primary"
                         className="submitButton"
                     >
-                        Sign Up
+                        Log in
                     </Button>
                     <Box mt={2}>
                         <Grid container justifyContent="center">

@@ -18,6 +18,7 @@ const darkTheme = createTheme({
         text: {
             primary: '#FFFFFF',
             secondary: '#E0E0E0',
+            third: '#424242',
         },
     },
     typography: {
@@ -27,6 +28,75 @@ const darkTheme = createTheme({
         },
     },
     components: {
+        MuiChip: {
+            styleOverrides: {
+                root: {
+                    '&.Mui-selected': {
+                        backgroundColor: '#e53935',
+                        color: '#FFFFFF',
+                    },
+                    '&.Mui-unselected': {
+                        backgroundColor: '#424242',
+                        color: '#FFFFFF', 
+                    },
+                },
+            },
+        },
+        MuiTextField: {
+            styleOverrides: {
+                root: {
+                    '& label': {
+                        color: '#000000', // Label color should be black when input is not focused
+                    },
+                    '& label.Mui-focused': {
+                        color: '#000000', // Label color when focused
+                    },
+                    '& .MuiInputBase-root': {
+                        color: '#000000', // Text color inside the input
+                    },
+                    '& .MuiInputBase-input': {
+                        color: '#000000', // Input text color
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#000000', // Border color when not focused
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#000000', // Border color on hover
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#000000', // Border color when focused
+                    },
+                },
+            },
+        },
+        // New variant for TextField with white text
+        MuiTextFieldWhite: {
+            styleOverrides: {
+                root: {
+                    '& label': {
+                        color: '#FFFFFF', // White label
+                    },
+                    '& label.Mui-focused': {
+                        color: '#FFFFFF', // White label on focus
+                    },
+                    '& .MuiInputBase-root': {
+                        color: '#FFFFFF', // White text inside input
+                    },
+                    '& .MuiInputBase-input': {
+                        color: '#FFFFFF', // Input white text
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#FFFFFF', // Border color (white)
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#FFFFFF', // Border color on hover (white)
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#FFFFFF', // Border color when focused (white)
+                    },
+                },
+            },
+        },
         MuiButton: {
             styleOverrides: {
                 containedPrimary: {
@@ -58,7 +128,8 @@ const lightTheme = createTheme({
             paper: '#ECEFF1',
         },
         primary: {
-            main: '#B22222', // Deep red for exclusivity
+            main: '#212121', // Deep red for exclusivity
+            secondary: '#1565c0',
         },
         text: {
             primary: '#424242',
@@ -71,6 +142,30 @@ const lightTheme = createTheme({
         },
     },
     components: {
+        MuiChip: {
+            styleOverrides: {
+                root: {
+                    '&.Mui-selected': {
+                        backgroundColor: '#424242',
+                        color: '#FFFFFF',
+                    },
+                    '&.Mui-unselected': {
+                        backgroundColor: '#e0e0e0',
+                        color: '#757575',
+                    },
+                },
+            },
+        },
+        MuiCheckbox: {
+            styleOverrides: {
+                root: {
+                    color: '#1565c0', // Set default checkbox color to blue in light theme
+                    '&.Mui-checked': {
+                        color: '#1565c0', // Checkbox color when checked
+                    },
+                },
+            },
+        },
         MuiButton: {
             styleOverrides: {
                 containedPrimary: {
