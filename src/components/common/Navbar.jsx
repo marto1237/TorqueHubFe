@@ -73,8 +73,8 @@ function NavBar({ toggleTheme }) {
     };
 
     const handleLogin = () => {
-        navigate('/login');
-        //setLoggedIn(true);
+        //navigate('/login');
+        setLoggedIn(true);
     };
 
     const handleLogout = () => {
@@ -90,8 +90,14 @@ function NavBar({ toggleTheme }) {
     };
     const handleMyProfileClick = () => {
         navigate('/profile');
+    };
+    const handleFollowingClick = () => {
+        navigate('/following');
     }
 
+    const  handleBookmarksClick = () => {
+        navigate('/bookmarks');
+    }
 
     const handleOpenNotifMenu = (event) => {
         setAnchorElNotif(event.currentTarget);
@@ -356,10 +362,10 @@ function NavBar({ toggleTheme }) {
                                     <MenuItem onClick={() => {handleCloseUserMenu(); handleMyProfileClick()  }}>
                                         <AccountCircle sx={{ mr: 2 }} /> My Profile
                                     </MenuItem>
-                                    <MenuItem onClick={handleCloseUserMenu}>
+                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleFollowingClick() }}>
                                         <ControlPointIcon sx={{ mr: 2 }} /> Following
                                     </MenuItem>
-                                    <MenuItem onClick={handleCloseUserMenu}>
+                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleBookmarksClick() }}>
                                         <BookmarksIcon sx={{ mr: 2 }} /> Bookmarks
                                     </MenuItem>
                                     <MenuItem onClick={handleCloseUserMenu}>

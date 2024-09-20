@@ -117,6 +117,22 @@ const darkTheme = createTheme({
                 },
             },
         },
+        MuiTab: {
+            styleOverrides: {
+                root: {
+                    '&.Mui-selected': {
+                        color: '#e53935', // Selected tab color
+                    },
+                },
+            },
+        },
+        MuiTabs: {
+            styleOverrides: {
+                indicator: {
+                    backgroundColor: '#e53935', // Color of selected tab's underline
+                },
+            },
+        },
     },
 });
 
@@ -183,6 +199,24 @@ const lightTheme = createTheme({
                 outlinedSecondary: {
                     borderColor: '#43a047', // Border color for outlined secondary button
                     color: '#43a047', // Text color on outlined secondary button
+                },
+            },
+        },
+        MuiTab: {
+            styleOverrides: {
+                root: {
+                    color: '#424242',
+                    '&.Mui-selected': {
+                        color: '#1565c0',
+                    },
+
+                },
+            },
+        },
+        MuiTabs: {
+            styleOverrides: {
+                indicator: {
+                    backgroundColor: '#1565c0', // Color of selected tab's underline
                 },
             },
         },

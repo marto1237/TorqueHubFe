@@ -24,7 +24,8 @@ const CarForm = lazy(() => import('./components/cars/CarForm'));
 const CreateQuestionPage = lazy(() => import('./pages/CreateQuestionPage'));
 const Event = lazy(() => import('./pages/EventPage'));
 const Profile = lazy(() => import('./components/profile/MyProfile'));
-
+const Following = lazy(() => import('./components/profile/Following'));
+const Bookmarks = lazy(() => import('./components/profile/Bookmarks'));
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
 
@@ -61,6 +62,8 @@ const App = () => {
                         <Route path="/askquestion" element={<CreateQuestionPage />} />
                         <Route path="/events" element={<Event />} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/following" element={<Following />} />
+                        <Route path="/bookmarks" element={<Bookmarks />} />
                     </Routes>
                 </Suspense>
 

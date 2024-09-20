@@ -213,7 +213,11 @@ const ProfilePage = () => {
                         <Grid container spacing={2}>
                             {filteredPosts.map((post, index) => (
                                 <Grid item xs={12} key={index} onClick={() => handlePostClick(post.title)}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#2d2d2d', borderRadius: '8px', cursor: 'pointer' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderRadius: '8px', cursor: 'pointer',border: `2px solid ${theme.palette.divider}`, // Adds a solid border with the theme's divider color
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.action.hover, // Hover effect to change background
+                                            borderColor: theme.palette.primary.main, // Change border color on hover
+                                        } }}>
                                         <Chip
                                             label={post.type}
                                             sx={{ backgroundColor: post.type === 'A' ? '#323232' : '#32a852', color: 'white', padding: '5px','&:hover': {
