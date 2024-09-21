@@ -98,6 +98,13 @@ function NavBar({ toggleTheme }) {
     const  handleBookmarksClick = () => {
         navigate('/bookmarks');
     }
+    const handleMyShowcaseClick = () => {
+        navigate('/myshowcase');
+    }
+    const handleShowcaseClick = () => {
+        navigate('/showcase');
+    }
+
 
     const handleOpenNotifMenu = (event) => {
         setAnchorElNotif(event.currentTarget);
@@ -230,6 +237,7 @@ function NavBar({ toggleTheme }) {
                         </Button>
                         <Button
                             color="inherit"
+                            onClick={handleShowcaseClick}
                             sx={{
                                 mr: 2,
                                 color: theme.palette.mode === 'light' ? 'black' : 'white',
@@ -368,7 +376,7 @@ function NavBar({ toggleTheme }) {
                                     <MenuItem onClick={() => {handleCloseUserMenu(); handleBookmarksClick() }}>
                                         <BookmarksIcon sx={{ mr: 2 }} /> Bookmarks
                                     </MenuItem>
-                                    <MenuItem onClick={handleCloseUserMenu}>
+                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleMyShowcaseClick() }}>
                                         <AutoAwesomeIcon sx={{ mr: 2 }} /> My Showcase
                                     </MenuItem>
                                     <MenuItem onClick={handleCloseUserMenu}>

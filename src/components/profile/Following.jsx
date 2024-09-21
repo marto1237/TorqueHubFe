@@ -1,5 +1,5 @@
     import React, { useState } from 'react';
-    import { Box, Typography, Tab, Tabs, Card, Grid, Divider, Button, Menu, MenuItem, Checkbox, IconButton,Select } from '@mui/material';
+    import { Box, Typography, Tab, Tabs, Card, Grid, Divider, Button, Menu, MenuItem, Checkbox, IconButton,Select,useMediaQuery } from '@mui/material';
     import { Notifications, NotificationsNone, Email, MailLock, ModeComment, Visibility } from '@mui/icons-material';
     import { useTheme } from "@mui/material/styles";
 
@@ -37,6 +37,7 @@
         const [forumData, setForumData] = useState(initialForumData);
         const [selectAllChecked, setSelectAllChecked] = useState(false);
         const [anchorEl, setAnchorEl] = useState(null); // For dropdown menu
+        const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
         const handleTabChange = (event, newValue) => {
             setSelectedTab(newValue);
@@ -124,7 +125,7 @@
 
 
         return (
-            <Box sx={{ backgroundColor: theme.palette.background.paper, color: 'white', padding: '100px', minHeight: '100vh' }}>
+            <Box sx={{ backgroundColor: theme.palette.background.paper, color: 'white', padding: '20px', paddingTop: '100px', minHeight: '100vh' }}>
                 <Grid container spacing={3}>
                     {/* Left Section: Tabs for Discussions */}
                     <Grid item xs={12} md={9}>
@@ -139,6 +140,8 @@
                             sx={{ borderBottom: 1, borderColor: 'divider' }}
                             textColor="inherit"
                             indicatorColor="secondary"
+                            variant="scrollable"
+                            scrollButtons="auto"
                         >
                             <Tab color="textPrimary" label="Followed Discussions" />
                             <Tab color="textPrimary" label="Followed Forums" />
@@ -191,32 +194,42 @@
                                     <Typography>You are not following any forums.</Typography>
                                 </Card>
                             ) : (
-                            forumData.map((forum) => (
-                                <Card key={forum.id} sx={{ padding: '10px', mb: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <Typography>{forum.title}</Typography>
+                                forumData.map((forum) => (
+                                    <Card
+                                        key={forum.id}
+                                        sx={{
+                                            padding: '10px',
+                                            mb: 2,
+                                            display: 'flex',
+                                            flexDirection: isMobile ? 'column' : 'row',  // Make it column for mobile
+                                            justifyContent: 'space-between',
+                                        }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                            <Typography>{forum.title}</Typography>
+                                            <Typography sx={{ marginBottom: '10px' }}>{forum.description}</Typography>
+                                        </Box>
+                                        <Divider sx={{ my: 1 }} />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <Typography sx={{ flexBasis: isMobile ? '100%' : '150px' }}>
+                                                <ModeComment/> {forum.replies.toLocaleString()}
+                                            </Typography>
+                                            <Typography sx={{ flexBasis: isMobile ? '100%' : '150px' }}>
+                                                <Visibility/> {forum.views}
+                                            </Typography>
+                                            <Typography>{forum.lastPost}</Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                                                {getEmailIcon(forum.emailNotifications)}
+                                                {getNotificationsIcon(forum.alerts)}
+                                            </Box>
 
-                                    </Box>
-                                    <Divider sx={{ my: 1 }} />
-                                    <Box sx={{ display: 'flex', alignItems: 'center',  }}>
-                                        <Typography width>{forum.description}</Typography>
-                                        <Typography width={50}><ModeComment/></Typography>
-                                        <Typography width={150}>{forum.replies.toLocaleString()}</Typography>
-                                        <Typography ><Visibility/></Typography>
-                                        <Typography width={180}>{forum.views}</Typography>
-                                        <Typography width={250}>{forum.lastPost}</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            {getEmailIcon(forum.emailNotifications)}
-                                            {getNotificationsIcon(forum.alerts)}
                                         </Box>
                                         <Checkbox
                                             checked={selectedForums.includes(forum.id)}
                                             onChange={() => handleCheckboxChange(forum.id)}
                                             sx={{ ml: 2 }} // Move checkbox to end
                                         />
-                                    </Box>
-                                </Card>
-                            ))
+                                    </Card>
+                                ))
                             )}
 
                             {/* Action buttons at the bottom (Conditionally rendered) */}

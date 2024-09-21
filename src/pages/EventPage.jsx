@@ -109,8 +109,8 @@ const EventList = () => {
         : events;
 
     return (
-        <Box sx={{ padding: '20px', backgroundColor: theme.palette.background.paper }}>
-            <Box sx={{ padding: '100px' }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
+            <Box>
                 <Grid container spacing={3}>
                     <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>

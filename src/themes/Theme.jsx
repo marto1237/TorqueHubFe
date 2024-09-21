@@ -42,60 +42,58 @@ const darkTheme = createTheme({
                 },
             },
         },
-        MuiTextField: {
-            styleOverrides: {
-                root: {
-                    '& label': {
-                        color: '#000000', // Label color should be black when input is not focused
-                    },
-                    '& label.Mui-focused': {
-                        color: '#000000', // Label color when focused
-                    },
-                    '& .MuiInputBase-root': {
-                        color: '#000000', // Text color inside the input
-                    },
-                    '& .MuiInputBase-input': {
-                        color: '#000000', // Input text color
-                    },
-                    '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#000000', // Border color when not focused
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#000000', // Border color on hover
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#000000', // Border color when focused
-                    },
-                },
-            },
-        },
-        // New variant for TextField with white text
-        MuiTextFieldWhite: {
-            styleOverrides: {
-                root: {
-                    '& label': {
-                        color: '#FFFFFF', // White label
-                    },
-                    '& label.Mui-focused': {
-                        color: '#FFFFFF', // White label on focus
-                    },
-                    '& .MuiInputBase-root': {
-                        color: '#FFFFFF', // White text inside input
-                    },
-                    '& .MuiInputBase-input': {
-                        color: '#FFFFFF', // Input white text
-                    },
-                    '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFFFFF', // Border color (white)
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFFFFF', // Border color on hover (white)
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#FFFFFF', // Border color when focused (white)
+        MuiTextField:{
+            variants: [
+                {
+                    props: { variant: 'outlined' }, // Default dark mode styling
+                    style: {
+                        '& label': {
+                            color: '#000000', // Label color when not focused
+                        },
+                        '& label.Mui-focused': {
+                            color: '#000000',  // Label color when focused
+                        },
+                        '& .MuiInputBase-root': {
+                            color: '#000000',  // Text color inside input
+                        },
+                        '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#000000', // Border color when not focused
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#000000', // Border color on hover
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#000000', // Border color when focused
+                        },
                     },
                 },
-            },
+                {
+                    props: { variant: 'filled' }, // Second variant for more customizable styles
+                    style: {
+                        '& label': {
+                            color: '#FFFFFF', // Label color should be white
+                        },
+                        '& label.Mui-focused': {
+                            color: '#FFFFFF', // White label on focus
+                        },
+                        '& .MuiInputBase-root': {
+                            color: '#FFFFFF', // White text inside input
+                        },
+                        '& .MuiInputBase-input': {
+                            color: '#FFFFFF', // Input text color (white)
+                        },
+                        '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFFFFF', // Border color (white)
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFFFFF', // Border color on hover (white)
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#FFFFFF', // Border color when focused (white)
+                        },
+                    },
+                },
+            ],
         },
         MuiButton: {
             styleOverrides: {

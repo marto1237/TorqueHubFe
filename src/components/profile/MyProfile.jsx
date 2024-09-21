@@ -68,7 +68,7 @@ const ProfilePage = () => {
     };
 
     return (
-        <Box sx={{ padding: '100px', backgroundColor: theme.palette.background.paper }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
             {/* Full-width Profile Card */}
             <Card sx={{ padding: '20px', mb: 3 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
@@ -165,6 +165,7 @@ const ProfilePage = () => {
                         {isEditingAboutMe ? (
                             <Box>
                                 <TextField
+                                    variant="filled"
                                     fullWidth
                                     multiline
                                     rows={4}

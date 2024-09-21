@@ -26,6 +26,10 @@ const Event = lazy(() => import('./pages/EventPage'));
 const Profile = lazy(() => import('./components/profile/MyProfile'));
 const Following = lazy(() => import('./components/profile/Following'));
 const Bookmarks = lazy(() => import('./components/profile/Bookmarks'));
+const MyShowcase = lazy(() => import('./components/profile/MyShowCase'));
+const Showcase = lazy(() => import('./pages/Showcase'));
+const CarDetails = lazy(() => import('./pages/CarDetails'));
+
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
 
@@ -64,6 +68,10 @@ const App = () => {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/following" element={<Following />} />
                         <Route path="/bookmarks" element={<Bookmarks />} />
+                        <Route path="/myshowcase" element={<MyShowcase />} />
+                        <Route path="/showcase" element={<Showcase />} />
+                        <Route path="/car/:id" element={<CarDetails />} />
+
                     </Routes>
                 </Suspense>
 
