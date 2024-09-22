@@ -104,7 +104,9 @@ function NavBar({ toggleTheme }) {
     const handleShowcaseClick = () => {
         navigate('/showcase');
     }
-
+    const handleAccountSettingClick = () => {
+        navigate('/accountsettings');
+    }
 
     const handleOpenNotifMenu = (event) => {
         setAnchorElNotif(event.currentTarget);
@@ -348,7 +350,7 @@ function NavBar({ toggleTheme }) {
                             <>
                                 <Tooltip title="Open settings">
                                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                                        <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
+                                        <Avatar alt="User" src="/static/images/avatar/2.jpg" />
                                     </IconButton>
                                 </Tooltip>
                                 <Menu
@@ -379,7 +381,7 @@ function NavBar({ toggleTheme }) {
                                     <MenuItem onClick={() => {handleCloseUserMenu(); handleMyShowcaseClick() }}>
                                         <AutoAwesomeIcon sx={{ mr: 2 }} /> My Showcase
                                     </MenuItem>
-                                    <MenuItem onClick={handleCloseUserMenu}>
+                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleAccountSettingClick() }}>
                                         <ManageAccountsIcon sx={{ mr: 2 }} /> Account Settings
                                     </MenuItem>
                                     <MenuItem sx={{ justifyContent: 'center' }} onClick={() => { handleLogout(); handleCloseUserMenu(); }}>

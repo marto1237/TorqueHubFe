@@ -29,6 +29,7 @@ const Bookmarks = lazy(() => import('./components/profile/Bookmarks'));
 const MyShowcase = lazy(() => import('./components/profile/MyShowCase'));
 const Showcase = lazy(() => import('./pages/Showcase'));
 const CarDetails = lazy(() => import('./pages/CarDetails'));
+const AccountSetting = lazy(() => import('./components/profile/AccountSettings'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -71,6 +72,7 @@ const App = () => {
                         <Route path="/myshowcase" element={<MyShowcase />} />
                         <Route path="/showcase" element={<Showcase />} />
                         <Route path="/car/:id" element={<CarDetails />} />
+                        <Route path="/accountsettings" element={<AccountSetting />} />
 
                     </Routes>
                 </Suspense>
