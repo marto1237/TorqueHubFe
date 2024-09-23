@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Box, Typography, List, ListItem, ListItemText, Divider, Card, CardContent, TextField, Button, IconButton, Tooltip, Grid } from '@mui/material';
 import { FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, Settings } from '@mui/icons-material';
+import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown, Done } from '@mui/icons-material';
 import { useTheme } from '@mui/material';
+import PostForm  from "../components/forum/PostForm";
 
 const carShowcases = [
     {
@@ -24,8 +26,8 @@ const carShowcases = [
         ],
         history: 'Barn find $500, three years and $12k later…',
         comments: [
-            { user: { username: 'John Doe', profileLink: '/profile/john-doe' }, text: 'Love the custom mods!' },
-            { user: { username: 'Jane Smith', profileLink: '/profile/jane-smith' }, text: 'Such a clean build, well done!' }
+            { user: { username: 'John Doe', profileLink: '/profile/john-doe' }, text: 'Love the custom mods!', votes:0 },
+            { user: { username: 'Jane Smith', profileLink: '/profile/jane-smith' }, text: 'Such a clean build, well done!', votes: 0 }
         ],
         views: 520,
         postDate: 'May 13, 2024'
@@ -44,18 +46,20 @@ const CarDetails = () => {
     const [isPreview, setIsPreview] = useState(false);
     const [selectionStart, setSelectionStart] = useState(0);
     const [selectionEnd, setSelectionEnd] = useState(0);
+    const [answers, setAnswers] = useState([]);
 
     if (!car) {
         return <Typography variant="h6">Car not found</Typography>;
     }
 
     // Function to handle comment submission
-    const handleCommentSubmit = () => {
-        if (comment.trim()) {
-            const updatedComments = [...comments, { user: { username: 'New User', profileLink: '/profile/new-user' }, text: comment }];
-            setComments(updatedComments);
-            setComment('');  // Clear the comment input
-        }
+    const handleCommentSubmit = (newCommentText) => {
+        const newComment = {
+            user: { username: 'New User', profileLink: '/profile/new-user' }, // Placeholder for user info
+            text: newCommentText,
+            votes: 0
+        };
+        setComments([...comments, newComment]);  // Add new comment to the list
     };
 
     // Apply formatting to the selected text
@@ -88,6 +92,23 @@ const CarDetails = () => {
             .replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>')
             .replace(/\[url\](.*?)\[\/url\]/g, '<a href="$1">$1</a>')
             .replace(/\[emoji\](.*?)\[\/emoji\]/g, '😃'); // Example emoji replacement
+    };
+
+
+    // Function to handle comment voting
+    const handleCommentVote = (commentIndex, type) => {
+        const updatedComments = comments.map((comment, index) => {
+            if (index === commentIndex) {
+                // Clone the comment object and update its votes
+                return {
+                    ...comment,
+                    votes: comment.votes + (type === 'up' ? 1 : -1)
+                };
+            }
+            return comment; // Return unchanged comment if not the one being voted on
+        });
+
+        setComments(updatedComments);  // Update the state with the new comments array
     };
 
     return (
@@ -162,98 +183,60 @@ const CarDetails = () => {
             <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
                 <CardContent>
                     <Typography variant="h5" color="primary" gutterBottom>Comments</Typography>
-                    <List>
-                        {comments.map((comment, index) => (
-                            <ListItem key={index} sx={{ marginBottom: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                <Box>
-                                    <ListItemText
-                                        primary={
-                                            <Typography variant="body1" dangerouslySetInnerHTML={{ __html: formatCommentForPreview(comment.text) }} />
-                                        }
-                                        secondary={
-                                            <Link to={comment.user.profileLink} style={{ color: theme.palette.primary.main }}>
-                                                {comment.user.username}
-                                            </Link>
-                                        }
-                                        secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
-                                    />
-                                </Box>
-                            </ListItem>
 
-                        ))}
-                    </List>
+                    {/* Comments List */}
+                    {comments.map((comment, index) => (
+                        <Box key={index} sx={{ marginTop: '10px', paddingLeft: '20px', borderLeft: '3px solid #ccc', marginBottom: 2 }}>
+                            <Grid container>
+                                <Grid item xs={9}>
+                                    <Typography
+                                        variant="body1"
+                                        dangerouslySetInnerHTML={{ __html: formatCommentForPreview(comment.text) }}
+                                        sx={{
+                                            wordWrap: 'break-word',   // Breaks long words
+                                            overflowWrap: 'anywhere', // Allows breaking words anywhere
+                                            whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid item xs={3} sx={{ textAlign: 'right' }}>
+                                    <Typography variant="caption" color="textSecondary">
+                                        Commented by{' '}
+                                        <Link to={comment.user.profileLink} style={{ color: theme.palette.primary.main }}>
+                                            {comment.user.username}
+                                        </Link>
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+
+                            {/* Comment Votes */}
+                            <Box sx={{ marginTop: '5px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <IconButton onClick={() => handleCommentVote(index, 'up')}>
+                                    <KeyboardArrowUp />
+                                </IconButton>
+                                <Typography>{comment.votes}</Typography>
+                                <IconButton onClick={() => handleCommentVote(index, 'down')}>
+                                    <KeyboardArrowDown />
+                                </IconButton>
+                            </Box>
+                        </Box>
+                    ))}
 
                     {/* Divider */}
                     <Divider sx={{ my: 2 }} />
 
                     {/* Comment Input */}
-                    <Typography variant="h5" sx={{ padding: '20px'}}>Your Answer</Typography>
+                    <Typography variant="h5" sx={{ padding: '20px'}}>Your Comment</Typography>
                     <Box>
-                        <TextField
-                            variant="filled"
-                            fullWidth
-                            multiline
-                            minRows={4}
-                            value={comment}
-                            placeholder="Add a comment..."
-                            onSelect={handleTextSelect}
-                            onChange={(e) => setComment(e.target.value)}
-                            sx={{
-                                borderRadius: '8px',
-                                mb: 2
-                            }}
-                        />
 
-                        {/* Toolbar for Formatting */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '8px', padding: '10px', mb: 2 }}>
-                            <Box sx={{ display: 'flex' }}>
-                                <Tooltip title="Bold">
-                                    <IconButton onClick={() => applyFormatting('b')}>
-                                        <FormatBold  />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Italic">
-                                    <IconButton onClick={() => applyFormatting('i')}>
-                                        <FormatItalic  />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Underline">
-                                    <IconButton onClick={() => applyFormatting('u')}>
-                                        <FormatUnderlined  />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Strikethrough">
-                                    <IconButton onClick={() => applyFormatting('s')}>
-                                        <FormatStrikethrough  />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                            <Box>
-                                <Tooltip title="Preview">
-                                    <IconButton onClick={handlePreview}>
-                                        <Settings  />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                        </Box>
+                        <PostForm  placeholder="Write your comment here..."
+                                   buttonText="Submit comment"
+                                   onSubmit={handleCommentSubmit}/>
 
-                        {/* Preview */}
-                        {isPreview && (
-                            <Box sx={{ padding: '20px', backgroundColor: '#333', borderRadius: '8px', boxShadow: 3, mt: 2 }}>
-                                <Typography
-                                    variant="body1"
-                                    sx={{ color: '#fff' }}
-                                    dangerouslySetInnerHTML={{ __html: formatCommentForPreview(comment) }}
-                                />
-                            </Box>
-                        )}
-
-                        {/* Submit Comment */}
-                        <Button variant="contained" color="primary" onClick={handleCommentSubmit}>
-                            Submit Comment
-                        </Button>
                     </Box>
                 </CardContent>
+
+
             </Card>
         </Box>
     );

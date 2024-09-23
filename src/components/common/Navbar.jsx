@@ -85,6 +85,9 @@ function NavBar({ toggleTheme }) {
         navigate('/signup');
     };
 
+    const handleCarFormClick = () => {
+        navigate('/questions');
+    }
     const handleEventClick= () => {
         navigate('/events');
     };
@@ -213,6 +216,7 @@ function NavBar({ toggleTheme }) {
                     <Box className="pages-btn-md">
                         <Button
                             color="inherit"
+                            onClick={handleCarFormClick}
                             sx={{
                                 mr: 2,
                                 color: theme.palette.mode === 'light' ? 'black' : 'white',
