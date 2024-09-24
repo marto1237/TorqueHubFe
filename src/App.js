@@ -20,8 +20,8 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const SignUp = lazy(() => import('./components/auth/SignUp'));
 const LogIn = lazy(() => import('./components/auth/Login'));
 const CarList = lazy(() => import('./components/cars/CarList'));
-const CarForm = lazy(() => import('./components/cars/CarForm'));
-const CreateQuestionPage = lazy(() => import('./pages/CreateQuestionPage'));
+const CarForm = lazy(() => import('./components/cars/QuestionPage'));
+const CreateQuestionPage = lazy(() => import('./components/forum/CreateQuestionPage'));
 const Event = lazy(() => import('./pages/EventPage'));
 const Profile = lazy(() => import('./components/profile/MyProfile'));
 const Following = lazy(() => import('./components/profile/Following'));
@@ -31,6 +31,7 @@ const Showcase = lazy(() => import('./pages/Showcase'));
 const CarDetails = lazy(() => import('./pages/CarDetails'));
 const AccountSetting = lazy(() => import('./components/profile/AccountSettings'));
 const QuestionListing = lazy(() => import('./components/cars/QuestionList'));
+const NotFoundPage = lazy(() => import('./components/common/NotFoundPage'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -75,6 +76,8 @@ const App = () => {
                         <Route path="/car/:id" element={<CarDetails />} />
                         <Route path="/accountsettings" element={<AccountSetting />} />
                         <Route path="/questions" element={<QuestionListing />} />
+                        <Route path="/questions/:questionId" element={<CarForm />} />
+                        <Route path="*" element={<NotFoundPage />} />
 
                     </Routes>
                 </Suspense>

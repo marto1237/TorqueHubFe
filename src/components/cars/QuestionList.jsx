@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import {Box, Button, Typography, Grid,Paper,Chip,IconButton,Link,Tooltip,
-} from '@mui/material';
+import {Box, Button, Typography, Grid,Paper,Chip,IconButton,Link,Tooltip,} from '@mui/material';
 import { KeyboardArrowUp, KeyboardArrowDown, Bookmark } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
@@ -46,6 +45,10 @@ const QuestionListPage = () => {
         navigate(`/questions/${questionId}`); // Navigate to the question details page
     };
 
+    const handleAskQuestionClick = () => {
+        navigate('/askquestion'); // Navigate to the Ask Question page
+    };
+
     // Filter questions based on selected tags
     const filteredQuestions = selectedTags.length > 0
         ? questions.filter((question) =>
@@ -56,22 +59,40 @@ const QuestionListPage = () => {
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px' , backgroundColor: theme.palette.background.paper }}>
             <Box sx={{ maxWidth: '900px', margin: 'auto' }}>
-                <Typography variant="h5" color="textSecondary" sx={{ marginBottom: '20px' }}>
-                    Top Questions
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <Typography variant="h5" color="textSecondary">Top Questions</Typography>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleAskQuestionClick}
+                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                        Ask Question
+                    </Button>
+                </Box>
+
 
                 {/* Render selected tags */}
                 {selectedTags.length > 0 && (
                     <Box sx={{ marginBottom: '20px' }}>
-                        <Typography variant="body2">Selected Tags:</Typography>
+                        <Typography variant="body2" color="textSecondary">Selected Tags:</Typography>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                             {selectedTags.map((tag, index) => (
                                 <Chip
                                     key={index}
                                     label={tag}
                                     onClick={() => handleTagClick(tag)}
-                                    color="primary"
-                                    sx={{ cursor: 'pointer' }}
+                                    className={
+                                        selectedTags.includes(tag)
+                                            ? 'Mui-selected'
+                                            : 'Mui-unselected'
+                                    }
+                                    sx={{
+                                        cursor: 'pointer',
+                                        '&:hover': {
+                                            opacity: 0.8, // Adds a hover effect
+                                        },
+                                    }}
                                 />
                             ))}
                         </Box>
@@ -117,12 +138,15 @@ const QuestionListPage = () => {
                                                     key={index}
                                                     label={tag}
                                                     onClick={() => handleTagClick(tag)}
+                                                    className={
+                                                        selectedTags.includes(tag)
+                                                            ? 'Mui-selected'
+                                                            : 'Mui-unselected'
+                                                    }
                                                     sx={{
-                                                        backgroundColor: selectedTags.includes(tag) ? 'primary.main' : 'default',
-                                                        color: selectedTags.includes(tag) ? 'white' : 'black',
                                                         cursor: 'pointer',
                                                         '&:hover': {
-                                                            opacity: 0.8,
+                                                            opacity: 0.8, // Adds a hover effect
                                                         },
                                                     }}
                                                 />
