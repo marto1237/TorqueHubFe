@@ -11,7 +11,7 @@ const questions = [
     {
         "id": 1,
         "title": "Is it possible to create a certificate for a subdomain although wildcard certificate exists?",
-        "description": "I have a wildcard certificate for my main domain (*.example.com), but I need a specific certificate for a subdomain (sub.example.com) for a particular use case. Is it possible to create a separate SSL certificate for this subdomain, even if the wildcard certificate covers it? What are the implications of doing so?",
+        "description": "[b]I have a wildcard certificate for my main domain (*.example.com), but I need a specific certificate for a subdomain (sub.example.com)[/b] for a particular use case. Is it possible to create a separate SSL certificate for this subdomain, even if the wildcard certificate covers it? What are the implications of doing so?",
         "tags": ["ssl-certificate", "subdomain", "wildcard", "wildcard-subdomain"],
         "user": {
             "name": "AntonSack",

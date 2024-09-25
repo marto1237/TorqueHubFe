@@ -233,7 +233,7 @@ const EventList = () => {
                                                         Price: {event.price}
                                                     </Typography>
                                                 </Box>
-                                                <Button size="small" variant="contained" sx={{ mt: 2 }} disabled={event.ticketsLeft === 0}>
+                                                <Button size="small" variant="contained" sx={{ mt: 2 }} onClick={() => handleEventClick(event.id)} disabled={event.ticketsLeft === 0}>
                                                     {event.ticketsLeft === 0 ? 'Sold Out' : 'Buy Ticket'}
                                                 </Button>
                                             </CardContent>
