@@ -58,8 +58,7 @@ const EventDetail = () => {
     }
 
     const handleBuyTicket = () => {
-        alert(`Successfully purchased ${ticketCount} ticket(s) for ${event.name}`);
-        navigate('/');
+        navigate('/payment');
     };
 
     const handleTicketCountChange = (event) => {

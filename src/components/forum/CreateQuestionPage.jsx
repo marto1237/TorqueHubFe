@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Chip, Typography, Grid, Divider } from '@mui/material';
+import { Box, Button, TextField, Chip, Typography, Grid, Divider, Tooltip } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Markdown from 'react-markdown';
 
@@ -10,16 +10,46 @@ const AskQuestion = () => {
     const [tags, setTags] = useState([]);
     const [preview, setPreview] = useState(false);
     const [currentTag, setCurrentTag] = useState('');
+    const [error, setError] = useState({
+        title: false,
+        body: false,
+        tags: false,
+    });
 
+    const maxTags = 5;
+    const maxTitleLength = 100;
+
+    // Handle adding a tag
     const handleAddTag = (e) => {
-        if (e.key === 'Enter' && currentTag) {
-            setTags([...tags, currentTag]);
+        if (e.key === 'Enter' && currentTag && tags.length < maxTags) {
+            setTags([...tags, currentTag.toLowerCase()]);
             setCurrentTag('');
+            e.preventDefault(); // Prevents submitting form with Enter key
         }
     };
 
+    // Handle removing a tag
     const handleRemoveTag = (tagToRemove) => {
         setTags(tags.filter(tag => tag !== tagToRemove));
+    };
+
+    // Validation for submitting a question
+    const validateForm = () => {
+        return title.trim() && body.trim() && tags.length > 0;
+    };
+
+    // Handle form submission
+    const handleSubmit = () => {
+        if (validateForm()) {
+            console.log('Question submitted:', { title, body, tags });
+            // Submit logic can be added here
+        } else {
+            setError({
+                title: !title.trim(),
+                body: !body.trim(),
+                tags: tags.length === 0,
+            });
+        }
     };
 
     return (
@@ -38,6 +68,13 @@ const AskQuestion = () => {
                         placeholder="What's your programming question? Be specific."
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        inputProps={{ maxLength: maxTitleLength }}
+                        error={error.title}
+                        helperText={
+                            error.title
+                                ? 'Title is required'
+                                : `${title.length}/${maxTitleLength} characters`
+                        }
                         required
                     />
                 </Grid>
@@ -53,6 +90,8 @@ const AskQuestion = () => {
                         placeholder="Provide details about your question, including what you have tried and what you expect."
                         value={body}
                         onChange={(e) => setBody(e.target.value)}
+                        error={error.body}
+                        helperText={error.body ? 'Body is required' : 'Markdown supported'}
                     />
                 </Grid>
 
@@ -74,7 +113,7 @@ const AskQuestion = () => {
                                 backgroundColor: theme.palette.background.default,
                             }}
                         >
-                            <Markdown>{body}</Markdown>
+                            <Markdown>{body || 'Nothing to preview'}</Markdown>
                         </Box>
                     </Grid>
                 )}
@@ -85,10 +124,12 @@ const AskQuestion = () => {
                         fullWidth
                         label="Tags"
                         variant="outlined"
-                        placeholder="Press enter to add tag"
+                        placeholder="Press enter to add up to 5 tags"
                         value={currentTag}
                         onChange={(e) => setCurrentTag(e.target.value)}
                         onKeyDown={handleAddTag}
+                        error={error.tags}
+                        helperText={error.tags ? 'At least one tag is required' : ''}
                     />
                     <Box sx={{ marginTop: '10px' }}>
                         {tags.map((tag, index) => (
@@ -96,15 +137,24 @@ const AskQuestion = () => {
                                 key={index}
                                 label={tag}
                                 onDelete={() => handleRemoveTag(tag)}
-                                sx={{ marginRight: '5px' }}
+                                sx={{ marginRight: '5px', marginBottom: '5px' }}
                             />
                         ))}
                     </Box>
+                    {tags.length >= maxTags && (
+                        <Typography variant="caption" color="error">
+                            Maximum {maxTags} tags allowed
+                        </Typography>
+                    )}
                 </Grid>
 
                 {/* Submit Button */}
                 <Grid item xs={12}>
-                    <Button variant="contained" color="primary">
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleSubmit}
+                    >
                         Ask Question
                     </Button>
                 </Grid>

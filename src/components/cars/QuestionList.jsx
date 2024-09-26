@@ -3,6 +3,8 @@ import {Box, Button, Typography, Grid,Paper,Chip,IconButton,Link,Tooltip,} from 
 import { KeyboardArrowUp, KeyboardArrowDown, Bookmark } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
+import FilterPanel from '../common/FilterPanel';
+import { formatDistanceToNow } from 'date-fns';
 
 const questions = [
     {
@@ -13,7 +15,7 @@ const questions = [
         views: 2,
         answers: 0,
         votes: 0,
-        askedTime: '1 min ago',
+        askedTime: '2024-09-24T14:00:00Z',
     },
     {
         id: 2,
@@ -22,17 +24,19 @@ const questions = [
         user: { name: 'Astha', points: 1 },
         views: 4,
         answers: 0,
-        votes: 0,
-        askedTime: '38 secs ago',
+        votes: 1,
+        askedTime: '2024-09-24T14:38:00Z',
     },
     // Additional questions...
 ];
 
 const QuestionListPage = () => {
     const theme = useTheme();
-    const [selectedTags, setSelectedTags] = useState([]); // Holds selected tags for filtering
+    const [selectedTags, setSelectedTags] = useState([]);
     const navigate = useNavigate();
-
+    const [noAnswers, setNoAnswers] = useState(false);
+    const [noAcceptedAnswer, setNoAcceptedAnswer] = useState(false);
+    const [sortOption, setSortOption] = useState('newest'); // Sorting option
     const handleTagClick = (tag) => {
         setSelectedTags((prevTags) =>
             prevTags.includes(tag)
@@ -40,6 +44,13 @@ const QuestionListPage = () => {
                 : [...prevTags, tag]
         );
     };
+
+    const [showFilters, setShowFilters] = useState(false); // Toggle filter visibility
+    // Toggle the visibility of the filter panel
+    const toggleFilterPanel = () => {
+        setShowFilters(!showFilters);
+    };
+
 
     const handleQuestionClick = (questionId) => {
         navigate(`/questions/${questionId}`); // Navigate to the question details page
@@ -56,11 +67,23 @@ const QuestionListPage = () => {
         )
         : questions; // If no tags selected, show all questions
 
+    const formatTimeAgo = (date) => {
+        return formatDistanceToNow(new Date(date), { addSuffix: true });
+    };
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px' , backgroundColor: theme.palette.background.paper }}>
             <Box sx={{ maxWidth: '900px', margin: 'auto' }}>
+                {/* Filter Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <Typography variant="h5" color="textSecondary">Top Questions</Typography>
+                    <Button
+                        variant="outlined"
+                        onClick={toggleFilterPanel}
+                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                        {showFilters ? 'Hide Filters' : 'Show Filters'}
+                    </Button>
+
                     <Button
                         variant="contained"
                         color="primary"
@@ -71,11 +94,24 @@ const QuestionListPage = () => {
                     </Button>
                 </Box>
 
+                {/* Conditionally render Filter Panel based on toggle */}
+                {showFilters && (
+                    <FilterPanel
+                        selectedTags={selectedTags}
+                        setSelectedTags={setSelectedTags}
+                        noAnswers={noAnswers}
+                        setNoAnswers={setNoAnswers}
+                        noAcceptedAnswer={noAcceptedAnswer}
+                        setNoAcceptedAnswer={setNoAcceptedAnswer}
+                        sortOption={sortOption}
+                        setSortOption={setSortOption}
+                    />
+                )}
 
                 {/* Render selected tags */}
                 {selectedTags.length > 0 && (
                     <Box sx={{ marginBottom: '20px' }}>
-                        <Typography variant="body2" color="textSecondary">Selected Tags:</Typography>
+                        <Typography variant="body2" color="primary">Selected Tags:</Typography>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                             {selectedTags.map((tag, index) => (
                                 <Chip
@@ -162,7 +198,7 @@ const QuestionListPage = () => {
                                                 <Link href={`/user/${question.user.name}`} color="primary">
                                                     {question.user.name} ({question.user.points})
                                                 </Link>{' '}
-                                                {question.askedTime}
+                                                {formatTimeAgo(question.askedTime)}
                                             </Typography>
                                         </Box>
                                     </Grid>
