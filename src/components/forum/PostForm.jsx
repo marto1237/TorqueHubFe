@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, IconButton, Tooltip, Typography } from '@mui/material';
-import { FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, Settings } from '@mui/icons-material';
+import {
+    FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, Undo, Redo, Settings,
+} from '@mui/icons-material';
 
 const PostForm = ({ placeholder, buttonText, onSubmit }) => {
     const [postContent, setPostContent] = useState('');
     const [isPreview, setIsPreview] = useState(false);
     const [selectionStart, setSelectionStart] = useState(0);
     const [selectionEnd, setSelectionEnd] = useState(0);
+    const [history, setHistory] = useState([]); // Undo history stack
+    const [redoHistory, setRedoHistory] = useState([]); // Redo stack
 
     // Handle text selection
     const handleTextSelect = (e) => {
@@ -20,7 +24,34 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
             const before = postContent.slice(0, selectionStart);
             const selectedText = postContent.slice(selectionStart, selectionEnd);
             const after = postContent.slice(selectionEnd);
+            saveToHistory(postContent); // Save the current state before applying formatting
             setPostContent(`${before}[${tag}]${selectedText}[/${tag}]${after}`);
+        }
+    };
+
+    // Save the current post content to history
+    const saveToHistory = (content) => {
+        setHistory([...history, content]);
+        setRedoHistory([]); // Clear redo stack on new changes
+    };
+
+    // Undo functionality
+    const handleUndo = () => {
+        if (history.length > 0) {
+            const prevContent = history[history.length - 1];
+            setRedoHistory([postContent, ...redoHistory]); // Save current content to redo stack
+            setPostContent(prevContent); // Set the previous content
+            setHistory(history.slice(0, history.length - 1)); // Remove the last item from history
+        }
+    };
+
+    // Redo functionality
+    const handleRedo = () => {
+        if (redoHistory.length > 0) {
+            const nextContent = redoHistory[0];
+            setHistory([...history, postContent]); // Save the current content to undo history
+            setPostContent(nextContent); // Set the next content
+            setRedoHistory(redoHistory.slice(1)); // Remove the first item from redo history
         }
     };
 
@@ -43,6 +74,7 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
         if (postContent.trim()) {
             onSubmit(postContent);
             setPostContent(''); // Clear the input
+            setHistory([]); // Clear the history on submit
         }
     };
 
@@ -61,7 +93,7 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
             />
 
             {/* Toolbar for Formatting */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '8px', padding: '10px', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', mb: 2 }}>
                 <Box sx={{ display: 'flex' }}>
                     <Tooltip title="Bold">
                         <IconButton onClick={() => applyFormatting('b')}>
@@ -84,7 +116,17 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
                         </IconButton>
                     </Tooltip>
                 </Box>
-                <Box>
+                <Box sx={{ display: 'flex' }}>
+                    <Tooltip title="Undo">
+                        <IconButton onClick={handleUndo} disabled={history.length === 0}>
+                            <Undo />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Redo">
+                        <IconButton onClick={handleRedo} disabled={redoHistory.length === 0}>
+                            <Redo />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Preview">
                         <IconButton onClick={handlePreview}>
                             <Settings />
