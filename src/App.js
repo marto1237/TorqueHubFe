@@ -20,7 +20,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const SignUp = lazy(() => import('./components/auth/SignUp'));
 const LogIn = lazy(() => import('./components/auth/Login'));
 const CarList = lazy(() => import('./components/cars/CarList'));
-const CarForm = lazy(() => import('./components/cars/QuestionPage'));
+const QuestionPage = lazy(() => import('./components/cars/QuestionPage'));
 const CreateQuestionPage = lazy(() => import('./components/forum/CreateQuestionPage'));
 const EventList = lazy(() => import('./pages/EventList'));
 const EventDetail = lazy(() => import('./pages/EventDetail'));
@@ -34,6 +34,7 @@ const AccountSetting = lazy(() => import('./components/profile/AccountSettings')
 const QuestionListing = lazy(() => import('./components/cars/QuestionList'));
 const NotFoundPage = lazy(() => import('./components/common/NotFoundPage'));
 const PaymentPage = lazy(() => import('./pages/Payment'));
+const Users = lazy(() => import('./pages/Users'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -67,7 +68,7 @@ const App = () => {
                         <Route path="/signup" element={<SignUp />} />
                         <Route path="/login" element={<LogIn  />} />
                         <Route path="/carlist" element={<CarList />} />
-                        <Route path="/carform" element={<CarForm />} />
+                        <Route path="/carform" element={<QuestionPage />} />
                         <Route path="/askquestion" element={<CreateQuestionPage />} />
                         <Route path="/events" element={<EventList />} />
                         <Route path="/events/:id" element={<EventDetail />} />
@@ -79,9 +80,10 @@ const App = () => {
                         <Route path="/car/:id" element={<CarDetails />} />
                         <Route path="/accountsettings" element={<AccountSetting />} />
                         <Route path="/questions" element={<QuestionListing />} />
-                        <Route path="/questions/:questionId" element={<CarForm />} />
+                        <Route path="/questions/:questionId" element={<QuestionPage />} />
                         <Route path="/payment" element={<PaymentPage />} />
                         <Route path="*" element={<NotFoundPage />} />
+                        <Route path={"/users"} element={<Users />} />
 
                     </Routes>
                 </Suspense>

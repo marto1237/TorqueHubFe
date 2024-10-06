@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Chip, Typography, Grid, Divider, Tooltip } from '@mui/material';
+import {Box, Button, TextField, Chip, Typography, Grid, Divider, Tooltip, Autocomplete} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Markdown from 'react-markdown';
 
@@ -19,7 +19,6 @@ const AskQuestion = () => {
     const maxTags = 5;
     const maxTitleLength = 100;
 
-    // Handle adding a tag
     const handleAddTag = (e) => {
         if (e.key === 'Enter' && currentTag && tags.length < maxTags) {
             setTags([...tags, currentTag.toLowerCase()]);
@@ -28,17 +27,14 @@ const AskQuestion = () => {
         }
     };
 
-    // Handle removing a tag
     const handleRemoveTag = (tagToRemove) => {
         setTags(tags.filter(tag => tag !== tagToRemove));
     };
 
-    // Validation for submitting a question
     const validateForm = () => {
         return title.trim() && body.trim() && tags.length > 0;
     };
 
-    // Handle form submission
     const handleSubmit = () => {
         if (validateForm()) {
             console.log('Question submitted:', { title, body, tags });
@@ -52,6 +48,15 @@ const AskQuestion = () => {
         }
     };
 
+    const availableTags = [
+        { name: 'BMW' },
+        { name: 'Engine' },
+        { name: 'Radiator' },
+        { name: 'Mazda' },
+        { name: 'Alternator' },
+        { name: 'Oil leak' },
+    ];
+    let selectedTags = [];
     return (
         <Box sx={{ padding: '100px', maxWidth: '900px', margin: 'auto' }}>
             <Typography variant="h4" sx={{ marginBottom: '20px' }}>
@@ -78,6 +83,24 @@ const AskQuestion = () => {
                         required
                     />
                 </Grid>
+                <Autocomplete
+                    multiple
+                    options={availableTags} // fetched from backend
+                    getOptionLabel={(option) => option.name}
+                    onChange={(event, newValue) => setTags(newValue.map((item) => item.name))}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Tags"
+                            placeholder="Add tags (up to 5)"
+                            error={error.tags}
+                            helperText={error.tags ? 'At least one tag is required' : ''}
+                        />
+                    )}
+                    isOptionEqualToValue={(option, value) => option.name === value.name}
+                    limitTags={maxTags}
+                />
+
 
                 {/* Body Input */}
                 <Grid item xs={12}>

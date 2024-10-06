@@ -1,42 +1,31 @@
-import React, { useState } from 'react';
-import {Box, Button, Typography, Grid,Paper,Chip,IconButton,Link,Tooltip,} from '@mui/material';
+import React, {useEffect, useState} from 'react';
+import {Box, Button, Typography, Grid,Paper,Chip,IconButton,Link,Tooltip,Pagination, Skeleton} from '@mui/material';
 import { KeyboardArrowUp, KeyboardArrowDown, Bookmark } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import FilterPanel from '../common/FilterPanel';
 import { formatDistanceToNow } from 'date-fns';
+import axios from 'axios';
 
-const questions = [
-    {
-        id: 1,
-        title: 'Is it possible to create a certificate for a subdomain although wildcard certificate exists?',
-        tags: ['ssl-certificate', 'subdomain', 'wildcard', 'wildcard-subdomain'],
-        user: { name: 'AntonSack', points: 1041 },
-        views: 2,
-        answers: 0,
-        votes: 0,
-        askedTime: '2024-09-24T14:00:00Z',
-    },
-    {
-        id: 2,
-        title: 'Issue with Adding a Temperature Sensor to DCPM Motor Model in OpenModelica',
-        tags: ['sensors', 'modelica', 'openmodelica', 'temperature'],
-        user: { name: 'Astha', points: 1 },
-        views: 4,
-        answers: 0,
-        votes: 1,
-        askedTime: '2024-09-24T14:38:00Z',
-    },
-    // Additional questions...
-];
+
 
 const QuestionListPage = () => {
     const theme = useTheme();
-    const [selectedTags, setSelectedTags] = useState([]);
     const navigate = useNavigate();
+
+
+    const [selectedTags, setSelectedTags] = useState([]);
     const [noAnswers, setNoAnswers] = useState(false);
     const [noAcceptedAnswer, setNoAcceptedAnswer] = useState(false);
     const [sortOption, setSortOption] = useState('newest'); // Sorting option
+
+    const [questions, setQuestions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const pageSize = 10;
+
     const handleTagClick = (tag) => {
         setSelectedTags((prevTags) =>
             prevTags.includes(tag)
@@ -71,9 +60,32 @@ const QuestionListPage = () => {
         return formatDistanceToNow(new Date(date), { addSuffix: true });
     };
 
+    useEffect(() => {
+        const fetchQuestions = async () => {
+            try {
+                const tagFilter = selectedTags.length > 0 ? `&tags=${selectedTags.join(',')}` : '';
+                const response = await axios.get(`http://localhost:8080/questions${selectedTags.length > 0 ? '/tags' : ''}?page=${page - 1}&size=${pageSize}${tagFilter}`);
+                setQuestions(response.data.content);
+                setTotalPages(response.data.totalPages);
+                setLoading(false);
+            } catch (err) {
+                setError('Failed to load questions');
+                setLoading(false);
+            }
+        };
+
+        fetchQuestions();
+    }, [page]);
+
+
+    const handlePageChange = (event, value) => {
+        setPage(value);
+    };
+
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px' , backgroundColor: theme.palette.background.paper }}>
-            <Box sx={{ maxWidth: '900px', margin: 'auto' }}>
+            <Box sx={{ maxWidth: '900px', margin: 'auto', minHeight: '60vh'}}>
                 {/* Filter Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <Button
@@ -135,78 +147,102 @@ const QuestionListPage = () => {
                     </Box>
                 )}
 
-                {/* Render questions */}
-                <Grid container spacing={3}>
-                    {filteredQuestions.map((question) => (
-                        <Grid item xs={12} key={question.id}>
-                            <Paper sx={{ padding: '20px', marginBottom: '20px' }}>
-                                <Grid container spacing={2}>
-                                    <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
-                                        <Tooltip title="Upvote">
-                                            <IconButton>
-                                                <KeyboardArrowUp />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Typography variant="body1">{question.votes}</Typography>
-                                        <Tooltip title="Downvote">
-                                            <IconButton>
-                                                <KeyboardArrowDown />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Bookmark">
-                                            <IconButton>
-                                                <Bookmark />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </Grid>
-                                    <Grid item xs={10} sm={11}>
-                                        <Typography
-                                            variant="h6"
-                                            sx={{ cursor: 'pointer', fontWeight: 'bold' }}
-                                            onClick={() => handleQuestionClick(question.id)}
-                                        >
-                                            {question.title}
-                                        </Typography>
+                {/* Render questions or loading/skeleton */}
+                {loading ? (
+                    <Grid container spacing={3}>
+                        {[...Array(5)].map((_, index) => (
+                            <Grid item xs={12} key={index}>
+                                <Skeleton variant="rectangular" height={100} />
+                            </Grid>
+                        ))}
+                    </Grid>
+                ) : error ? (
+                    <Typography color="error">{error}</Typography>
+                ) : (
 
-                                        <Box sx={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-                                            {question.tags.map((tag, index) => (
-                                                <Chip
-                                                    key={index}
-                                                    label={tag}
-                                                    onClick={() => handleTagClick(tag)}
-                                                    className={
-                                                        selectedTags.includes(tag)
-                                                            ? 'Mui-selected'
-                                                            : 'Mui-unselected'
-                                                    }
-                                                    sx={{
-                                                        cursor: 'pointer',
-                                                        '&:hover': {
-                                                            opacity: 0.8, // Adds a hover effect
-                                                        },
-                                                    }}
-                                                />
-                                            ))}
-                                        </Box>
+                    <Grid container spacing={3}>
+                        {filteredQuestions.map((question) => (
 
-                                        <Box sx={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="caption">
-                                                {question.votes} votes | {question.answers} answers | {question.views} views
+                            <Grid item xs={12} key={question.id}>
+                                <Paper sx={{ padding: '20px', marginBottom: '20px' }}>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
+                                            <Tooltip title="Upvote">
+                                                <IconButton>
+                                                    <KeyboardArrowUp />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Typography variant="body1">{question.votes}</Typography>
+                                            <Tooltip title="Downvote">
+                                                <IconButton>
+                                                    <KeyboardArrowDown />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Bookmark">
+                                                <IconButton>
+                                                    <Bookmark />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Grid>
+                                        <Grid item xs={10} sm={11}>
+                                            <Typography
+                                                variant="h6"
+                                                sx={{ cursor: 'pointer', fontWeight: 'bold' }}
+                                                onClick={() => handleQuestionClick(question.id)}
+                                            >
+                                                {question.title}
                                             </Typography>
-                                            <Typography variant="caption" color="textSecondary">
-                                                Asked by{' '}
-                                                <Link href={`/user/${question.user.name}`} color="primary">
-                                                    {question.user.name} ({question.user.points})
-                                                </Link>{' '}
-                                                {formatTimeAgo(question.askedTime)}
-                                            </Typography>
-                                        </Box>
+
+                                            <Box sx={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+                                                {question.tags.map((tag, index) => (
+                                                    <Chip
+                                                        key={index}
+                                                        label={tag}
+                                                        onClick={() => handleTagClick(tag)}
+                                                        className={
+                                                            selectedTags.includes(tag)
+                                                                ? 'Mui-selected'
+                                                                : 'Mui-unselected'
+                                                        }
+                                                        sx={{
+                                                            cursor: 'pointer',
+                                                            '&:hover': {
+                                                                opacity: 0.8, // Adds a hover effect
+                                                            },
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Box>
+
+                                            <Box sx={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography variant="caption">
+                                                    {question.votes} votes | {question.answers} answers | {question.views} views
+                                                </Typography>
+                                                <Typography variant="caption" color="textSecondary">
+                                                    Asked by{' '}
+                                                    <Link href={`/user/${question.userName}`} color="primary">
+                                                        {question.userName} ({question.userPoints})
+                                                    </Link>{' '}
+                                                    {formatTimeAgo(question.askedTime)}
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
                                     </Grid>
-                                </Grid>
-                            </Paper>
-                        </Grid>
-                    ))}
-                </Grid>
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </Grid>
+                )}
+
+                {/* Pagination Component */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                    <Pagination
+                        count={totalPages}
+                        page={page}
+                        onChange={handlePageChange}
+                        color="primary"
+                    />
+                </Box>
             </Box>
         </Box>
     );

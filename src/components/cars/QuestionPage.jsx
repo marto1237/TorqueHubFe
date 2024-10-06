@@ -5,6 +5,7 @@ import { useTheme } from '@mui/material/styles';
 import PostForm from "../forum/PostForm";
 import {useParams , useNavigate} from "react-router-dom";
 import { formatDistanceToNow } from 'date-fns';
+import axios from 'axios';
 
 // Sample questions data
 const questions = [
@@ -98,7 +99,7 @@ const QuestionPage = () => {
     // Function to handle comment submission for answers
     const handleAnswerCommentSubmit = (comment, index) => {
         // Get the current time when the comment is submitted
-        const currentTime = new Date().toLocaleString();
+        const currentTime = new Date().toISOString();
 
         const updatedAnswers = [...answers];
         updatedAnswers[index].comments.push({
@@ -122,7 +123,13 @@ const QuestionPage = () => {
     };
 
     const handleAnswerSubmit = (newAnswer) => {
-        setAnswers([...answers, { text: newAnswer, user: answerUser, comments: [] }]);
+        const currentTime = new Date().toISOString();
+        setAnswers([...answers, {
+            text: newAnswer,
+            user: answerUser,
+            comments: [],
+            postedTime: currentTime
+        }]);
     };
 
     const handleVote = (type) => {
@@ -183,7 +190,16 @@ const QuestionPage = () => {
 
     // Utility to calculate how long ago something was posted
     const timeAgo = (date) => {
-        return formatDistanceToNow(new Date(date), { addSuffix: true });
+        if (!date) {
+            return 'Unknown time'; // Handle case where date is null or undefined
+        }
+
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+            return 'Unknown time'; // Handle invalid date format
+        }
+
+        return formatDistanceToNow(parsedDate, { addSuffix: true });
     };
 
     if (!question) {
@@ -420,7 +436,11 @@ const QuestionPage = () => {
                     <PostForm
                         placeholder="Write your answer here..."
                         buttonText="Submit Answer"
-                        onSubmit={handleAnswerSubmit} />
+                        onSubmit={handleAnswerSubmit}
+                        variant="filled"
+                        className="inputField"
+                        sx={{ backgroundColor: theme.palette.background.paper }}
+                    />
                 </Box>
             </Box>
         </Box>

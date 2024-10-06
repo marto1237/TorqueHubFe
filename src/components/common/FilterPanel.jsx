@@ -14,7 +14,7 @@ const FilterPanel = ({ selectedTags, setSelectedTags, noAnswers, setNoAnswers, n
                 backgroundColor: theme.palette.background.paper,
                 color: theme.palette.text.primary,
                 borderRadius: '10px',
-                boxShadow: theme.shadows[3], // Add shadow for better visibility
+                boxShadow: theme.shadows[3],
                 marginBottom: '20px',
             }}
         >
