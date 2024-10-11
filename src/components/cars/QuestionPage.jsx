@@ -18,7 +18,7 @@ const QuestionPage = () => {
     const [question, setQuestion] = useState(null);
     const navigate = useNavigate();
 
-    const pageSize = 15;  // Number of answers per page
+    const pageSize = 2;  // Number of answers per page
     const commentsPageSize = 5;  // Number of comments to load initially per answer
     const [answer, setAnswer] = useState('');
     const [answers, setAnswers] = useState([]);
