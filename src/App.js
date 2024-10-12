@@ -5,6 +5,7 @@ import Fab from '@mui/material/Fab';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
+import ProfileImageUpload from "./components/firebase/ProfileImageUpload";
 import './styles/style.css';
 
 import { darkTheme, lightTheme } from './themes/Theme';

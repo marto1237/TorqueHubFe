@@ -63,8 +63,7 @@ const QuestionListPage = () => {
     useEffect(() => {
         const fetchQuestions = async () => {
             try {
-                const tagFilter = selectedTags.length > 0 ? `&tags=${selectedTags.join(',')}` : '';
-                const response = await axios.get(`http://localhost:8080/questions${selectedTags.length > 0 ? '/tags' : ''}?page=${page - 1}&size=${pageSize}${tagFilter}`);
+                const response = await axios.get(`http://localhost:8080/questions?page=${page - 1}&size=${pageSize}`);
                 setQuestions(response.data.content);
                 setTotalPages(response.data.totalPages);
                 setLoading(false);
@@ -216,7 +215,7 @@ const QuestionListPage = () => {
 
                                             <Box sx={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
                                                 <Typography variant="caption">
-                                                    {question.votes} votes | {question.answers} answers | {question.views} views
+                                                    {question.votes} votes | {question.totalAnswers} answers | {question.views} views
                                                 </Typography>
                                                 <Typography variant="caption" color="textSecondary">
                                                     Asked by{' '}

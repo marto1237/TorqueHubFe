@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, TextField, Button, Grid, Paper, Divider, Avatar, IconButton, Tabs, Tab, InputAdornment } from '@mui/material';
 import { PhotoCamera, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../firebase';
 
 const AccountSettingsPage = () => {
     const theme = useTheme();
@@ -9,16 +11,62 @@ const AccountSettingsPage = () => {
     const [username, setUsername] = useState('user1');
     const [email, setEmail] = useState('user1@gmail.com');
     const [location, setLocation] = useState('Eindhoven');
-    const [avatar, setAvatar] = useState(null);
+    const [avatar, setAvatar] = useState(null); // Holds the avatar image URL
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false); // Password visibility toggle
     const [errors, setErrors] = useState({});
 
+    // Fetch the profile image URL from Firebase Storage when the component mounts
+    useEffect(() => {
+        const fetchProfileImage = async () => {
+            try {
+                // Use the specific filename of the image stored in Firebase Storage
+                const fileName = `Charles Leclerc Jesus.jpg`;  // Use the correct file name as shown in Firebase Storage
+                const storageRef = ref(storage, `profileImages/${fileName}`);
+
+                // Get the download URL
+                const downloadURL = await getDownloadURL(storageRef);
+                setAvatar(downloadURL); // Store the image URL in state
+            } catch (error) {
+                console.error("Error fetching profile image:", error);
+                setAvatar(null); // Set to null if no image is found
+            }
+        };
+
+        fetchProfileImage();
+    }, []);
+
     // Handle avatar upload
     const handleAvatarChange = (e) => {
         if (e.target.files && e.target.files[0]) {
-            setAvatar(URL.createObjectURL(e.target.files[0]));
+            const file = e.target.files[0]; // Get the selected file
+
+            // Create a Firebase storage reference
+            const storageRef = ref(storage, `profileImages/${file.name}`);
+
+            // Upload the file to Firebase Storage
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            // Monitor the upload progress
+            uploadTask.on(
+                "state_changed",
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    console.log(`Upload is ${progress}% done`);
+                },
+                (error) => {
+                    // Handle errors
+                    console.error("Upload failed", error);
+                },
+                () => {
+                    // Get the download URL when the upload is complete
+                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                        console.log("File available at", downloadURL);
+                        setAvatar(downloadURL); // Store the Firebase image URL in the state
+                    });
+                }
+            );
         }
     };
 
@@ -77,7 +125,7 @@ const AccountSettingsPage = () => {
     };
 
     return (
-        <Box sx={{ padding: '20px ',  paddingTop: '100px' , backgroundColor: 'background.default' }}>
+        <Box sx={{ padding: '20px ', paddingTop: '100px', backgroundColor: 'background.default' }}>
             <Paper sx={{ maxWidth: '800px', margin: 'auto', padding: '40px', borderRadius: '10px' }}>
                 <Typography variant="h5" gutterBottom>
                     Account Settings
@@ -100,11 +148,11 @@ const AccountSettingsPage = () => {
                 {activeTab === 0 && (
                     <form onSubmit={handleSubmitProfile}>
                         <Grid container spacing={3} sx={{ marginTop: '20px' }}>
-
-                            {/* Avatar Upload */}
+                            {/* Avatar Upload Section */}
                             <Grid item xs={12}>
                                 <Typography variant="body1" sx={{ marginBottom: '10px' }}>Avatar</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                    {/* Use avatar URL from Firebase to display the new profile picture */}
                                     <Avatar src={avatar} sx={{ width: 80, height: 80 }}>
                                         {username.charAt(0).toUpperCase()}
                                     </Avatar>
@@ -141,8 +189,6 @@ const AccountSettingsPage = () => {
                                     helperText={errors.email}
                                 />
                             </Grid>
-
-
 
                             {/* Location */}
                             <Grid item xs={12}>
@@ -182,10 +228,7 @@ const AccountSettingsPage = () => {
                                     InputProps={{
                                         endAdornment: (
                                             <InputAdornment position="end">
-                                                <IconButton
-                                                    onClick={handleClickShowPassword}
-                                                    edge="end"
-                                                >
+                                                <IconButton onClick={handleClickShowPassword} edge="end">
                                                     {showPassword ? <VisibilityOff /> : <Visibility />}
                                                 </IconButton>
                                             </InputAdornment>
@@ -208,10 +251,7 @@ const AccountSettingsPage = () => {
                                     InputProps={{
                                         endAdornment: (
                                             <InputAdornment position="end">
-                                                <IconButton
-                                                    onClick={handleClickShowPassword}
-                                                    edge="end"
-                                                >
+                                                <IconButton onClick={handleClickShowPassword} edge="end">
                                                     {showPassword ? <VisibilityOff /> : <Visibility />}
                                                 </IconButton>
                                             </InputAdornment>
