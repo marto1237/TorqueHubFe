@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -10,7 +10,22 @@ import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
+import  {jwtDecode} from 'jwt-decode';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import {
+    NotificationsProvider,
+    useNotifications,
+} from '@toolpad/core/useNotifications';
+import { getDownloadURL, ref } from 'firebase/storage';
+import { storage } from '../../firebase';
+import Snackbar from '@mui/material/Snackbar';
+import { styled } from '@mui/material/styles';
 import '../../styles/SignUp.css';
+
+const notificationsProviderSlots = {
+    snackbar: styled(Snackbar)({ position: 'absolute' }),
+};
 
 function Copyright() {
     return (
@@ -25,9 +40,60 @@ function Copyright() {
     );
 }
 
-export default function Login() {
+function Login({ setLoggedIn }) {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
+    const notifications = useNotifications();
+    const [userDetails, setUserDetails] = useState(null);
+
+    // Function to fetch profile image from Firebase storage
+    const fetchProfileImage = async (username) => {
+        try {
+            const storageRef = ref(storage, `profileImages/${username}/profile.jpg`);
+            const downloadURL = await getDownloadURL(storageRef);
+            return downloadURL;
+        } catch (error) {
+            console.error('Error fetching profile image:', error);
+            return null; // Return null if image not found
+        }
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        try {
+            // Make the login request
+            const response = await axios.post('http://localhost:8080/auth/login', {
+                email,
+                password,
+            }, {
+                withCredentials: true, // Send credentials (cookies), remove if unnecessary
+            });
+
+            // Assuming the login was successful
+            const { jwtToken } = response.data;
+            console.log('Received jwtToken:', jwtToken); // Add this line
+
+            if (jwtToken && jwtToken.split('.').length === 3) {
+                localStorage.setItem('jwtToken', jwtToken); // Store token in localStorage
+                console.log('Stored jwtToken in localStorage'); // Add this line
+
+                // Rest of your code...
+            } else {
+                console.error('Invalid token format received from the server.');
+            }
+
+        } catch (error) {
+            console.error('Login error:', error); // Add this line
+            setError('Invalid email or password');
+            notifications.show('Invalid credentials', { autoHideDuration: 3000, severity: 'error' });
+        }
+    };
+
     return (
-        <div className="root" >
+        <div className="root">
             <CssBaseline />
             <div className="glassForm">
                 <Avatar className="avatar">
@@ -36,7 +102,7 @@ export default function Login() {
                 <Typography component="h1" variant="h5" className="signInText">
                     Sign Up
                 </Typography>
-                <form className="form" noValidate>
+                <form className="form" noValidate onSubmit={handleSubmit}>
                     <TextField
                         variant="outlined"
                         margin="normal"
@@ -48,6 +114,7 @@ export default function Login() {
                         autoFocus
                         autoComplete="email"
                         className="inputField"
+                        onChange={(e) => setEmail(e.target.value)}
                     />
                     <TextField
                         variant="outlined"
@@ -60,6 +127,7 @@ export default function Login() {
                         id="password"
                         autoComplete="current-password"
                         className="inputField"
+                        onChange={(e) => setPassword(e.target.value)}
                     />
                     <FormControlLabel
                         control={<Checkbox value="remember" color="primary" />}
@@ -90,5 +158,13 @@ export default function Login() {
                 </form>
             </div>
         </div>
+    );
+}
+
+export default function LoginWithNotifications({ setLoggedIn, handleAvatarUpdate }) {
+    return (
+        <NotificationsProvider slots={notificationsProviderSlots}>
+            <Login setLoggedIn={setLoggedIn} handleAvatarUpdate={handleAvatarUpdate} />
+        </NotificationsProvider>
     );
 }

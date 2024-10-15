@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, TextField, Button, Grid, Paper, Divider, Avatar, IconButton, Tabs, Tab, InputAdornment } from '@mui/material';
 import { PhotoCamera, Visibility, VisibilityOff } from '@mui/icons-material';
+import { useNotifications, NotificationsProvider } from '@toolpad/core/useNotifications';
+import Snackbar from '@mui/material/Snackbar';
+import { styled } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase';
 
-const AccountSettingsPage = () => {
+const notificationsProviderSlots = {
+    snackbar: styled(Snackbar)({ position: 'absolute' }),
+};
+
+const AccountSettingsPage = ({userDetails, updateAvatar }) => {
     const theme = useTheme();
     const [activeTab, setActiveTab] = useState(0);
-    const [username, setUsername] = useState('user1');
-    const [email, setEmail] = useState('user1@gmail.com');
+    const [username, setUsername] = useState(userDetails?.username || '');
+    const [email, setEmail] = useState(userDetails?.email || '');
     const [location, setLocation] = useState('Eindhoven');
     const [avatar, setAvatar] = useState(null); // Holds the avatar image URL
     const [newPassword, setNewPassword] = useState('');
@@ -17,15 +24,16 @@ const AccountSettingsPage = () => {
     const [showPassword, setShowPassword] = useState(false); // Password visibility toggle
     const [errors, setErrors] = useState({});
 
+    const notifications = useNotifications();
+
     // Fetch the profile image URL from Firebase Storage when the component mounts
     useEffect(() => {
+
         const fetchProfileImage = async () => {
             try {
                 // Use the specific filename of the image stored in Firebase Storage
-                const fileName = `Charles Leclerc Jesus.jpg`;  // Use the correct file name as shown in Firebase Storage
-                const storageRef = ref(storage, `profileImages/${fileName}`);
-
-                // Get the download URL
+                const fileName = `profile.jpg`;  // Use the correct file name as shown in Firebase Storage
+                const storageRef = ref(storage, `profileImages/${username}/${fileName}`);
                 const downloadURL = await getDownloadURL(storageRef);
                 setAvatar(downloadURL); // Store the image URL in state
             } catch (error) {
@@ -33,40 +41,77 @@ const AccountSettingsPage = () => {
                 setAvatar(null); // Set to null if no image is found
             }
         };
+        if (typeof window !== 'undefined') {
+            fetchProfileImage();
+        }
+    }, [username]);
 
-        fetchProfileImage();
-    }, []);
+    // Function to convert image to JPEG
+    const convertToJPEG = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    // Set canvas size to the image size
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    // Draw the image onto the canvas
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+
+                    // Convert the canvas to a blob in JPEG format
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) resolve(blob);
+                            else reject(new Error('Image conversion failed'));
+                        },
+                        'image/jpeg', // Desired format
+                        0.8 // Quality (0 to 1), 0.8 for decent quality
+                    );
+                };
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
 
     // Handle avatar upload
-    const handleAvatarChange = (e) => {
+    const handleAvatarChange = async (e) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0]; // Get the selected file
 
-            // Create a Firebase storage reference
-            const storageRef = ref(storage, `profileImages/${file.name}`);
+            try{
+                // Convert the image to JPEG format
+                const jpegFile = await convertToJPEG(file);
 
-            // Upload the file to Firebase Storage
-            const uploadTask = uploadBytesResumable(storageRef, file);
+                // Create a Firebase storage reference
+                const storageRef = ref(storage, `profileImages/${username}/profile.jpg`);
 
-            // Monitor the upload progress
-            uploadTask.on(
-                "state_changed",
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    console.log(`Upload is ${progress}% done`);
-                },
-                (error) => {
-                    // Handle errors
-                    console.error("Upload failed", error);
-                },
-                () => {
-                    // Get the download URL when the upload is complete
-                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                        console.log("File available at", downloadURL);
-                        setAvatar(downloadURL); // Store the Firebase image URL in the state
+                // Upload the file to Firebase Storage
+                const uploadTask = uploadBytesResumable(storageRef, jpegFile);
+
+                // Monitor the upload progress
+                uploadTask.on(
+                    'state_changed',  // Progress event, we don't handle progress here
+                    null,  // No action on progress updates
+                    (error) => {  // Error callback
+                        console.error("Error during upload:", error);
+                        notifications.show('Upload failed', { severity: 'error', autoHideDuration: 3000 });
+                    },
+                    async () => {  // Success callback
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        setAvatar(downloadURL);  // Save the Firebase URL to the avatar state
+                        updateAvatar(downloadURL);  // Notify the parent component to update the NavBar
+                        notifications.show('Profile picture updated successfully!', { severity: 'success', autoHideDuration: 3000 });
                     });
-                }
-            );
+            } catch (error) {
+                notifications.show('Error processing image:', {severity: 'error', autoHideDuration: 3000});
+            }
         }
     };
 
@@ -274,4 +319,11 @@ const AccountSettingsPage = () => {
     );
 };
 
-export default AccountSettingsPage;
+export default function AccountSettings(props) {
+    const { userDetails, updateAvatar } = props;
+    return (
+        <NotificationsProvider slots={notificationsProviderSlots}>
+            <AccountSettingsPage userDetails={userDetails} updateAvatar={updateAvatar} />
+        </NotificationsProvider>
+    );
+}

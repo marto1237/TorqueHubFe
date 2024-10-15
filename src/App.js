@@ -1,12 +1,13 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, {useState, Suspense, lazy, useEffect} from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import Fab from '@mui/material/Fab';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
-import ProfileImageUpload from "./components/firebase/ProfileImageUpload";
 import './styles/style.css';
+import {jwtDecode}  from 'jwt-decode';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 import { darkTheme, lightTheme } from './themes/Theme';
 import LoadingComponent from './components/common/Loader';
@@ -31,7 +32,7 @@ const Bookmarks = lazy(() => import('./components/profile/Bookmarks'));
 const MyShowcase = lazy(() => import('./components/profile/MyShowCase'));
 const Showcase = lazy(() => import('./pages/Showcase'));
 const CarDetails = lazy(() => import('./pages/CarDetails'));
-const AccountSetting = lazy(() => import('./components/profile/AccountSettings'));
+const AccountSettings = lazy(() => import('./components/profile/AccountSettings'));
 const QuestionListing = lazy(() => import('./components/cars/QuestionList'));
 const NotFoundPage = lazy(() => import('./components/common/NotFoundPage'));
 const PaymentPage = lazy(() => import('./pages/Payment'));
@@ -39,6 +40,51 @@ const Users = lazy(() => import('./pages/Users'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
+    const [loggedIn, setLoggedIn] = useState(false);
+    const [userDetails, setUserDetails] = useState(null);
+    const [avatar, setAvatar] = useState(null);
+
+    // Function to get the JWT token from localStorage
+    const getJWTToken = () => {
+        return localStorage.getItem('jwtToken');
+    };
+
+    // Function to handle avatar updates
+    const handleAvatarUpdate = (newAvatar) => {
+        setAvatar(newAvatar);
+    };
+
+    useEffect(() => {
+        const token = localStorage.getItem('jwtToken');
+        if (token) {
+            try {
+
+                const decodedToken = jwtDecode(token);
+                const currentTime = Date.now() / 1000;
+
+                if (decodedToken.exp < currentTime) {
+                    // Token has expired
+                    localStorage.removeItem('jwtToken');
+                    localStorage.removeItem('userDetails');
+                    setLoggedIn(false);
+                } else {
+                    const storedUserDetails = JSON.parse(localStorage.getItem('userDetails'));
+                    setUserDetails(storedUserDetails);
+                    setAvatar(storedUserDetails.profileImage || null);
+                    setLoggedIn(true);
+                }
+            } catch (error) {
+                console.error('Error decoding token:', error);
+                setLoggedIn(false);
+            }
+        }
+    }, []);
+
+    const handleLogin = (isLoggedIn, details) => {
+        setLoggedIn(isLoggedIn);
+        setUserDetails(details);
+        setAvatar(details?.profileImage || null); // Store JWT token in localStorage
+    };
 
     // Toggle theme function
     const toggleTheme = () => {
@@ -60,14 +106,18 @@ const App = () => {
         <ThemeProvider theme={theme}>
             <Router>
                 {/* Navbar is placed outside the routes so that it shows on all pages */}
-                <Navbar />
+                <Navbar loggedIn={loggedIn} setLoggedIn={setLoggedIn} userDetails={userDetails} avatar={avatar} />
 
                 {/* All Routes */}
                 <Suspense fallback={<LoadingComponent />}>
                     <Routes>
                         <Route path="/" element={<HomePage />} />
-                        <Route path="/signup" element={<SignUp />} />
-                        <Route path="/login" element={<LogIn  />} />
+                        <Route path="/signup" element={<ProtectedRoute loggedIn={loggedIn}>
+                            <SignUp setLoggedIn={setLoggedIn}  />
+                        </ProtectedRoute>} />
+                        <Route path="/login" element={ <ProtectedRoute loggedIn={loggedIn}>
+                            <LogIn setLoggedIn={handleLogin} />
+                        </ProtectedRoute>} />
                         <Route path="/carlist" element={<CarList />} />
                         <Route path="/carform" element={<QuestionPage />} />
                         <Route path="/askquestion" element={<CreateQuestionPage />} />
@@ -79,7 +129,7 @@ const App = () => {
                         <Route path="/myshowcase" element={<MyShowcase />} />
                         <Route path="/showcase" element={<Showcase />} />
                         <Route path="/car/:id" element={<CarDetails />} />
-                        <Route path="/accountsettings" element={<AccountSetting />} />
+                        <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
                         <Route path="/questions" element={<QuestionListing />} />
                         <Route path="/questions/:questionId" element={<QuestionPage />} />
                         <Route path="/payment" element={<PaymentPage />} />

@@ -8,8 +8,13 @@ import {useParams , useNavigate} from "react-router-dom";
 import { formatDistanceToNow } from 'date-fns';
 import axios from 'axios';
 import { Client } from '@stomp/stompjs';
+import { useNotifications, NotificationsProvider } from '@toolpad/core/useNotifications';
+import Snackbar from '@mui/material/Snackbar';
+import { styled } from '@mui/material/styles';
 
-
+const notificationsProviderSlots = {
+    snackbar: styled(Snackbar)(),
+};
 
 const QuestionPage = () => {
 
@@ -33,9 +38,61 @@ const QuestionPage = () => {
     const [isBookmarked, setIsBookmarked] = useState(false); // State to track bookmarked status
     const [isFollowing, setIsFollowing] = useState(false);   // State to track following status
 
+    const notifications = useNotifications();
+    const jwtToken = localStorage.getItem('jwtToken');
+
     const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
     const answerUser = { username: 'AnswerUser456', profileLink: '/user/answeruser456' };
     const commentUser = { username: 'CommentUser789', profileLink: '/user/commentuser789' }; // Static user for the example, can be dynamic
+
+
+    const isUserLoggedIn = () => {
+        // Retrieve all cookies
+        const cookies = document.cookie;
+
+        // Find the jwtToken cookie
+        const jwtCookie = cookies
+            .split('; ')
+            .find(row => row.startsWith('jwtToken='));
+
+        // Check if the cookie exists and has a valid token value
+        return jwtCookie !== undefined && jwtCookie.split('=')[1] !== '';
+    };
+
+    const handleVote = async (type) => {
+        const jwtToken = localStorage.getItem('jwtToken'); // Retrieve token from localStorage
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
+            return;  // Stop execution if the user is not logged in
+        }
+        try {
+            const voteUrl = `http://localhost:8080/questions/${questionId}/${type === 'up' ? 'upvote' : 'downvote'}`;
+
+            // Send the request with the Authorization header
+            const response = await axios.post(voteUrl, {}, {
+                headers: {
+                    Authorization: `Bearer ${jwtToken}`, // Include the JWT token in the request header
+                },
+                // You can remove withCredentials if not using cookies for authentication
+            });
+
+            // Handle success: update vote count and show notification
+            setVotes((prevVotes) => prevVotes + (type === 'up' ? 1 : -1));
+            notifications.show('Vote submitted successfully', { autoHideDuration: 3000, severity: 'success' });
+
+            // Optionally update the UI with additional data from response
+            if (response.data.reputation) {
+                setQuestion((prevQuestion) => ({
+                    ...prevQuestion,
+                    userReputation: response.data.reputation,
+                }));
+            }
+        } catch (error) {
+            console.error('Error occurred while voting:', error);
+            notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
+        }
+    };
+
 
 
     // Function to handle comment submission for answers
@@ -97,9 +154,6 @@ const QuestionPage = () => {
         }]);
     };
 
-    const handleVote = (type) => {
-        setVotes(type === 'up' ? votes + 1 : votes - 1);
-    };
 
     const handleAcceptAnswer = (index) => {
         setAcceptedAnswerIndex(index);
@@ -593,4 +647,10 @@ const QuestionPage = () => {
     );
 };
 
-export default QuestionPage;
+export default function QuestionPageWithNotification() {
+    return (
+        <NotificationsProvider slots={notificationsProviderSlots}>
+            <QuestionPage  />
+        </NotificationsProvider>
+    );
+}

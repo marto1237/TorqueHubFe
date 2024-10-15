@@ -13,22 +13,62 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
+import { jwtDecode } from 'jwt-decode';
+import { getDownloadURL, ref } from 'firebase/storage';
+import { storage } from '../../firebase';
+import axios from 'axios';
 import '../../styles/NavBar.css';
 
 const logo = "/Logo.png";
 
-function NavBar({ toggleTheme }) {
+function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const [scrollingDown, setScrollingDown] = useState(false);
     const [lastScrollTop, setLastScrollTop] = useState(0);
     const [navBarVisible, setNavBarVisible] = useState(true);
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
     const [anchorElNotif, setAnchorElNotif] = useState(null);
-    const [loggedIn, setLoggedIn] = React.useState(false);
+
+    const [avatarURL, setAvatarURL] = useState(avatar);
 
     const navigate = useNavigate();
     const theme = useTheme(); // Use theme
 
+
+    useEffect(() => {
+        // Update avatar URL when userDetails change
+        if (userDetails?.profileImage) {
+            setAvatarURL(userDetails.profileImage);
+        }
+    }, [userDetails]);
+
+    const handleLogout = async () => {
+        try {
+            await axios.post('http://localhost:8080/auth/logout', {}, { withCredentials: true });
+            localStorage.clear(); // Clear user data from localStorage
+            setLoggedIn(false); // Reset logged in state
+            navigate('/login');
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (loggedIn && userDetails.username) {
+            if (loggedIn && userDetails.username) {
+                // Fetch profile picture from Firebase if not already in userDetails
+                if (!userDetails.profileImage) {
+                    const storageRef = ref(storage, `profileImages/${userDetails.username}/profile.jpg`);
+                    getDownloadURL(storageRef)
+                        .then((url) => {
+                            // This would normally go to a setUserDetails call, but since you're receiving it via props,
+                            // the update should happen in the parent component instead of here.
+                        })
+                        .catch(() => console.log('No profile image found.'));
+                }
+            }
+        }
+    }, [loggedIn, userDetails]);
 
     const [notifications, setNotifications] = useState([
         { id: 1, title: "Reboot required", description: "Server needs to be rebooted", date: "4 Jun 2021", unread: true },
@@ -73,12 +113,7 @@ function NavBar({ toggleTheme }) {
     };
 
     const handleLogin = () => {
-        //navigate('/login');
-        setLoggedIn(true);
-    };
-
-    const handleLogout = () => {
-        setLoggedIn(false);
+        navigate('/login');
     };
 
     const handleSignUp = () => {
@@ -118,6 +153,46 @@ function NavBar({ toggleTheme }) {
     const handleCloseNotifMenu = () => {
         setAnchorElNotif(null);
     };
+
+
+    function stringToColor(string) {
+        let hash = 0;
+        let i;
+
+        /* eslint-disable no-bitwise */
+        for (i = 0; i < string.length; i += 1) {
+            hash = string.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        let color = '#';
+
+        for (i = 0; i < 3; i += 1) {
+            const value = (hash >> (i * 8)) & 0xff;
+            color += `00${value.toString(16)}`.slice(-2);
+        }
+        /* eslint-enable no-bitwise */
+
+        return color;
+    }
+
+    function stringAvatar(name) {
+        if (!name) {
+            // Fallback if no name is provided
+            return {
+                sx: {
+                    bgcolor: '#ccc', // Default background color
+                },
+                children: '?', // Default avatar content
+            };
+        }
+
+        return {
+            sx: {
+                bgcolor: stringToColor(name),
+            },
+            children: `${name[0].toUpperCase()}`,
+        };
+    }
 
     return (
         <AppBar
@@ -354,7 +429,12 @@ function NavBar({ toggleTheme }) {
                             <>
                                 <Tooltip title="Open settings">
                                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                                        <Avatar alt="User" src="/static/images/avatar/2.jpg" />
+                                        {/* Display the profile image if it exists, else display the default avatar */}
+                                        {avatarURL ?(
+                                            <Avatar src={avatarURL} />
+                                        ) : (
+                                            <Avatar {...stringAvatar(userDetails?.username ? userDetails.username[0] : 'User')} />
+                                        )}
                                     </IconButton>
                                 </Tooltip>
                                 <Menu
