@@ -75,12 +75,29 @@ function Login({ setLoggedIn }) {
             // Assuming the login was successful
             const { jwtToken } = response.data;
             console.log('Received jwtToken:', jwtToken); // Add this line
+            const decodedToken = jwtDecode(jwtToken);
+            const username = decodedToken.username;
+            const userId = decodedToken.id;
 
+            const profileImage = await fetchProfileImage(username);
             if (jwtToken && jwtToken.split('.').length === 3) {
                 localStorage.setItem('jwtToken', jwtToken); // Store token in localStorage
                 console.log('Stored jwtToken in localStorage'); // Add this line
+                const decodedToken = jwtDecode(jwtToken);
+                const userDetails = {
+                    username: decodedToken.username,
+                    email: decodedToken.email,
+                    role: decodedToken.role,
+                    profileImage,
+                };
 
-                // Rest of your code...
+
+                if (profileImage) {
+                    localStorage.setItem('profileImage', profileImage);
+                }
+                localStorage.setItem('userDetails', JSON.stringify(userDetails));
+                setLoggedIn(true, userDetails);
+                navigate('/');
             } else {
                 console.error('Invalid token format received from the server.');
             }

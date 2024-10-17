@@ -93,6 +93,20 @@ const QuestionPage = () => {
         }
     };
 
+    const handleUpvote = async (questionId) => {
+        const token = localStorage.getItem('jwtToken');  // Retrieve the JWT token from localStorage
+        try {
+            const response = await axios.post(`http://localhost:8080/questions/${questionId}/upvote`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,  // Add JWT token to the request
+                },
+            });
+            notifications.show('Vote submitted successfully', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
+        }
+    };
+
 
 
     // Function to handle comment submission for answers
@@ -364,7 +378,7 @@ const QuestionPage = () => {
                     <Grid container spacing={2}>
                         <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
                             <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
-                                <IconButton onClick={() => handleVote('up')}>
+                                <IconButton onClick={() => handleUpvote(question.id)}>
                                     <KeyboardArrowUp />
                                 </IconButton>
                             </Tooltip>
