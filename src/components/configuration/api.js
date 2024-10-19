@@ -3,6 +3,7 @@ import { API_BASE_URL } from './config';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
+    timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -18,6 +19,27 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Interceptor to automatically refresh the token when a 401 Unauthorized occurs
+api.interceptors.response.use(
+    response => response,
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            try {
+                // Call the refresh token endpoint
+                await api.post('/auth/refresh-token');
+
+                // Retry the original request
+                return api(originalRequest);
+            } catch (refreshError) {
+                return Promise.reject(refreshError);
+            }
+        }
         return Promise.reject(error);
     }
 );

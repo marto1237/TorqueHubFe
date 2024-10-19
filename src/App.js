@@ -44,10 +44,6 @@ const App = () => {
     const [userDetails, setUserDetails] = useState(null);
     const [avatar, setAvatar] = useState(null);
 
-    // Function to get the JWT token from localStorage
-    const getJWTToken = () => {
-        return localStorage.getItem('jwtToken');
-    };
 
     // Function to handle avatar updates
     const handleAvatarUpdate = (newAvatar) => {
@@ -55,28 +51,11 @@ const App = () => {
     };
 
     useEffect(() => {
-        const token = localStorage.getItem('jwtToken');
-        if (token) {
-            try {
-
-                const decodedToken = jwtDecode(token);
-                const currentTime = Date.now() / 1000;
-
-                if (decodedToken.exp < currentTime) {
-                    // Token has expired
-                    localStorage.removeItem('jwtToken');
-                    localStorage.removeItem('userDetails');
-                    setLoggedIn(false);
-                } else {
-                    const storedUserDetails = JSON.parse(localStorage.getItem('userDetails'));
-                    setUserDetails(storedUserDetails);
-                    setAvatar(storedUserDetails.profileImage || null);
-                    setLoggedIn(true);
-                }
-            } catch (error) {
-                console.error('Error decoding token:', error);
-                setLoggedIn(false);
-            }
+        // On component mount, check if sessionStorage has user details
+        const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        if (storedUserDetails) {
+            setUserDetails(storedUserDetails);
+            setLoggedIn(true);
         }
     }, []);
 
@@ -84,6 +63,7 @@ const App = () => {
         setLoggedIn(isLoggedIn);
         setUserDetails(details);
         setAvatar(details?.profileImage || null); // Store JWT token in localStorage
+        sessionStorage.setItem('userDetails', JSON.stringify(details));
     };
 
     // Toggle theme function

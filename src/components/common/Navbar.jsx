@@ -45,7 +45,8 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const handleLogout = async () => {
         try {
             await axios.post('http://localhost:8080/auth/logout', {}, { withCredentials: true });
-            localStorage.clear(); // Clear user data from localStorage
+            sessionStorage.clear(); // Clear user data
+            localStorage.clear(); // Clear JWT token
             setLoggedIn(false); // Reset logged in state
             navigate('/login');
         } catch (error) {

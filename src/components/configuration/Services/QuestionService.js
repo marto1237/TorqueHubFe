@@ -8,9 +8,11 @@ const QuestionService = {
     },
 
     getQuestionById: (questionId, page = 0, size = 10) => {
-        return api.get(`/questions/${questionId}`)
-            .then(response => response.data)
-            .catch(error => Promise.reject(error));
+        return api.get(`/questions/${questionId}`, {
+            params: { page, size }
+        })
+        .then(response => response.data)
+        .catch(error => Promise.reject(error));
     },
 
     getAnswersByQuestionId: (questionId, page = 0, size = 10) => {

@@ -11,7 +11,6 @@ import Box from '@mui/material/Box';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import  {jwtDecode} from 'jwt-decode';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
     NotificationsProvider,
@@ -22,6 +21,7 @@ import { storage } from '../../firebase';
 import Snackbar from '@mui/material/Snackbar';
 import { styled } from '@mui/material/styles';
 import '../../styles/SignUp.css';
+import AuthService from '../configuration/Services/AuthService';
 
 const notificationsProviderSlots = {
     snackbar: styled(Snackbar)({ position: 'absolute' }),
@@ -45,6 +45,8 @@ function Login({ setLoggedIn }) {
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
     const navigate = useNavigate();
     const notifications = useNotifications();
     const [userDetails, setUserDetails] = useState(null);
@@ -63,51 +65,71 @@ function Login({ setLoggedIn }) {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
         try {
-            // Make the login request
-            const response = await axios.post('http://localhost:8080/auth/login', {
-                email,
-                password,
-            }, {
-                withCredentials: true, // Send credentials (cookies), remove if unnecessary
-            });
+            // Send login request (access and refresh tokens are stored in cookies)
+            const response = await AuthService.login({ email, password, rememberMe });
 
             // Assuming the login was successful
-            const { jwtToken } = response.data;
-            console.log('Received jwtToken:', jwtToken); // Add this line
+            const { jwtToken } = response;
             const decodedToken = jwtDecode(jwtToken);
-            const username = decodedToken.username;
-            const userId = decodedToken.id;
+            const profileImage = await fetchProfileImage(decodedToken.username);
 
-            const profileImage = await fetchProfileImage(username);
-            if (jwtToken && jwtToken.split('.').length === 3) {
-                localStorage.setItem('jwtToken', jwtToken); // Store token in localStorage
-                console.log('Stored jwtToken in localStorage'); // Add this line
-                const decodedToken = jwtDecode(jwtToken);
-                const userDetails = {
-                    username: decodedToken.username,
-                    email: decodedToken.email,
-                    role: decodedToken.role,
-                    profileImage,
-                };
+            // Store the token and user details
+            const userDetails = {
+                username: decodedToken.username,
+                email: decodedToken.email,
+                role: decodedToken.role,
+                profileImage,
+            };
 
+            sessionStorage.setItem('userDetails', JSON.stringify(userDetails));
+            sessionStorage.setItem('loginSuccess', 'true');
+            setLoggedIn(true, userDetails);
+            navigate('/');
 
-                if (profileImage) {
-                    localStorage.setItem('profileImage', profileImage);
-                }
-                localStorage.setItem('userDetails', JSON.stringify(userDetails));
-                setLoggedIn(true, userDetails);
-                navigate('/');
-            } else {
-                console.error('Invalid token format received from the server.');
-            }
 
         } catch (error) {
-            console.error('Login error:', error); // Add this line
             setError('Invalid email or password');
             notifications.show('Invalid credentials', { autoHideDuration: 3000, severity: 'error' });
         }
     };
+
+    const isValidEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    const validateForm = () => {
+        let valid = true;
+
+        if (!email) {
+            setEmailError('Email is required');
+            valid = false;
+        } else if (!isValidEmail(email)) {
+            setEmailError('Please enter a valid email');
+            valid = false;
+        } else {
+            setEmailError('');
+        }
+
+        if (!password) {
+            setPasswordError('Password is required');
+            valid = false;
+        } else if (password.length < 6) {
+            setPasswordError('Password must be at least 6 characters');
+            valid = false;
+        } else {
+            setPasswordError('');
+        }
+
+        return valid;
+    };
+
 
     return (
         <div className="root">
@@ -131,6 +153,8 @@ function Login({ setLoggedIn }) {
                         autoFocus
                         autoComplete="email"
                         className="inputField"
+                        error={!!emailError}
+                        helperText={emailError}
                         onChange={(e) => setEmail(e.target.value)}
                     />
                     <TextField
@@ -143,11 +167,12 @@ function Login({ setLoggedIn }) {
                         type="password"
                         id="password"
                         autoComplete="current-password"
-                        className="inputField"
+                        error={!!passwordError}
+                        helperText={passwordError}
                         onChange={(e) => setPassword(e.target.value)}
                     />
                     <FormControlLabel
-                        control={<Checkbox value="remember" color="primary" />}
+                        control={<Checkbox value={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} color="primary"  />}
                         label="Remember me"
                         className="rememberMe"
                     />

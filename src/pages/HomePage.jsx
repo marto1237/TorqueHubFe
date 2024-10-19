@@ -23,17 +23,17 @@ const HomePage = () => {
 
     useEffect(() => {
         // Check if the user just logged in
-        const storedUsername = localStorage.getItem('username');
-        if (storedUsername) {
-            setUsername(storedUsername);
+        const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        if (storedUserDetails?.username) {
+            setUsername(storedUserDetails.username);
         }
-        const loginSuccess = localStorage.getItem('loginSuccess');
+        const loginSuccess = sessionStorage.getItem('loginSuccess');
         if (loginSuccess) {
             // Show success notification
-            notifications.show('Welcome back, ' + storedUsername + '!', { autoHideDuration: 3000, severity: 'success' });
+            notifications.show('Welcome back, ' + storedUserDetails.username + '!', { autoHideDuration: 3000, severity: 'success' });
 
             // Clear the login success flag
-            localStorage.removeItem('loginSuccess');
+            sessionStorage.removeItem('loginSuccess');
         }
     }, [notifications]);
 

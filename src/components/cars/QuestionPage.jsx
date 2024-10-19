@@ -7,10 +7,12 @@ import PostForm from "../forum/PostForm";
 import {useParams , useNavigate} from "react-router-dom";
 import { formatDistanceToNow } from 'date-fns';
 import axios from 'axios';
-import { Client } from '@stomp/stompjs';
 import { useNotifications, NotificationsProvider } from '@toolpad/core/useNotifications';
 import Snackbar from '@mui/material/Snackbar';
 import { styled } from '@mui/material/styles';
+import WebSocketClient from '../configuration/WebSocket/websocketClient';
+import { WEBSOCKET_URL } from '../configuration/config';
+import QuestionService from '../configuration/Services/QuestionService';
 
 const notificationsProviderSlots = {
     snackbar: styled(Snackbar)(),
@@ -101,6 +103,8 @@ const QuestionPage = () => {
                     Authorization: `Bearer ${token}`,  // Add JWT token to the request
                 },
             });
+            setVotes((prevVotes) => prevVotes + 1);
+
             notifications.show('Vote submitted successfully', { autoHideDuration: 3000, severity: 'success' });
         } catch (error) {
             notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
@@ -203,41 +207,32 @@ const QuestionPage = () => {
 
     // Fetch question details (and initial answers)
     useEffect(() => {
-        const fetchQuestion = async () => {
-            try {
-                const response = await axios.get(`http://localhost:8080/questions/${questionId}`);
-                const fetchedQuestion = response.data;
+        loadQuestion();
+    }, [questionId]);
 
-                setQuestion(fetchedQuestion);
-                setVotes(fetchedQuestion.votes);
+    // Function to load question and initial answers
+    const loadQuestion = async () => {
+        try {
+            const fetchedQuestion = await QuestionService.getQuestionById(questionId, currentPage, pageSize);
+            setQuestion(fetchedQuestion);
+            setVotes(fetchedQuestion.votes);
+            setAnswers(fetchedQuestion.answers.content);
+            setTotalPages(fetchedQuestion.answers.totalPages);
+            setCurrentPage(fetchedQuestion.answers.pageable.pageNumber);
+        } catch (error) {
+            console.error("Error loading question:", error);
+            navigate('/questions'); // Redirect if question not found
+        }
+    };
 
-                // Fetch the first page of answers
-                fetchAnswers(0);
-            } catch (error) {
-                console.error("Error fetching question data", error);
-                navigate('/questions'); // Redirect to questions list if the question is not found
-            }
-        };
-
-        fetchQuestion();
-    }, [questionId, navigate]);
-
-    // Fetch paginated answers
     const fetchAnswers = async (page) => {
         try {
-            const response = await axios.get(`http://localhost:8080/answers/questions/${questionId}`, {
-                params: { page, size: pageSize }
-            });
-            const fetchedAnswers = response.data.content;
-            const fetchedTotalPages = response.data.totalPages;
-
-            // Set new answers and update page details
+            const { content: fetchedAnswers, totalPages: fetchedTotalPages } = await QuestionService.getAnswersByQuestionId(questionId, page, pageSize);
             setAnswers(fetchedAnswers);
-            setTotalPages(fetchedTotalPages); // Set the total number of pages
-            setCurrentPage(page); // Set the current page
-            fetchedAnswers.forEach(answer => fetchInitialComments(answer.id));
+            setTotalPages(fetchedTotalPages);
+            setCurrentPage(page);
         } catch (error) {
-            console.error("Error fetching answers", error);
+            console.error("Error fetching answers:", error);
         }
     };
 
@@ -276,40 +271,27 @@ const QuestionPage = () => {
     };
 
     useEffect(() => {
-        const client = new Client({
-            brokerURL: 'ws://localhost:8080/ws',
-            debug: (str) => {
-                console.log('WebSocket debug: ', str);
-            },
-            onConnect: () => {
-                console.log('WebSocket connected');
-                // Subscribe to new answers
-                client.subscribe(`/topic/answers/${questionId}`, (message) => {
-                    const newAnswer = JSON.parse(message.body);
-                    setAnswers(prevAnswers => [...prevAnswers, newAnswer]);
-                    console.log('New answer received:', newAnswer);
-                });
+        const webSocketClient = WebSocketClient(WEBSOCKET_URL);
 
-                // Subscribe to new comments (if needed)
-                client.subscribe(`/topic/comments/${questionId}`, (message) => {
-                    const newComment = JSON.parse(message.body);
-                    const answerId = newComment.answerId;
-                    setComments(prevComments => ({
-                        ...prevComments,
-                        [answerId]: [...(prevComments[answerId] || []), newComment],
-                    }));
-                });
-            },
-            onStompError: (frame) => {
-                console.error(`Broker reported error: ${frame.headers['message']}`);
-                console.error(`Additional details: ${frame.body}`);
-            }
+        webSocketClient.connect(() => {
+            // Subscribe to new answers
+            webSocketClient.subscribe(`/topic/answers/${questionId}`, (newAnswer) => {
+                setAnswers((prevAnswers) => [...prevAnswers, newAnswer]);
+                console.log('New answer received:', newAnswer);
+            });
+
+            // Subscribe to new comments
+            webSocketClient.subscribe(`/topic/comments/${questionId}`, (newComment) => {
+                const answerId = newComment.answerId;
+                setComments((prevComments) => ({
+                    ...prevComments,
+                    [answerId]: [...(prevComments[answerId] || []), newComment],
+                }));
+            });
         });
 
-        client.activate();
-
         return () => {
-            client.deactivate();  // Clean up WebSocket on component unmount
+            webSocketClient.disconnect();  // Clean up on component unmount
         };
     }, [questionId]);
 
