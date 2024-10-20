@@ -1,17 +1,14 @@
 import React, {useEffect, useState} from 'react';
 import { useTypewriter, Cursor } from 'react-simple-typewriter';
-import { useNotifications, NotificationsProvider } from '@toolpad/core/useNotifications';
 import Snackbar from '@mui/material/Snackbar';
 import { styled } from '@mui/material/styles';
+import { useAppNotifications } from '../components/common/NotificationProvider';
 
 import '../styles/HomePage.css';
 
-const notificationsProviderSlots = {
-    snackbar: styled(Snackbar)({ position: 'absolute' }),
-};
 
 const HomePage = () => {
-    const notifications = useNotifications();
+    const notifications = useAppNotifications();
     const [username, setUsername] = useState('');
     const [text] = useTypewriter({
         words: ['Welcome to Torque Hub'],
@@ -54,10 +51,4 @@ const HomePage = () => {
     );
 };
 
-export default function HomePageWithNotifications() {
-    return (
-        <NotificationsProvider slots={notificationsProviderSlots}>
-            <HomePage />
-        </NotificationsProvider>
-    );
-}
+export default HomePage;

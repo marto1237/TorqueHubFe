@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, IconButton, Grid, TextField,  Divider, Paper, Tooltip, Link, Chip } from '@mui/material';
+import { Box, Button, Typography, IconButton, Grid, Divider, Paper, Tooltip, Link, Chip } from '@mui/material';
 import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown } from '@mui/icons-material';
 import {BookmarkBorder} from "@material-ui/icons";
 import { useTheme } from '@mui/material/styles';
@@ -7,16 +7,10 @@ import PostForm from "../forum/PostForm";
 import {useParams , useNavigate} from "react-router-dom";
 import { formatDistanceToNow } from 'date-fns';
 import axios from 'axios';
-import { useNotifications, NotificationsProvider } from '@toolpad/core/useNotifications';
-import Snackbar from '@mui/material/Snackbar';
-import { styled } from '@mui/material/styles';
 import WebSocketClient from '../configuration/WebSocket/websocketClient';
 import { WEBSOCKET_URL } from '../configuration/config';
 import QuestionService from '../configuration/Services/QuestionService';
-
-const notificationsProviderSlots = {
-    snackbar: styled(Snackbar)(),
-};
+import { useAppNotifications } from '../common/NotificationProvider';
 
 const QuestionPage = () => {
 
@@ -40,8 +34,9 @@ const QuestionPage = () => {
     const [isBookmarked, setIsBookmarked] = useState(false); // State to track bookmarked status
     const [isFollowing, setIsFollowing] = useState(false);   // State to track following status
 
-    const notifications = useNotifications();
-    const jwtToken = localStorage.getItem('jwtToken');
+    const notifications = useAppNotifications();
+    const jwtToken = sessionStorage.getItem('jwtToken');
+    const [userVote, setUserVote] = useState(null);
 
     const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
     const answerUser = { username: 'AnswerUser456', profileLink: '/user/answeruser456' };
@@ -62,51 +57,54 @@ const QuestionPage = () => {
     };
 
     const handleVote = async (type) => {
-        const jwtToken = localStorage.getItem('jwtToken'); // Retrieve token from localStorage
+        const jwtToken = sessionStorage.getItem('jwtToken'); // Retrieve token
         if (!jwtToken) {
             notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
             return;  // Stop execution if the user is not logged in
         }
+
         try {
-            const voteUrl = `http://localhost:8080/questions/${questionId}/${type === 'up' ? 'upvote' : 'downvote'}`;
+            let response;
 
-            // Send the request with the Authorization header
-            const response = await axios.post(voteUrl, {}, {
-                headers: {
-                    Authorization: `Bearer ${jwtToken}`, // Include the JWT token in the request header
-                },
-                // You can remove withCredentials if not using cookies for authentication
-            });
+            if (type === 'up') {
+                // Call upvote API
+                response = await QuestionService.upvoteQuestion(questionId)
 
-            // Handle success: update vote count and show notification
-            setVotes((prevVotes) => prevVotes + (type === 'up' ? 1 : -1));
-            notifications.show('Vote submitted successfully', { autoHideDuration: 3000, severity: 'success' });
-
-            // Optionally update the UI with additional data from response
-            if (response.data.reputation) {
-                setQuestion((prevQuestion) => ({
-                    ...prevQuestion,
-                    userReputation: response.data.reputation,
-                }));
+                if (userVote === 'up') {
+                    // If already upvoted, remove the upvote
+                    setVotes((prevVotes) => prevVotes - 1);
+                    setUserVote(null);  // Reset vote to null
+                } else if (userVote === 'down') {
+                    // If downvoted, switch to upvote
+                    setVotes((prevVotes) => prevVotes + 2);
+                    setUserVote('up');
+                } else {
+                    // Otherwise, add an upvote
+                    setVotes((prevVotes) => prevVotes + 1);
+                    setUserVote('up');
+                }
+            } else if (type === 'down') {
+                // Call downvote API
+                response = await QuestionService.downvoteQuestion(questionId);
+                if (userVote === 'down') {
+                    // If already downvoted, remove the downvote
+                    setVotes((prevVotes) => prevVotes + 1);
+                    setUserVote(null);  // Reset vote to null
+                } else if (userVote === 'up') {
+                    // If upvoted, switch to downvote
+                    setVotes((prevVotes) => prevVotes - 2);
+                    setUserVote('down');
+                } else {
+                    // Otherwise, add a downvote
+                    setVotes((prevVotes) => prevVotes - 1);
+                    setUserVote('down');
+                }
             }
+
+            // Show success notification
+            notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
         } catch (error) {
             console.error('Error occurred while voting:', error);
-            notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
-        }
-    };
-
-    const handleUpvote = async (questionId) => {
-        const token = localStorage.getItem('jwtToken');  // Retrieve the JWT token from localStorage
-        try {
-            const response = await axios.post(`http://localhost:8080/questions/${questionId}/upvote`, {}, {
-                headers: {
-                    Authorization: `Bearer ${token}`,  // Add JWT token to the request
-                },
-            });
-            setVotes((prevVotes) => prevVotes + 1);
-
-            notifications.show('Vote submitted successfully', { autoHideDuration: 3000, severity: 'success' });
-        } catch (error) {
             notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
         }
     };
@@ -144,14 +142,14 @@ const QuestionPage = () => {
         setIsBookmarked(!isBookmarked);
 
         // Save to localStorage or send a request to save the bookmark on the server
-        const bookmarkedQuestions = JSON.parse(localStorage.getItem('bookmarkedQuestions')) || [];
+        const bookmarkedQuestions = JSON.parse(sessionStorage.getItem('bookmarkedQuestions')) || [];
         if (isBookmarked) {
             // Remove bookmark
             const updatedBookmarks = bookmarkedQuestions.filter(id => id !== questionId);
-            localStorage.setItem('bookmarkedQuestions', JSON.stringify(updatedBookmarks));
+            sessionStorage.setItem('bookmarkedQuestions', JSON.stringify(updatedBookmarks));
         } else {
             // Add bookmark
-            localStorage.setItem('bookmarkedQuestions', JSON.stringify([...bookmarkedQuestions, questionId]));
+            sessionStorage.setItem('bookmarkedQuestions', JSON.stringify([...bookmarkedQuestions, questionId]));
         }
     };
 
@@ -360,14 +358,14 @@ const QuestionPage = () => {
                     <Grid container spacing={2}>
                         <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
                             <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
-                                <IconButton onClick={() => handleUpvote(question.id)}>
-                                    <KeyboardArrowUp />
+                                <IconButton onClick={() => handleVote('up')}>
+                                    <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'}/>
                                 </IconButton>
                             </Tooltip>
                             <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
                             <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
                                 <IconButton onClick={() => handleVote('down')}>
-                                    <KeyboardArrowDown />
+                                    <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
                                 </IconButton>
                             </Tooltip>
                             {/* Bookmark Button */}
@@ -643,10 +641,4 @@ const QuestionPage = () => {
     );
 };
 
-export default function QuestionPageWithNotification() {
-    return (
-        <NotificationsProvider slots={notificationsProviderSlots}>
-            <QuestionPage  />
-        </NotificationsProvider>
-    );
-}
+export default QuestionPage;

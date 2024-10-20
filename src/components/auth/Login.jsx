@@ -22,10 +22,7 @@ import Snackbar from '@mui/material/Snackbar';
 import { styled } from '@mui/material/styles';
 import '../../styles/SignUp.css';
 import AuthService from '../configuration/Services/AuthService';
-
-const notificationsProviderSlots = {
-    snackbar: styled(Snackbar)({ position: 'absolute' }),
-};
+import { useAppNotifications } from '../common/NotificationProvider';
 
 function Copyright() {
     return (
@@ -48,7 +45,7 @@ function Login({ setLoggedIn }) {
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const navigate = useNavigate();
-    const notifications = useNotifications();
+    const notifications = useAppNotifications();
     const [userDetails, setUserDetails] = useState(null);
 
     // Function to fetch profile image from Firebase storage
@@ -76,6 +73,7 @@ function Login({ setLoggedIn }) {
 
             // Assuming the login was successful
             const { jwtToken } = response;
+            sessionStorage.setItem('jwtToken', jwtToken);
             const decodedToken = jwtDecode(jwtToken);
             const profileImage = await fetchProfileImage(decodedToken.username);
 
@@ -203,10 +201,4 @@ function Login({ setLoggedIn }) {
     );
 }
 
-export default function LoginWithNotifications({ setLoggedIn, handleAvatarUpdate }) {
-    return (
-        <NotificationsProvider slots={notificationsProviderSlots}>
-            <Login setLoggedIn={setLoggedIn} handleAvatarUpdate={handleAvatarUpdate} />
-        </NotificationsProvider>
-    );
-}
+export default Login;

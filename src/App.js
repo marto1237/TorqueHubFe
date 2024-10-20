@@ -11,6 +11,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 
 import { darkTheme, lightTheme } from './themes/Theme';
 import LoadingComponent from './components/common/Loader';
+import NotificationProvider from './components/common/NotificationProvider';
 
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
@@ -90,33 +91,34 @@ const App = () => {
 
                 {/* All Routes */}
                 <Suspense fallback={<LoadingComponent />}>
-                    <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/signup" element={<ProtectedRoute loggedIn={loggedIn}>
-                            <SignUp setLoggedIn={setLoggedIn}  />
-                        </ProtectedRoute>} />
-                        <Route path="/login" element={ <ProtectedRoute loggedIn={loggedIn}>
-                            <LogIn setLoggedIn={handleLogin} />
-                        </ProtectedRoute>} />
-                        <Route path="/carlist" element={<CarList />} />
-                        <Route path="/carform" element={<QuestionPage />} />
-                        <Route path="/askquestion" element={<CreateQuestionPage />} />
-                        <Route path="/events" element={<EventList />} />
-                        <Route path="/events/:id" element={<EventDetail />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/following" element={<Following />} />
-                        <Route path="/bookmarks" element={<Bookmarks />} />
-                        <Route path="/myshowcase" element={<MyShowcase />} />
-                        <Route path="/showcase" element={<Showcase />} />
-                        <Route path="/car/:id" element={<CarDetails />} />
-                        <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
-                        <Route path="/questions" element={<QuestionListing />} />
-                        <Route path="/questions/:questionId" element={<QuestionPage />} />
-                        <Route path="/payment" element={<PaymentPage />} />
-                        <Route path="*" element={<NotFoundPage />} />
-                        <Route path={"/users"} element={<Users />} />
-
-                    </Routes>
+                    <NotificationProvider>
+                        <Routes>
+                            <Route path="/" element={<HomePage />} />
+                            <Route path="/signup" element={<ProtectedRoute loggedIn={loggedIn}>
+                                <SignUp setLoggedIn={setLoggedIn}  />
+                            </ProtectedRoute>} />
+                            <Route path="/login" element={ <ProtectedRoute loggedIn={loggedIn}>
+                                <LogIn setLoggedIn={handleLogin} />
+                            </ProtectedRoute>} />
+                            <Route path="/carlist" element={<CarList />} />
+                            <Route path="/carform" element={<QuestionPage />} />
+                            <Route path="/askquestion" element={<CreateQuestionPage />} />
+                            <Route path="/events" element={<EventList />} />
+                            <Route path="/events/:id" element={<EventDetail />} />
+                            <Route path="/profile" element={<Profile />} />
+                            <Route path="/following" element={<Following />} />
+                            <Route path="/bookmarks" element={<Bookmarks />} />
+                            <Route path="/myshowcase" element={<MyShowcase />} />
+                            <Route path="/showcase" element={<Showcase />} />
+                            <Route path="/car/:id" element={<CarDetails />} />
+                            <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
+                            <Route path="/questions" element={<QuestionListing />} />
+                            <Route path="/questions/:questionId" element={<QuestionPage />} />
+                            <Route path="/payment" element={<PaymentPage />} />
+                            <Route path="*" element={<NotFoundPage />} />
+                            <Route path={"/users"} element={<Users />} />
+                        </Routes>
+                    </NotificationProvider>
                 </Suspense>
 
                 {/* Theme Toggle Button */}

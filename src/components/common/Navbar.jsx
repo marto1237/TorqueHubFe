@@ -11,9 +11,9 @@ import {
     AppBar, Box, Badge, Toolbar, IconButton, Typography, Menu, MenuItem,
     Avatar, Button, Tooltip, Container, Divider, ListItemText, ListItemIcon
 } from '@mui/material';
+import NotificationService from '../configuration/WebSocket/NotificationWebSocketService';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
-import { jwtDecode } from 'jwt-decode';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '../../firebase';
 import axios from 'axios';
@@ -27,6 +27,10 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const [navBarVisible, setNavBarVisible] = useState(true);
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
+
+    //Notification properties
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [anchorElNotif, setAnchorElNotif] = useState(null);
 
     const [avatarURL, setAvatarURL] = useState(avatar);
@@ -56,26 +60,19 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
 
     useEffect(() => {
         if (loggedIn && userDetails.username) {
-            if (loggedIn && userDetails.username) {
-                // Fetch profile picture from Firebase if not already in userDetails
-                if (!userDetails.profileImage) {
-                    const storageRef = ref(storage, `profileImages/${userDetails.username}/profile.jpg`);
-                    getDownloadURL(storageRef)
-                        .then((url) => {
-                            // This would normally go to a setUserDetails call, but since you're receiving it via props,
-                            // the update should happen in the parent component instead of here.
-                        })
-                        .catch(() => console.log('No profile image found.'));
-                }
+            // Fetch profile picture from Firebase if not already in userDetails
+            if (!userDetails.profileImage) {
+                const storageRef = ref(storage, `profileImages/${userDetails.username}/profile.jpg`);
+                getDownloadURL(storageRef)
+                    .then((url) => {
+                        // This would normally go to a setUserDetails call, but since you're receiving it via props,
+                        // the update should happen in the parent component instead of here.
+                    })
+                    .catch(() => console.log('No profile image found.'));
             }
+
         }
     }, [loggedIn, userDetails]);
-
-    const [notifications, setNotifications] = useState([
-        { id: 1, title: "Reboot required", description: "Server needs to be rebooted", date: "4 Jun 2021", unread: true },
-        { id: 2, title: "Server unreachable", description: "We were unable to connect to this server", date: "2 Jun 2021", unread: true },
-        { id: 3, title: "Move completed", description: "The site has been cloned to server 50gb-testing", date: "1 Jun 2021", unread: false },
-    ]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -96,6 +93,28 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
 
         return () => window.removeEventListener('scroll', handleScroll);
     }, [lastScrollTop]);
+
+    //Web socket notifications
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const unreadNotifications = await NotificationService.getUnreadNotifications();
+                setNotifications(unreadNotifications);
+                setUnreadCount(unreadNotifications.length); // Set unread count
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            }
+        };
+
+        if (loggedIn) {
+            fetchNotifications();
+        }
+    }, [loggedIn]);
+
+    const handleNotificationReceived = (notification) => {
+        setNotifications((prevNotifications) => [notification, ...prevNotifications]);
+        setUnreadCount((prevCount) => prevCount + 1); // Increment unread count
+    };
 
     const handleOpenNavMenu = (event) => {
         setAnchorElNav(event.currentTarget);
@@ -153,6 +172,12 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
 
     const handleCloseNotifMenu = () => {
         setAnchorElNotif(null);
+    };
+
+    const handleMarkAllAsRead = () => {
+        setUnreadCount(0);
+        setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })));
+        handleCloseNotifMenu();
     };
 
 
@@ -386,23 +411,16 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                 </Typography>
                                 <Divider />
 
-                                {notifications.map((notif) => (
-                                    <MenuItem key={notif.id} onClick={handleCloseNotifMenu} sx={{ py: 2 }}>
-                                        <ListItemIcon>
-                                            <Avatar sx={{ bgcolor: notif.unread ? 'error.main' : 'grey.500' }} />
-                                        </ListItemIcon>
-                                        <ListItemText
-                                            primary={notif.title}
-                                            secondary={notif.description}
-                                            sx={{ ml: 1 }}
-                                        />
-                                        <Typography variant="caption" sx={{ color: 'grey.600', ml: 'auto' }}>
-                                            {notif.date}
-                                        </Typography>
+                                {notifications.map((notif, index) => (
+                                    <MenuItem key={index} onClick={handleCloseNotifMenu}>
+                                        <ListItemIcon><Avatar sx={{ bgcolor: notif.isRead ? 'grey.500' : 'error.main' }} /></ListItemIcon>
+                                        <ListItemText primary={notif.message}
+                                                      secondary={new Date(notif.createdAt).toLocaleString()} />
                                     </MenuItem>
                                 ))}
+
                                 <Divider />
-                                <MenuItem onClick={handleCloseNotifMenu}>
+                                <MenuItem  onClick={handleMarkAllAsRead}>
                                     <Typography textAlign="center">Mark all as read</Typography>
                                 </MenuItem>
                             </Menu>

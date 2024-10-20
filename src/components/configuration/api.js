@@ -12,9 +12,12 @@ const api = axios.create({
 // Interceptor to include the token if the request requires authentication
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('jwtToken');
+        const token = sessionStorage.getItem('jwtToken');
         if (token && config.requiresAuth) {
             config.headers['Authorization'] = `Bearer ${token}`;
+            if (token) {
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
         }
         return config;
     },
