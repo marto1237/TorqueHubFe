@@ -1,14 +1,17 @@
 import api from '../api';
 
 const NotificationService = {
-    getUnreadNotifications: () => {
-        return api.get('/notifications/unread/latest')
-            .then(response => response.data)
+    getUnreadNotifications: (userId) => {
+        return api.get(`/notifications/${userId}/unread/latest`, )
+            .then(response => {
+                console.log("Response Data:", response.data);  // Debugging
+                return response.data;
+            })
             .catch(error => Promise.reject(error));
     },
 
-    markAllNotificationsAsRead: () => {
-        return api.put('/notifications/mark-all-as-read')
+    getAllNotifications: (userId, page = 0, size = 20) => {
+        return api.get(`/notifications/${userId}/all`, { params: { page, size } })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
@@ -19,8 +22,8 @@ const NotificationService = {
             .catch(error => Promise.reject(error));
     },
 
-    getAllNotifications: () => {
-        return api.get('/notifications/all')
+    markAllAsRead: (userId) => {
+        return api.put(`/notifications/${userId}/mark-all-as-read`)
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     }

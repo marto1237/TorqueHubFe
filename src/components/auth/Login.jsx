@@ -76,12 +76,14 @@ function Login({ setLoggedIn }) {
             sessionStorage.setItem('jwtToken', jwtToken);
             const decodedToken = jwtDecode(jwtToken);
             const profileImage = await fetchProfileImage(decodedToken.username);
+            const userId = decodedToken.userID;
 
             // Store the token and user details
             const userDetails = {
                 username: decodedToken.username,
                 email: decodedToken.email,
                 role: decodedToken.role,
+                id: userId,
                 profileImage,
             };
 

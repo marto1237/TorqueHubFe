@@ -11,13 +11,14 @@ import {
     AppBar, Box, Badge, Toolbar, IconButton, Typography, Menu, MenuItem,
     Avatar, Button, Tooltip, Container, Divider, ListItemText, ListItemIcon
 } from '@mui/material';
-import NotificationService from '../configuration/WebSocket/NotificationWebSocketService';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '../../firebase';
 import axios from 'axios';
 import '../../styles/NavBar.css';
+import NotificationWebSocketService from '../configuration/WebSocket/NotificationWebSocketService'; // Adjust path as necessary
+import NotificationService from "../configuration/Services/NotificationService";
 
 const logo = "/Logo.png";
 
@@ -38,10 +39,13 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const navigate = useNavigate();
     const theme = useTheme(); // Use theme
 
+    const storedUserDetails = userDetails || JSON.parse(sessionStorage.getItem('userDetails'));
+    const userId = storedUserDetails?.id;
+
 
     useEffect(() => {
         // Update avatar URL when userDetails change
-        if (userDetails?.profileImage) {
+        if (userDetails?.profileImage ) {
             setAvatarURL(userDetails.profileImage);
         }
     }, [userDetails]);
@@ -95,21 +99,44 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     }, [lastScrollTop]);
 
     //Web socket notifications
+
+
     useEffect(() => {
-        const fetchNotifications = async () => {
+        const fetchUnreadNotifications = async () => {
             try {
-                const unreadNotifications = await NotificationService.getUnreadNotifications();
-                setNotifications(unreadNotifications);
-                setUnreadCount(unreadNotifications.length); // Set unread count
+                if (userId) {
+                    console.log("Fetching notifications for user:", userId);  // Debug log for userId
+                    const unreadNotifications = await NotificationService.getUnreadNotifications(userId);
+
+                    console.log("Fetched Notifications:", unreadNotifications);  // Debug the response
+                    setNotifications(unreadNotifications);  // Update notifications state
+                    setUnreadCount(unreadNotifications.length);  // Update unread count
+                } else {
+                    console.log('LoggedIn:', loggedIn, 'UserId:', userId); // Debug log for missing data
+                    alert('Please login to view notifications');
+                }
             } catch (error) {
                 console.error('Error fetching notifications:', error);
             }
         };
 
-        if (loggedIn) {
-            fetchNotifications();
+        fetchUnreadNotifications();  // Trigger the fetch on component mount
+    }, [loggedIn, userId]);
+
+    useEffect(() => {
+        if (userId) {
+            const notificationService = NotificationWebSocketService(userId, handleNotificationReceived);
+            notificationService.connect();
+
+            // Cleanup when component unmounts
+            return () => {
+                notificationService.disconnect();
+            };
         }
-    }, [loggedIn]);
+    }, [loggedIn, userId]);
+
+
+
 
     const handleNotificationReceived = (notification) => {
         setNotifications((prevNotifications) => [notification, ...prevNotifications]);
@@ -178,6 +205,25 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         setUnreadCount(0);
         setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })));
         handleCloseNotifMenu();
+    };
+
+    const handleNotificationClick = async (notificationId, url) => {
+        try {
+            await NotificationService.markNotificationAsRead(notificationId);
+
+            // Remove the notification from the list immediately after it's marked as read
+            setNotifications((prevNotifications) =>
+                prevNotifications.filter((notif) => notif.id !== notificationId)
+            );
+
+            setUnreadCount((prevCount) => prevCount - 1); // Decrease the unread count
+
+            if (url) {
+                window.location.href = url; // Redirect to notification link if it exists
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
     };
 
 
@@ -391,7 +437,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                 color="inherit"
                                 onClick={handleOpenNotifMenu}
                             >
-                                <Badge badgeContent={notifications.filter(n => n.unread).length} color="error">
+                                <Badge badgeContent={unreadCount} color="error">
                                     <NotificationsIcon sx={{ color: theme.palette.mode === 'light' ? 'black' : 'white' }}/>
                                 </Badge>
                             </IconButton>
@@ -411,11 +457,45 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                 </Typography>
                                 <Divider />
 
-                                {notifications.map((notif, index) => (
-                                    <MenuItem key={index} onClick={handleCloseNotifMenu}>
-                                        <ListItemIcon><Avatar sx={{ bgcolor: notif.isRead ? 'grey.500' : 'error.main' }} /></ListItemIcon>
-                                        <ListItemText primary={notif.message}
-                                                      secondary={new Date(notif.createdAt).toLocaleString()} />
+                                {notifications.length === 0 ? (
+                                    <MenuItem>
+                                        <Typography>No notifications available</Typography>
+                                    </MenuItem>
+                                ) : notifications.map((notif, index) => (
+                                    <MenuItem
+                                        key={index}
+                                        style={{ fontWeight: notif.isRead ? 'normal' : 'bold' }} // Bold if unread
+                                    >
+                                        <ListItemIcon>
+                                            <IconButton onClick={() => window.location.href = `/profile/${notif.voterId}`}>
+                                                {notif.voter && notif.voter.profileImage ? (
+                                                    <Avatar src={notif.voter.profileImage} />
+                                                ) : (
+                                                    <Avatar>{notif.voter ? notif.voter.username[0].toUpperCase() : 'U'}</Avatar>
+                                                )}
+                                            </IconButton>
+                                        </ListItemIcon>
+                                        <ListItemText
+                                            primary={
+                                                <span
+                                                    onClick={() => handleNotificationClick(notif.id, notif.url)}
+                                                    style={{ cursor: 'pointer' }}
+                                                >
+                                                    {notif.message}
+                                                </span>
+                                            }
+                                            secondary={new Date(notif.createdAt).toLocaleString()}
+                                        />
+                                        {!notif.isRead && (
+                                            <Button
+                                                onClick={() => handleNotificationClick(notif.id)}
+                                                variant="outlined"
+                                                size="small"
+                                                sx={{ ml: 2 }}
+                                            >
+                                                Mark as read
+                                            </Button>
+                                        )}
                                     </MenuItem>
                                 ))}
 

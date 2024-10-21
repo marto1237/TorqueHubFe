@@ -1,15 +1,15 @@
-import { WEBSOCKET_URL } from '../config';
 import { Client } from '@stomp/stompjs';
+import { WEBSOCKET_URL } from '../config';  // Ensure the correct URL is used
 
-const WebSocketClient = (socketUrl) => {
+const WebSocketClient = () => {
     const client = new Client({
-        brokerURL: socketUrl,
+        webSocketFactory: () => new WebSocket(WEBSOCKET_URL),  // Use the native WebSocket API
         debug: (str) => {
             console.log('WebSocket debug: ', str);
         },
-        reconnectDelay: 5000, // Automatically reconnect after 5 seconds
-        heartbeatIncoming: 4000, // Heartbeat checks
-        heartbeatOutgoing: 4000,
+        reconnectDelay: 5000,  // Automatically reconnect after 5 seconds if the connection is lost
+        heartbeatIncoming: 4000,  // Heartbeat settings for incoming messages
+        heartbeatOutgoing: 4000,  // Heartbeat settings for outgoing messages
     });
 
     // Method to activate the WebSocket connection
@@ -25,7 +25,7 @@ const WebSocketClient = (socketUrl) => {
     // Method to subscribe to a topic
     const subscribe = (topic, callback) => {
         return client.subscribe(topic, (message) => {
-            callback(JSON.parse(message.body));
+            callback(JSON.parse(message.body));  // Handle incoming messages
         });
     };
 

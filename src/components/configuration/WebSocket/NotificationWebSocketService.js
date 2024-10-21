@@ -1,9 +1,7 @@
 import WebSocketClient from './websocketClient';
-import { WEBSOCKET_URL } from '../config';
 
 const NotificationWebSocketService = (userId, onMessageCallback) => {
-    const socketUrl = `${WEBSOCKET_URL}`;
-    const webSocketClient = WebSocketClient(socketUrl);
+    const webSocketClient = WebSocketClient();  // No need to pass the URL anymore
 
     // Connect to the WebSocket server
     const connect = () => {
@@ -18,7 +16,7 @@ const NotificationWebSocketService = (userId, onMessageCallback) => {
         const notificationTopic = `/topic/notifications/${userId}`;
         webSocketClient.subscribe(notificationTopic, (message) => {
             console.log('Received notification:', message); // Log received notifications
-            onMessageCallback(message);
+            onMessageCallback(message);  // Pass the message to the callback
         });
     };
 
