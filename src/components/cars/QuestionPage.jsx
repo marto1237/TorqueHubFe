@@ -5,12 +5,12 @@ import {BookmarkBorder} from "@material-ui/icons";
 import { useTheme } from '@mui/material/styles';
 import PostForm from "../forum/PostForm";
 import {useParams , useNavigate} from "react-router-dom";
-import { formatDistanceToNow } from 'date-fns';
 import axios from 'axios';
-import WebSocketClient from '../configuration/WebSocket/websocketClient';
-import { WEBSOCKET_URL } from '../configuration/config';
 import QuestionService from '../configuration/Services/QuestionService';
 import { useAppNotifications } from '../common/NotificationProvider';
+import { timeAgo } from '../configuration/utils/TimeFormating';
+import AnswerWebSocketService from '../configuration/WebSocket/AnswersWebSocketService'
+import FollowService from '../configuration/Services/FollowService';
 
 const QuestionPage = () => {
 
@@ -35,7 +35,7 @@ const QuestionPage = () => {
     const [isFollowing, setIsFollowing] = useState(false);   // State to track following status
 
     const notifications = useAppNotifications();
-    const jwtToken = sessionStorage.getItem('jwtToken');
+    const [debounceTimeout, setDebounceTimeout] = useState(null);
     const [userVote, setUserVote] = useState(null);
 
     const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
@@ -56,57 +56,66 @@ const QuestionPage = () => {
         return jwtCookie !== undefined && jwtCookie.split('=')[1] !== '';
     };
 
-    const handleVote = async (type) => {
+    const handleVote = (type) => {
         const jwtToken = sessionStorage.getItem('jwtToken'); // Retrieve token
         if (!jwtToken) {
             notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
             return;  // Stop execution if the user is not logged in
         }
 
-        try {
-            let response;
-
-            if (type === 'up') {
-                // Call upvote API
-                response = await QuestionService.upvoteQuestion(questionId)
-
-                if (userVote === 'up') {
-                    // If already upvoted, remove the upvote
-                    setVotes((prevVotes) => prevVotes - 1);
-                    setUserVote(null);  // Reset vote to null
-                } else if (userVote === 'down') {
-                    // If downvoted, switch to upvote
-                    setVotes((prevVotes) => prevVotes + 2);
-                    setUserVote('up');
-                } else {
-                    // Otherwise, add an upvote
-                    setVotes((prevVotes) => prevVotes + 1);
-                    setUserVote('up');
-                }
-            } else if (type === 'down') {
-                // Call downvote API
-                response = await QuestionService.downvoteQuestion(questionId);
-                if (userVote === 'down') {
-                    // If already downvoted, remove the downvote
-                    setVotes((prevVotes) => prevVotes + 1);
-                    setUserVote(null);  // Reset vote to null
-                } else if (userVote === 'up') {
-                    // If upvoted, switch to downvote
-                    setVotes((prevVotes) => prevVotes - 2);
-                    setUserVote('down');
-                } else {
-                    // Otherwise, add a downvote
-                    setVotes((prevVotes) => prevVotes - 1);
-                    setUserVote('down');
-                }
-            }
-
-            // Show success notification
-            notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
-        } catch (error) {
-            console.error('Error occurred while voting:', error);
-            notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
+        // Clear the previous debounce timeout if the user clicks again before delay
+        if (debounceTimeout) {
+            clearTimeout(debounceTimeout);
         }
+
+        // Set a new debounce timeout
+        const newDebounceTimeout = setTimeout(async () => {
+            try {
+                let response;
+
+                if (type === 'up') {
+                    response = await QuestionService.upvoteQuestion(questionId);
+
+                    if (userVote === 'up') {
+                        // If already upvoted, remove the upvote
+                        setVotes((prevVotes) => prevVotes - 1);
+                        setUserVote(null);  // Reset vote to null
+                    } else if (userVote === 'down') {
+                        // If downvoted, switch to upvote
+                        setVotes((prevVotes) => prevVotes + 2);
+                        setUserVote('up');
+                    } else {
+                        // Otherwise, add an upvote
+                        setVotes((prevVotes) => prevVotes + 1);
+                        setUserVote('up');
+                    }
+                } else if (type === 'down') {
+                    response = await QuestionService.downvoteQuestion(questionId);
+
+                    if (userVote === 'down') {
+                        // If already downvoted, remove the downvote
+                        setVotes((prevVotes) => prevVotes + 1);
+                        setUserVote(null);  // Reset vote to null
+                    } else if (userVote === 'up') {
+                        // If upvoted, switch to downvote
+                        setVotes((prevVotes) => prevVotes - 2);
+                        setUserVote('down');
+                    } else {
+                        // Otherwise, add a downvote
+                        setVotes((prevVotes) => prevVotes - 1);
+                        setUserVote('down');
+                    }
+                }
+
+                // Show success notification
+                notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
+            } catch (error) {
+                console.error('Error occurred while voting:', error);
+                notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
+            }
+        }, 500);  // 500ms debounce time
+
+        setDebounceTimeout(newDebounceTimeout);  // Update the debounce timeout
     };
 
 
@@ -137,6 +146,7 @@ const QuestionPage = () => {
         setAnswers(updatedAnswers);
     };
 
+
     // Handle bookmarking the question
     const handleBookmarkToggle = () => {
         setIsBookmarked(!isBookmarked);
@@ -152,12 +162,22 @@ const QuestionPage = () => {
             sessionStorage.setItem('bookmarkedQuestions', JSON.stringify([...bookmarkedQuestions, questionId]));
         }
     };
-
-    // Handle following the question for notifications
     const handleFollowToggle = () => {
         setIsFollowing(!isFollowing);
+    };
 
 
+    const handleFollowQuestionToggle = async () => {
+        try {
+            const token = sessionStorage.getItem('jwtToken'); // Retrieve token from storage
+            console.log('Token:', token);  // Check if the token is valid and present
+            const response = await FollowService.toggleFollowQuestion(questionId);
+            setIsFollowing(!isFollowing);
+            notifications.show(response.message || 'Toggled follow status', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            console.error("Error toggling follow status:", error);
+            notifications.show('Error toggling follow status', { autoHideDuration: 3000, severity: 'error' });
+        }
     };
 
     const handleAnswerSubmit = (newAnswer) => {
@@ -212,11 +232,15 @@ const QuestionPage = () => {
     const loadQuestion = async () => {
         try {
             const fetchedQuestion = await QuestionService.getQuestionById(questionId, currentPage, pageSize);
+
             setQuestion(fetchedQuestion);
             setVotes(fetchedQuestion.votes);
             setAnswers(fetchedQuestion.answers.content);
             setTotalPages(fetchedQuestion.answers.totalPages);
             setCurrentPage(fetchedQuestion.answers.pageable.pageNumber);
+
+            // Set userVote if the user is logged in
+            setUserVote(fetchedQuestion.userVote); // Assume backend returns 'up', 'down', or null
         } catch (error) {
             console.error("Error loading question:", error);
             navigate('/questions'); // Redirect if question not found
@@ -269,66 +293,50 @@ const QuestionPage = () => {
     };
 
     useEffect(() => {
-        const webSocketClient = WebSocketClient(WEBSOCKET_URL);
+        loadQuestion();
 
-        webSocketClient.connect(() => {
-            // Subscribe to new answers
-            webSocketClient.subscribe(`/topic/answers/${questionId}`, (newAnswer) => {
-                setAnswers((prevAnswers) => [...prevAnswers, newAnswer]);
-                console.log('New answer received:', newAnswer);
-            });
+        // Connect to the WebSocket service
+        const answerWebSocketService = AnswerWebSocketService(questionId, handleNewAnswer);
 
-            // Subscribe to new comments
-            webSocketClient.subscribe(`/topic/comments/${questionId}`, (newComment) => {
-                const answerId = newComment.answerId;
-                setComments((prevComments) => ({
-                    ...prevComments,
-                    [answerId]: [...(prevComments[answerId] || []), newComment],
-                }));
-            });
-        });
+        // Connect to WebSocket on mount
+        answerWebSocketService.connect();
 
+        // Cleanup WebSocket connection on component unmount
         return () => {
-            webSocketClient.disconnect();  // Clean up on component unmount
+            answerWebSocketService.disconnect();
         };
     }, [questionId]);
 
+    const handleNewAnswer = (message) => {
+        // Assuming the WebSocket sends a message in JSON format
+        const newAnswer = JSON.parse(message.body);
 
-    if (!question) {
-        return (
-            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
-                <Typography variant="h6">Question not found</Typography>
-                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
-                    Go back to Questions List
-                </Button>
-            </Box>
-        );
-    }
-
-    if (!question) {
-        return (
-            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
-                <Typography variant="h6">Question not found</Typography>
-                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
-                    Go back to Questions List
-                </Button>
-            </Box>
-        );
-    }
-
-    // Utility to calculate how long ago something was posted
-    const timeAgo = (date) => {
-        if (!date) {
-            return 'Unknown time'; // Handle case where date is null or undefined
-        }
-
-        const parsedDate = new Date(date);
-        if (isNaN(parsedDate.getTime())) {
-            return 'Unknown time'; // Handle invalid date format
-        }
-
-        return formatDistanceToNow(parsedDate, { addSuffix: true });
+        // Add the new answer to the existing answers state
+        setAnswers((prevAnswers) => [...prevAnswers, newAnswer]);
     };
+
+
+    if (!question) {
+        return (
+            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
+                <Typography variant="h6">Question not found</Typography>
+                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
+                    Go back to Questions List
+                </Button>
+            </Box>
+        );
+    }
+
+    if (!question) {
+        return (
+            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
+                <Typography variant="h6">Question not found</Typography>
+                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
+                    Go back to Questions List
+                </Button>
+            </Box>
+        );
+    }
 
     if (!question) {
         return (
@@ -404,7 +412,7 @@ const QuestionPage = () => {
                                 <Box sx={{  textAlign: 'left' }}>
                                     {/* Follow Button */}
                                     <Tooltip title={isFollowing ? "Unfollow this question" : "Follow this question"} placement="right" arrow>
-                                        <Button onClick={handleFollowToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
+                                        <Button onClick={handleFollowQuestionToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
                                             {isFollowing ? "Following" : "Follow"}
                                         </Button>
                                     </Tooltip>

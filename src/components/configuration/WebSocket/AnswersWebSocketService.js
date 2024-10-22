@@ -1,20 +1,20 @@
 import WebSocketClient from './websocketClient';
 
-const NotificationWebSocketService = (userId, onMessageCallback) => {
+const AnswerWebSocketService = (questionId, onMessageCallback) => {
     const webSocketClient = WebSocketClient();
 
     // Connect to the WebSocket server
     const connect = () => {
         console.log('Connecting to WebSocket...');
         webSocketClient.connect(() => {
-            console.log('Connected to WebSocket server for notifications.');
-            subscribeToNotifications();
+            console.log('Connected to WebSocket server for answers.');
+            subscribeToAnswers();
         });
     };
 
     // Subscribe to the user's notification topic
-    const subscribeToNotifications = () => {
-        const notificationTopic = `/topic/notifications/${userId}`;
+    const subscribeToAnswers = () => {
+        const notificationTopic = `/questions/${questionId}/answers`;
 
         // Check if already subscribed to prevent duplicate subscriptions
         if (webSocketClient.isSubscribed(notificationTopic)) {
@@ -38,4 +38,4 @@ const NotificationWebSocketService = (userId, onMessageCallback) => {
     return { connect, disconnect };
 };
 
-export default NotificationWebSocketService;
+export default AnswerWebSocketService;

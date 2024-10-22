@@ -19,6 +19,7 @@ import axios from 'axios';
 import '../../styles/NavBar.css';
 import NotificationWebSocketService from '../configuration/WebSocket/NotificationWebSocketService'; // Adjust path as necessary
 import NotificationService from "../configuration/Services/NotificationService";
+import { timeAgo } from  "../configuration/utils/TimeFormating"
 
 const logo = "/Logo.png";
 
@@ -33,6 +34,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [anchorElNotif, setAnchorElNotif] = useState(null);
+    let notificationService;
 
     const [avatarURL, setAvatarURL] = useState(avatar);
 
@@ -42,106 +44,94 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const storedUserDetails = userDetails || JSON.parse(sessionStorage.getItem('userDetails'));
     const userId = storedUserDetails?.id;
 
-
     useEffect(() => {
-        // Update avatar URL when userDetails change
-        if (userDetails?.profileImage ) {
-            setAvatarURL(userDetails.profileImage);
+        if (loggedIn && userDetails?.username) {
+            // If profile image is already in userDetails, use it
+            if (userDetails.profileImage) {
+                setAvatarURL(userDetails.profileImage);
+            } else {
+                // Otherwise, fetch from Firebase
+                const storageRef = ref(storage, `profileImages/${userDetails.username}/profile.jpg`);
+                getDownloadURL(storageRef)
+                    .then((url) => setAvatarURL(url))
+                    .catch(() => console.log('No profile image found.'));
+            }
         }
-    }, [userDetails]);
 
+        if (loggedIn && userId) {
+            const fetchUnreadNotifications = async () => {
+                try {
+                    const unreadNotifications = await NotificationService.getUnreadNotifications(userId);
+                    setNotifications(unreadNotifications);
+                    setUnreadCount(unreadNotifications.length);
+                } catch (error) {
+                    console.error('Error fetching notifications:', error);
+                }
+            };
+
+            fetchUnreadNotifications();
+
+            // Initialize WebSocket connection and subscribe to notifications
+            const notificationService = NotificationWebSocketService(userId, handleNotificationReceived);
+            notificationService.connect();
+
+            // Cleanup function to close the WebSocket connection on unmount
+            return () => {
+                notificationService.disconnect();
+            };
+        }
+    }, [loggedIn, userId, userDetails]);
+
+
+
+    // Handle user logout
     const handleLogout = async () => {
         try {
             await axios.post('http://localhost:8080/auth/logout', {}, { withCredentials: true });
-            sessionStorage.clear(); // Clear user data
-            localStorage.clear(); // Clear JWT token
-            setLoggedIn(false); // Reset logged in state
+            sessionStorage.clear();
+            localStorage.clear();
+            setLoggedIn(false);
             navigate('/login');
         } catch (error) {
             console.error('Logout failed:', error);
         }
     };
 
-    useEffect(() => {
-        if (loggedIn && userDetails.username) {
-            // Fetch profile picture from Firebase if not already in userDetails
-            if (!userDetails.profileImage) {
-                const storageRef = ref(storage, `profileImages/${userDetails.username}/profile.jpg`);
-                getDownloadURL(storageRef)
-                    .then((url) => {
-                        // This would normally go to a setUserDetails call, but since you're receiving it via props,
-                        // the update should happen in the parent component instead of here.
-                    })
-                    .catch(() => console.log('No profile image found.'));
-            }
-
-        }
-    }, [loggedIn, userDetails]);
+    const handleScroll = () => {
+        const currentScrollTop = window.pageYOffset;
+        setNavBarVisible(currentScrollTop < lastScrollTop || currentScrollTop <= 50);
+        setLastScrollTop(currentScrollTop <= 0 ? 0 : currentScrollTop);
+    };
 
     useEffect(() => {
-        const handleScroll = () => {
-            const currentScrollTop = window.pageYOffset;
-
-            if (currentScrollTop > lastScrollTop) {
-                // Scrolling down
-                setNavBarVisible(false);
-            } else if (currentScrollTop < lastScrollTop && currentScrollTop > 50) {
-                // Scrolling up
-                setNavBarVisible(true);
-            }
-
-            setLastScrollTop(currentScrollTop <= 0 ? 0 : currentScrollTop); // For Mobile or negative scrolling
-        };
-
         window.addEventListener('scroll', handleScroll);
-
         return () => window.removeEventListener('scroll', handleScroll);
     }, [lastScrollTop]);
-
-    //Web socket notifications
-
-
-    useEffect(() => {
-        const fetchUnreadNotifications = async () => {
-            try {
-                if (userId) {
-                    console.log("Fetching notifications for user:", userId);  // Debug log for userId
-                    const unreadNotifications = await NotificationService.getUnreadNotifications(userId);
-
-                    console.log("Fetched Notifications:", unreadNotifications);  // Debug the response
-                    setNotifications(unreadNotifications);  // Update notifications state
-                    setUnreadCount(unreadNotifications.length);  // Update unread count
-                } else {
-                    console.log('LoggedIn:', loggedIn, 'UserId:', userId); // Debug log for missing data
-                    alert('Please login to view notifications');
-                }
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-            }
-        };
-
-        fetchUnreadNotifications();  // Trigger the fetch on component mount
-    }, [loggedIn, userId]);
-
-    useEffect(() => {
-        if (userId) {
-            const notificationService = NotificationWebSocketService(userId, handleNotificationReceived);
-            notificationService.connect();
-
-            // Cleanup when component unmounts
-            return () => {
-                notificationService.disconnect();
-            };
-        }
-    }, [loggedIn, userId]);
-
 
 
 
     const handleNotificationReceived = (notification) => {
+
         setNotifications((prevNotifications) => [notification, ...prevNotifications]);
-        setUnreadCount((prevCount) => prevCount + 1); // Increment unread count
+
+        setUnreadCount((prevCount) => prevCount + 1);
     };
+
+    const markNotificationAsRead = async (notificationId) => {
+        try {
+            await NotificationService.markNotificationAsRead(notificationId);
+
+            // Update the notification state to reflect the read status
+            setNotifications((prevNotifications) =>
+                prevNotifications.filter((notif) => notif.id !== notificationId)
+            );
+
+            setUnreadCount((prevCount) => prevCount - 1); // Decrease the unread count
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    };
+
 
     const handleOpenNavMenu = (event) => {
         setAnchorElNav(event.currentTarget);
@@ -201,25 +191,26 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         setAnchorElNotif(null);
     };
 
-    const handleMarkAllAsRead = () => {
-        setUnreadCount(0);
-        setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })));
-        handleCloseNotifMenu();
+    const handleMarkAllAsRead = async () => {
+        try {
+            // Call service to mark all notifications as read
+            await NotificationService.markAllAsRead(userId);
+
+            // Clear all notifications from the list
+            setNotifications([]);
+            setUnreadCount(0);
+            handleCloseNotifMenu();
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+        }
     };
 
     const handleNotificationClick = async (notificationId, url) => {
         try {
-            await NotificationService.markNotificationAsRead(notificationId);
-
-            // Remove the notification from the list immediately after it's marked as read
-            setNotifications((prevNotifications) =>
-                prevNotifications.filter((notif) => notif.id !== notificationId)
-            );
-
-            setUnreadCount((prevCount) => prevCount - 1); // Decrease the unread count
+            await markNotificationAsRead(notificationId);  // Remove the notification when clicked
 
             if (url) {
-                window.location.href = url; // Redirect to notification link if it exists
+                window.location.href = url; // Redirect to the notification link if it exists
             }
         } catch (error) {
             console.error('Error marking notification as read:', error);
@@ -484,7 +475,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                                     {notif.message}
                                                 </span>
                                             }
-                                            secondary={new Date(notif.createdAt).toLocaleString()}
+                                            secondary={timeAgo(notif.createdAt).toLocaleString()}
                                         />
                                         {!notif.isRead && (
                                             <Button
