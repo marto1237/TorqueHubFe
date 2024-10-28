@@ -1,29 +1,23 @@
-import React, {useEffect, useState} from 'react';
-import {Box, Button, Typography, Grid,Paper,Chip,IconButton,Link,Tooltip,Pagination, Skeleton} from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Button, Typography, Grid, Paper, Chip, IconButton, Link, Tooltip, Pagination, Skeleton } from '@mui/material';
 import { KeyboardArrowUp, KeyboardArrowDown, Bookmark } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import FilterPanel from '../common/FilterPanel';
 import { formatDistanceToNow } from 'date-fns';
-import axios from 'axios';
-
-
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import QuestionService from '../configuration/Services/QuestionService';
 
 const QuestionListPage = () => {
     const theme = useTheme();
     const navigate = useNavigate();
-
+    const queryClient = useQueryClient(); // Access queryClient to manage cache
 
     const [selectedTags, setSelectedTags] = useState([]);
     const [noAnswers, setNoAnswers] = useState(false);
     const [noAcceptedAnswer, setNoAcceptedAnswer] = useState(false);
-    const [sortOption, setSortOption] = useState('newest'); // Sorting option
-
-    const [questions, setQuestions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [sortOption, setSortOption] = useState('newest');
     const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
     const pageSize = 10;
 
     const handleTagClick = (tag) => {
@@ -34,57 +28,71 @@ const QuestionListPage = () => {
         );
     };
 
-    const [showFilters, setShowFilters] = useState(false); // Toggle filter visibility
-    // Toggle the visibility of the filter panel
+    const [showFilters, setShowFilters] = useState(false);
+
     const toggleFilterPanel = () => {
         setShowFilters(!showFilters);
     };
 
-
     const handleQuestionClick = (questionId) => {
-        navigate(`/questions/${questionId}`); // Navigate to the question details page
+        navigate(`/questions/${questionId}`);
     };
 
     const handleAskQuestionClick = () => {
-        navigate('/askquestion'); // Navigate to the Ask Question page
+        navigate('/askquestion');
     };
 
-    // Filter questions based on selected tags
-    const filteredQuestions = selectedTags.length > 0
-        ? questions.filter((question) =>
-            selectedTags.every((tag) => question.tags.includes(tag))
-        )
-        : questions; // If no tags selected, show all questions
-
-    const formatTimeAgo = (date) => {
-        return formatDistanceToNow(new Date(date), { addSuffix: true });
-    };
-
-    useEffect(() => {
-        const fetchQuestions = async () => {
-            try {
-                const response = await axios.get(`http://localhost:8080/questions?page=${page - 1}&size=${pageSize}`);
-                setQuestions(response.data.content);
-                setTotalPages(response.data.totalPages);
-                setLoading(false);
-            } catch (err) {
-                setError('Failed to load questions');
-                setLoading(false);
+    // Fetch questions using react-query
+    const { data, isLoading, error } = useQuery({
+        queryKey: ['questions', page],
+        queryFn: async () => {
+            const cachedData = queryClient.getQueryData(['questions', page]); // Check for cached data
+            if (cachedData) {
+                console.log("Using cached data for page:", page);
             }
-        };
-
-        fetchQuestions();
-    }, [page]);
-
+    
+            try {
+                const response = await QuestionService.getAllQuestions(page - 1, pageSize);
+                console.log("API Response Data:", response); // Log API response
+    
+                // Set the query data into the cache manually after successful API fetch
+                queryClient.setQueryData(['questions', page], response);
+                console.log("Data cached for page:", page, response); // Log cache insertion
+    
+                return response;
+            } catch (apiError) {
+                console.error("API failed:", apiError);
+                
+                // If the API fails, fallback to using cached data if available
+                if (cachedData) {
+                    console.warn("API failed, using cached data:", cachedData);
+                    return cachedData; // Return cached data if available
+                }
+    
+                // If no cached data is available, throw an error
+                throw new Error("API failed and no cached data available.");
+            }
+        }
+    });
+    
+    
+    // Single useEffect to log cached data
+    useEffect(() => {
+        const cachedData = queryClient.getQueryData(['questions', page]);
+        console.log("Cached Data (on page load):", cachedData); // Print cached data if exists
+    }, [page, queryClient]);
 
     const handlePageChange = (event, value) => {
         setPage(value);
     };
 
+    const formatTimeAgo = (date) => {
+        return formatDistanceToNow(new Date(date), { addSuffix: true });
+    };
 
     return (
-        <Box sx={{ padding: '20px', paddingTop: '100px' , backgroundColor: theme.palette.background.paper }}>
-            <Box sx={{ maxWidth: '900px', margin: 'auto', minHeight: '60vh'}}>
+        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
+            <Box sx={{ maxWidth: '900px', margin: 'auto', minHeight: '60vh' }}>
                 {/* Filter Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <Button
@@ -129,11 +137,7 @@ const QuestionListPage = () => {
                                     key={index}
                                     label={tag}
                                     onClick={() => handleTagClick(tag)}
-                                    className={
-                                        selectedTags.includes(tag)
-                                            ? 'Mui-selected'
-                                            : 'Mui-unselected'
-                                    }
+                                    className={selectedTags.includes(tag) ? 'Mui-selected' : 'Mui-unselected'}
                                     sx={{
                                         cursor: 'pointer',
                                         '&:hover': {
@@ -147,7 +151,7 @@ const QuestionListPage = () => {
                 )}
 
                 {/* Render questions or loading/skeleton */}
-                {loading ? (
+                {isLoading ? (
                     <Grid container spacing={3}>
                         {[...Array(5)].map((_, index) => (
                             <Grid item xs={12} key={index}>
@@ -156,92 +160,72 @@ const QuestionListPage = () => {
                         ))}
                     </Grid>
                 ) : error ? (
-                    <Typography color="error">{error}</Typography>
+                    <Typography color="error">{error.message}</Typography>
                 ) : (
-
-                    <Grid container spacing={3}>
-                        {filteredQuestions.map((question) => (
-
-                            <Grid item xs={12} key={question.id}>
-                                <Paper sx={{ padding: '20px', marginBottom: '20px' }}>
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
-                                            <Tooltip title="Upvote">
-                                                <IconButton>
-                                                    <KeyboardArrowUp />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Typography variant="body1">{question.votes}</Typography>
-                                            <Tooltip title="Downvote">
-                                                <IconButton>
-                                                    <KeyboardArrowDown />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Bookmark">
-                                                <IconButton>
-                                                    <Bookmark />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Grid>
-                                        <Grid item xs={10} sm={11}>
-                                            <Typography
-                                                variant="h6"
-                                                sx={{ cursor: 'pointer', fontWeight: 'bold' }}
-                                                onClick={() => handleQuestionClick(question.id)}
-                                            >
-                                                {question.title}
-                                            </Typography>
-
-                                            <Box sx={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-                                                {question.tags.map((tag, index) => (
-                                                    <Chip
-                                                        key={index}
-                                                        label={tag}
-                                                        onClick={() => handleTagClick(tag)}
-                                                        className={
-                                                            selectedTags.includes(tag)
-                                                                ? 'Mui-selected'
-                                                                : 'Mui-unselected'
-                                                        }
-                                                        sx={{
-                                                            cursor: 'pointer',
-                                                            '&:hover': {
-                                                                opacity: 0.8, // Adds a hover effect
-                                                            },
-                                                        }}
-                                                    />
-                                                ))}
-                                            </Box>
-
-                                            <Box sx={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                                                <Typography variant="caption">
-                                                    {question.votes} votes | {question.totalAnswers} answers | {question.views} views
+                    data && (
+                        <Grid container spacing={3}>
+                            {data.content.map((question) => (
+                                <Grid item xs={12} key={question.id}>
+                                    <Paper sx={{ padding: '20px', marginBottom: '20px' }}>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={10} sm={11}>
+                                                <Typography
+                                                    variant="h6"
+                                                    sx={{ cursor: 'pointer', fontWeight: 'bold' }}
+                                                    onClick={() => handleQuestionClick(question.id)}
+                                                >
+                                                    {question.title}
                                                 </Typography>
-                                                <Typography variant="caption" color="textSecondary">
-                                                    Asked by{' '}
-                                                    <Link href={`/user/${question.userName}`} color="primary">
-                                                        {question.userName} ({question.userPoints})
-                                                    </Link>{' '}
-                                                    {formatTimeAgo(question.askedTime)}
-                                                </Typography>
-                                            </Box>
+
+                                                <Box sx={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+                                                    {question.tags.map((tag, index) => (
+                                                        <Chip
+                                                            key={index}
+                                                            label={tag}
+                                                            onClick={() => handleTagClick(tag)}
+                                                            className={selectedTags.includes(tag) ? 'Mui-selected' : 'Mui-unselected'}
+                                                            sx={{
+                                                                cursor: 'pointer',
+                                                                '&:hover': {
+                                                                    opacity: 0.8, // Adds a hover effect
+                                                                },
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </Box>
+
+                                                <Box sx={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                                                    <Typography variant="caption">
+                                                        {question.votes} votes | {question.totalAnswers} answers | {question.views} views
+                                                    </Typography>
+                                                    <Typography variant="caption" color="textSecondary">
+                                                        Asked by{' '}
+                                                        <Link href={`/user/${question.userName}`} color="primary">
+                                                            {question.userName} ({question.userPoints})
+                                                        </Link>{' '}
+                                                        {formatTimeAgo(question.askedTime)}
+                                                    </Typography>
+                                                </Box>
+                                            </Grid>
                                         </Grid>
-                                    </Grid>
-                                </Paper>
-                            </Grid>
-                        ))}
-                    </Grid>
+                                    </Paper>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )
                 )}
 
                 {/* Pagination Component */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-                    <Pagination
-                        count={totalPages}
-                        page={page}
-                        onChange={handlePageChange}
-                        color="primary"
-                    />
-                </Box>
+                {data && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                        <Pagination
+                            count={data.totalPages}
+                            page={page}
+                            onChange={handlePageChange}
+                            color="primary"
+                        />
+                    </Box>
+                )}
             </Box>
         </Box>
     );

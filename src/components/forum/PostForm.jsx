@@ -139,7 +139,32 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
     }, []);
 
     return (
-        <Paper sx={{ padding: '20px', borderRadius: '8px' }}>
+        <Paper
+            sx={{
+                padding: '20px',
+                borderRadius: '8px',
+                backgroundColor: theme.palette.background.default,
+                color: theme.palette.text.primary,
+                '& .ql-toolbar': {
+                    backgroundColor: theme.palette.background.default,
+                    borderColor: theme.palette.text.secondary,
+                },
+                '& .ql-container': {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.text.primary,
+                    border: '1px solid',
+                    borderColor: theme.palette.text.secondary,
+                    borderRadius: '4px',
+                },
+                '& .ql-editor': {
+                    minHeight: '150px',
+                    color: theme.palette.text.primary,
+                },
+                '& .ql-editor.ql-blank::before': {
+                    color: theme.palette.text.secondary,
+                }
+            }}
+        >
             <Typography sx={{ mb: 2 }}>Your Answer</Typography>
 
             {/* Quill Editor */}

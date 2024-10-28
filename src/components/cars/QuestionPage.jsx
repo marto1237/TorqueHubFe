@@ -11,12 +11,12 @@ import { useAppNotifications } from '../common/NotificationProvider';
 import { timeAgo } from '../configuration/utils/TimeFormating';
 import AnswerWebSocketService from '../configuration/WebSocket/AnswersWebSocketService'
 import FollowService from '../configuration/Services/FollowService';
+import BookmarkService from '../configuration/Services/BookmarkService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const QuestionPage = () => {
 
     const { questionId } = useParams();
-    const socketUrl = 'ws://localhost:8080/ws';
-    const [question, setQuestion] = useState(null);
     const navigate = useNavigate();
 
     const pageSize = 10;  // Number of answers per page
@@ -38,23 +38,39 @@ const QuestionPage = () => {
     const [debounceTimeout, setDebounceTimeout] = useState(null);
     const [userVote, setUserVote] = useState(null);
 
+    const [questionVotes, setQuestionVotes] = useState(0); // For question votes
+    const [answerVotes, setAnswerVotes] = useState([]);    // For answer votes
+    const [commentVotes, setCommentVotes] = useState({});  // For comment votes
+
     const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
     const answerUser = { username: 'AnswerUser456', profileLink: '/user/answeruser456' };
     const commentUser = { username: 'CommentUser789', profileLink: '/user/commentuser789' }; // Static user for the example, can be dynamic
 
+    const queryClient = useQueryClient(); // Access queryClient to manage cache
 
-    const isUserLoggedIn = () => {
-        // Retrieve all cookies
-        const cookies = document.cookie;
+    // Fetch Question details and its answers using useQuery
+    const { data: question, isLoading: isQuestionLoading } = useQuery({
+        queryKey: ['question', questionId, currentPage], // Include page number in queryKey for pagination
+        queryFn: async () => {
+            const cachedData = queryClient.getQueryData(['question', questionId, currentPage]);
+            if (cachedData) {
+                return cachedData; // Return cached question data if available
+            }
+            const response = await QuestionService.getQuestionById(questionId, currentPage, pageSize);
+            console.log(response)
+            setVotes(response.votes);
+            setAnswers(response.answers.content);
+            setTotalPages(response.answers.totalPages);
+            setCurrentPage(response.answers.pageable.pageNumber);
+            setUserVote(response.userVote);
+            setIsFollowing(response.isFollowing);
+            setIsBookmarked(response.isBookmarked);
 
-        // Find the jwtToken cookie
-        const jwtCookie = cookies
-            .split('; ')
-            .find(row => row.startsWith('jwtToken='));
+            queryClient.setQueryData(['question', questionId, currentPage], response); // Cache the fetched question data
+            return response;
+        }
+    });
 
-        // Check if the cookie exists and has a valid token value
-        return jwtCookie !== undefined && jwtCookie.split('=')[1] !== '';
-    };
 
     const handleVote = (type) => {
         const jwtToken = sessionStorage.getItem('jwtToken'); // Retrieve token
@@ -118,6 +134,99 @@ const QuestionPage = () => {
         setDebounceTimeout(newDebounceTimeout);  // Update the debounce timeout
     };
 
+    const handleQuestionVote = async (type) => {
+        const jwtToken = sessionStorage.getItem('jwtToken'); // Retrieve token
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
+            return;  // Stop execution if the user is not logged in
+        }
+
+        // Clear the previous debounce timeout if the user clicks again before delay
+        if (debounceTimeout) {
+            clearTimeout(debounceTimeout);
+        }
+
+        // Set a new debounce timeout
+        const newDebounceTimeout = setTimeout(async () => {
+            try {
+                let response;
+
+                if (type === 'up') {
+                    response = await QuestionService.upvoteQuestion(questionId);
+
+                    if (userVote === 'up') {
+                        // If already upvoted, remove the upvote
+                        setVotes((prevVotes) => prevVotes - 1);
+                        setUserVote(null);  // Reset vote to null
+                    } else if (userVote === 'down') {
+                        // If downvoted, switch to upvote
+                        setVotes((prevVotes) => prevVotes + 2);
+                        setUserVote('up');
+                    } else {
+                        // Otherwise, add an upvote
+                        setVotes((prevVotes) => prevVotes + 1);
+                        setUserVote('up');
+                    }
+                } else if (type === 'down') {
+                    response = await QuestionService.downvoteQuestion(questionId);
+
+                    if (userVote === 'down') {
+                        // If already downvoted, remove the downvote
+                        setVotes((prevVotes) => prevVotes + 1);
+                        setUserVote(null);  // Reset vote to null
+                    } else if (userVote === 'up') {
+                        // If upvoted, switch to downvote
+                        setVotes((prevVotes) => prevVotes - 2);
+                        setUserVote('down');
+                    } else {
+                        // Otherwise, add a downvote
+                        setVotes((prevVotes) => prevVotes - 1);
+                        setUserVote('down');
+                    }
+                }
+
+                // Show success notification
+                notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
+            } catch (error) {
+                console.error('Error occurred while voting:', error);
+                notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
+            }
+        }, 500);  // 500ms debounce time
+
+        setDebounceTimeout(newDebounceTimeout);  // Update the debounce timeout
+    };
+
+
+    const handleAnswerVote = async (answerId, type) => {
+        const jwtToken = sessionStorage.getItem('jwtToken');
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+
+        try {
+            let response;
+            const currentVotes = answerVotes[answerId] || 0;
+            if (type === 'up') {
+                response = await QuestionService.upvoteAnswer(answerId);
+                const newVotes = userVote === 'up' ? currentVotes - 1 : userVote === 'down' ? currentVotes + 2 : currentVotes + 1;
+                setAnswerVotes({ ...answerVotes, [answerId]: newVotes });
+                setUserVote(userVote === 'up' ? null : 'up');
+            } else if (type === 'down') {
+                response = await QuestionService.downvoteAnswer(answerId);
+                const newVotes = userVote === 'down' ? currentVotes + 1 : userVote === 'up' ? currentVotes - 2 : currentVotes - 1;
+                setAnswerVotes({ ...answerVotes, [answerId]: newVotes });
+                setUserVote(userVote === 'down' ? null : 'down');
+            }
+            notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            console.error('Error occurred while voting on answer:', error);
+            notifications.show('Error occurred while voting on answer', { autoHideDuration: 3000, severity: 'error' });
+        }
+    };
+
+
+
 
 
     // Function to handle comment submission for answers
@@ -168,17 +277,42 @@ const QuestionPage = () => {
 
 
     const handleFollowQuestionToggle = async () => {
+        const jwtToken = sessionStorage.getItem('jwtToken'); // Check if the user is logged in
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to follow', { autoHideDuration: 3000, severity: 'error' });
+            return; // If not logged in, show an error and stop execution
+        }
+
         try {
-            const token = sessionStorage.getItem('jwtToken'); // Retrieve token from storage
-            console.log('Token:', token);  // Check if the token is valid and present
             const response = await FollowService.toggleFollowQuestion(questionId);
-            setIsFollowing(!isFollowing);
-            notifications.show(response.message || 'Toggled follow status', { autoHideDuration: 3000, severity: 'success' });
+            setIsFollowing(!isFollowing); // Toggle the follow status in the state
+            notifications.show(response.message || 'Follow toggled', { autoHideDuration: 3000, severity: 'success' });
         } catch (error) {
+            notifications.show('Error toggling follow ', { autoHideDuration: 3000, severity: 'error' });
             console.error("Error toggling follow status:", error);
-            notifications.show('Error toggling follow status', { autoHideDuration: 3000, severity: 'error' });
         }
     };
+
+    const handleBookmarkQuestionToggle = async () => {
+        const jwtToken = sessionStorage.getItem('jwtToken'); // Retrieve token
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to bookmark', { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+
+        try {
+            const response = await BookmarkService.toggleBookmarkQuestion(questionId);
+            setIsBookmarked(!isBookmarked);  // Toggle the bookmark status
+            notifications.show(response ? 'Bookmarked successfully' : 'Bookmark removed', {
+                autoHideDuration: 3000,
+                severity: response ? 'success' : 'info',
+            });
+        } catch (error) {
+            notifications.show('Error toggling bookmark', { autoHideDuration: 3000, severity: 'error' });
+            console.error("Error bookmarking question:", error);
+        }
+    };
+
 
     const handleAnswerSubmit = (newAnswer) => {
         const currentTime = new Date().toISOString();
@@ -223,29 +357,8 @@ const QuestionPage = () => {
     };
 
 
-    // Fetch question details (and initial answers)
-    useEffect(() => {
-        loadQuestion();
-    }, [questionId]);
-
-    // Function to load question and initial answers
-    const loadQuestion = async () => {
-        try {
-            const fetchedQuestion = await QuestionService.getQuestionById(questionId, currentPage, pageSize);
-
-            setQuestion(fetchedQuestion);
-            setVotes(fetchedQuestion.votes);
-            setAnswers(fetchedQuestion.answers.content);
-            setTotalPages(fetchedQuestion.answers.totalPages);
-            setCurrentPage(fetchedQuestion.answers.pageable.pageNumber);
-
-            // Set userVote if the user is logged in
-            setUserVote(fetchedQuestion.userVote); // Assume backend returns 'up', 'down', or null
-        } catch (error) {
-            console.error("Error loading question:", error);
-            navigate('/questions'); // Redirect if question not found
-        }
-    };
+    
+    
 
     const fetchAnswers = async (page) => {
         try {
@@ -293,50 +406,32 @@ const QuestionPage = () => {
     };
 
     useEffect(() => {
-        loadQuestion();
-
-        // Connect to the WebSocket service
         const answerWebSocketService = AnswerWebSocketService(questionId, handleNewAnswer);
-
-        // Connect to WebSocket on mount
         answerWebSocketService.connect();
+        return () => answerWebSocketService.disconnect(); // Cleanup WebSocket on component unmount
+      }, [questionId]);
 
-        // Cleanup WebSocket connection on component unmount
-        return () => {
-            answerWebSocketService.disconnect();
-        };
-    }, [questionId]);
+    
 
     const handleNewAnswer = (message) => {
-        // Assuming the WebSocket sends a message in JSON format
-        const newAnswer = JSON.parse(message.body);
+        try {
+            // Check if message.body exists before parsing
+            const body = message.body ? message.body : message;
 
-        // Add the new answer to the existing answers state
-        setAnswers((prevAnswers) => [...prevAnswers, newAnswer]);
+            // Ensure message.body is either a string or a valid object
+            const newAnswer = typeof body === 'string' ? JSON.parse(body) : body;
+
+            // Ensure votes field is initialized or defaulted
+            newAnswer.votes = newAnswer.votes !== undefined ? newAnswer.votes : 0;
+
+            // Safely update the state with the new answer
+            setAnswers((prevAnswers) => [...prevAnswers, newAnswer]);
+        } catch (error) {
+            console.error("Error parsing message body:", error);
+        }
     };
 
 
-    if (!question) {
-        return (
-            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
-                <Typography variant="h6">Question not found</Typography>
-                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
-                    Go back to Questions List
-                </Button>
-            </Box>
-        );
-    }
-
-    if (!question) {
-        return (
-            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
-                <Typography variant="h6">Question not found</Typography>
-                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
-                    Go back to Questions List
-                </Button>
-            </Box>
-        );
-    }
 
     if (!question) {
         return (
@@ -366,19 +461,19 @@ const QuestionPage = () => {
                     <Grid container spacing={2}>
                         <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
                             <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
-                                <IconButton onClick={() => handleVote('up')}>
+                                <IconButton onClick={() => handleQuestionVote('up')}>
                                     <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'}/>
                                 </IconButton>
                             </Tooltip>
                             <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
                             <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
-                                <IconButton onClick={() => handleVote('down')}>
+                                <IconButton onClick={() => handleQuestionVote('down')}>
                                     <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
                                 </IconButton>
                             </Tooltip>
                             {/* Bookmark Button */}
                             <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
-                                <IconButton onClick={handleBookmarkToggle}>
+                                <IconButton onClick={handleBookmarkQuestionToggle}>
                                     {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
                                 </IconButton>
                             </Tooltip>
@@ -448,18 +543,18 @@ const QuestionPage = () => {
                 <Box sx={{ marginTop: '20px' }}>
                     <Typography variant="h6" sx={{ marginBottom: '20px' }}>Answers</Typography>
 
-                    {answers.map((answer, index) => (
+                    {question.answers.content.map((answer, index) => (
                         <Paper key={index} sx={{ padding: '20px', marginBottom: '20px' }}>
                             <Grid container spacing={2}>
                                 <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
                                     <Tooltip title="This answer is useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleVote('up')}>
+                                        <IconButton onClick={() => handleAnswerVote('up')}>
                                             <KeyboardArrowUp />
                                         </IconButton>
                                     </Tooltip>
                                     <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{answer.votes}</Typography>
                                     <Tooltip title="This answer is not useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleVote('down')}>
+                                        <IconButton onClick={() => handleAnswerVote('down')}>
                                             <KeyboardArrowDown />
                                         </IconButton>
                                     </Tooltip>

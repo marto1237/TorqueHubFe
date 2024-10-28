@@ -6,12 +6,13 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import './styles/style.css';
-import {jwtDecode}  from 'jwt-decode';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 import { darkTheme, lightTheme } from './themes/Theme';
 import LoadingComponent from './components/common/Loader';
 import NotificationProvider from './components/common/NotificationProvider';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
@@ -45,6 +46,17 @@ const App = () => {
     const [userDetails, setUserDetails] = useState(null);
     const [avatar, setAvatar] = useState(null);
 
+    // Create a client
+    const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 300000, // 5 minutes before data becomes stale
+            cacheTime: 600000, // Cache data for 10 minutes
+            keepPreviousData: true, // Keep previous data until new data is fetched
+            retry: 5, // Retry failed requests once
+          },
+        },
+      });
 
     // Function to handle avatar updates
     const handleAvatarUpdate = (newAvatar) => {
@@ -85,71 +97,73 @@ const App = () => {
 
     return (
         <ThemeProvider theme={theme}>
-            <Router>
-                {/* Navbar is placed outside the routes so that it shows on all pages */}
-                <Navbar loggedIn={loggedIn} setLoggedIn={setLoggedIn} userDetails={userDetails} avatar={avatar} />
+            <QueryClientProvider client={queryClient}>
+                <Router>
+                    {/* Navbar is placed outside the routes so that it shows on all pages */}
+                    <Navbar loggedIn={loggedIn} setLoggedIn={setLoggedIn} userDetails={userDetails} avatar={avatar} />
 
-                {/* All Routes */}
-                <Suspense fallback={<LoadingComponent />}>
-                    <NotificationProvider>
-                        <Routes>
-                            <Route path="/" element={<HomePage />} />
-                            <Route path="/signup" element={<ProtectedRoute loggedIn={loggedIn}>
-                                <SignUp setLoggedIn={setLoggedIn}  />
-                            </ProtectedRoute>} />
-                            <Route path="/login" element={ <ProtectedRoute loggedIn={loggedIn}>
-                                <LogIn setLoggedIn={handleLogin} />
-                            </ProtectedRoute>} />
-                            <Route path="/carlist" element={<CarList />} />
-                            <Route path="/carform" element={<QuestionPage />} />
-                            <Route path="/askquestion" element={<CreateQuestionPage />} />
-                            <Route path="/events" element={<EventList />} />
-                            <Route path="/events/:id" element={<EventDetail />} />
-                            <Route path="/profile" element={<Profile />} />
-                            <Route path="/following" element={<Following />} />
-                            <Route path="/bookmarks" element={<Bookmarks />} />
-                            <Route path="/myshowcase" element={<MyShowcase />} />
-                            <Route path="/showcase" element={<Showcase />} />
-                            <Route path="/car/:id" element={<CarDetails />} />
-                            <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
-                            <Route path="/questions" element={<QuestionListing />} />
-                            <Route path="/questions/:questionId" element={<QuestionPage />} />
-                            <Route path="/payment" element={<PaymentPage />} />
-                            <Route path="*" element={<NotFoundPage />} />
-                            <Route path={"/users"} element={<Users />} />
-                        </Routes>
-                    </NotificationProvider>
-                </Suspense>
+                    {/* All Routes */}
+                    <Suspense fallback={<LoadingComponent />}>
+                        <NotificationProvider>
+                            <Routes>
+                                <Route path="/" element={<HomePage />} />
+                                <Route path="/signup" element={<ProtectedRoute loggedIn={loggedIn}>
+                                    <SignUp setLoggedIn={setLoggedIn}  />
+                                </ProtectedRoute>} />
+                                <Route path="/login" element={ <ProtectedRoute loggedIn={loggedIn}>
+                                    <LogIn setLoggedIn={handleLogin} />
+                                </ProtectedRoute>} />
+                                <Route path="/carlist" element={<CarList />} />
+                                <Route path="/carform" element={<QuestionPage />} />
+                                <Route path="/askquestion" element={<CreateQuestionPage />} />
+                                <Route path="/events" element={<EventList />} />
+                                <Route path="/events/:id" element={<EventDetail />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/following" element={<Following />} />
+                                <Route path="/bookmarks" element={<Bookmarks />} />
+                                <Route path="/myshowcase" element={<MyShowcase />} />
+                                <Route path="/showcase" element={<Showcase />} />
+                                <Route path="/car/:id" element={<CarDetails />} />
+                                <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
+                                <Route path="/questions" element={<QuestionListing />} />
+                                <Route path="/questions/:questionId" element={<QuestionPage />} />
+                                <Route path="/payment" element={<PaymentPage />} />
+                                <Route path="*" element={<NotFoundPage />} />
+                                <Route path={"/users"} element={<Users />} />
+                            </Routes>
+                        </NotificationProvider>
+                    </Suspense>
 
-                {/* Theme Toggle Button */}
-                <Fab
-                    color="primary"
-                    aria-label="toggle theme"
-                    onClick={toggleTheme}
-                    sx={{
-                        position: 'fixed',
-                        bottom: 80, // Keeps it above the scroll-to-top button
-                        right: 16,
-                    }}
-                >
-                    {themeMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
-                </Fab>
+                    {/* Theme Toggle Button */}
+                    <Fab
+                        color="primary"
+                        aria-label="toggle theme"
+                        onClick={toggleTheme}
+                        sx={{
+                            position: 'fixed',
+                            bottom: 80, // Keeps it above the scroll-to-top button
+                            right: 16,
+                        }}
+                    >
+                        {themeMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+                    </Fab>
 
-                {/* Scroll-to-Top Button */}
-                <Fab
-                    color="primary"
-                    aria-label="scroll to top"
-                    onClick={scrollToTop}
-                    sx={{
-                        position: 'fixed',
-                        bottom: 16,
-                        right: 16,
-                    }}
-                >
-                    <KeyboardArrowUpIcon />
-                </Fab>
-                <Footer />
-            </Router>
+                    {/* Scroll-to-Top Button */}
+                    <Fab
+                        color="primary"
+                        aria-label="scroll to top"
+                        onClick={scrollToTop}
+                        sx={{
+                            position: 'fixed',
+                            bottom: 16,
+                            right: 16,
+                        }}
+                    >
+                        <KeyboardArrowUpIcon />
+                    </Fab>
+                    <Footer />
+                </Router>
+            </QueryClientProvider>
 
 
         </ThemeProvider>
