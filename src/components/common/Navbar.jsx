@@ -20,6 +20,7 @@ import '../../styles/NavBar.css';
 import NotificationWebSocketService from '../configuration/WebSocket/NotificationWebSocketService'; // Adjust path as necessary
 import NotificationService from "../configuration/Services/NotificationService";
 import { timeAgo } from  "../configuration/utils/TimeFormating"
+import AuthService from '../configuration/Services/AuthService';
 
 const logo = "/Logo.png";
 
@@ -87,7 +88,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     // Handle user logout
     const handleLogout = async () => {
         try {
-            await axios.post('http://localhost:8080/auth/logout', {}, { withCredentials: true });
+            await AuthService.logout();  // Use AuthService instead of axios directly
             sessionStorage.clear();
             localStorage.clear();
             setLoggedIn(false);
@@ -252,6 +253,8 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         return {
             sx: {
                 bgcolor: stringToColor(name),
+                width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 }
+                
             },
             children: `${name[0].toUpperCase()}`,
         };
@@ -267,10 +270,10 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
             }}
         >
             <Container maxWidth="xl">
-                <Toolbar disableGutters>
+                <Toolbar disableGutters sx={{ display: 'flex', justifyContent: 'space-between' }}>
 
                     {/* LOGO for large and medium screens */}
-                    <Box component="a" href="/" className="logo-md">
+                    <Box component="a" href="/" className="logo-md" >
                         <Box component="img" src={logo} alt="Logo" sx={{ height: '100%' }} />
                     </Box>
 
@@ -286,7 +289,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                     </Typography>
 
                     {/* Menu button for small screens */}
-                    <Box className="menu-btn-xs">
+                    <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
                         <IconButton
                             size="large"
                             aria-label="account of current user"
@@ -421,15 +424,16 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                     {/* Notification and email for large screens */}
                     {loggedIn && (
                         <>
-                        <MenuItem>
+                        <MenuItem sx={{ display: 'flex', alignItems: 'center', gap: { xs: '0.0rem', md: '1rem' } }}>
                             <IconButton
-                                size="large"
+                                size="small" // Reduce icon button size for mobile
                                 aria-label="show notifications"
                                 color="inherit"
                                 onClick={handleOpenNotifMenu}
+                                sx={{ padding: { xs: '4px', sm: '6px' } }}
                             >
                                 <Badge badgeContent={unreadCount} color="error">
-                                    <NotificationsIcon sx={{ color: theme.palette.mode === 'light' ? 'black' : 'white' }}/>
+                                    <NotificationsIcon sx={{ fontSize: { xs: '1.0rem', sm: '1.5rem' }, color: theme.palette.mode === 'light' ? 'black' : 'white' }}/>
                                 </Badge>
                             </IconButton>
 
@@ -498,13 +502,14 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                             </MenuItem>
                             <MenuItem>
                                 <IconButton
-                                    size="large"
-                                    aria-label="show 4 new mails"
+                                    size="small" // Reduce icon button size for mobile
+                                    aria-label="show mails"
                                     color={theme.palette.mode === 'light' ? 'default' : 'inherit'}
+                                    sx={{ padding: { xs: '4px', sm: '6px' } }} 
                                 >
                                     <Badge badgeContent={4} color="error">
                                         <MailIcon
-                                            sx={{ color: theme.palette.mode === 'light' ? 'black' : 'white' }}
+                                            sx={{ fontSize: { xs: '1rem', sm: '1.5rem' },color: theme.palette.mode === 'light' ? 'black' : 'white' }}
                                         />
                                     </Badge>
                                 </IconButton>
@@ -521,9 +526,9 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                                         {/* Display the profile image if it exists, else display the default avatar */}
                                         {avatarURL ?(
-                                            <Avatar src={avatarURL} />
+                                            <Avatar src={avatarURL} sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }}/>
                                         ) : (
-                                            <Avatar {...stringAvatar(userDetails?.username ? userDetails.username[0] : 'User')} />
+                                            <Avatar {...stringAvatar(userDetails?.username ? userDetails.username[0] : 'User' )} />
                                         )}
                                     </IconButton>
                                 </Tooltip>

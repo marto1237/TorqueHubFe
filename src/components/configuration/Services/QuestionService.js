@@ -49,7 +49,7 @@ const QuestionService = {
         .catch(error => Promise.reject(error));
     },
 
-    downvoteQuestion: (questionId, userId) => {
+    downvoteQuestion: (questionId) => {
     return api.post(`/questions/${questionId}/downvote`,{}, { requiresAuth: true })
         .then(response => response.data)  // Return the full response, including the message
         .catch(error => Promise.reject(error));

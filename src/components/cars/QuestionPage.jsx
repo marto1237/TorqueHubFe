@@ -188,7 +188,7 @@ const QuestionPage = () => {
                 // Show success notification
                 notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
             } catch (error) {
-                console.error('Error occurred while voting:', error);
+                console.error('Error occurred while voting:', error.response || error);
                 notifications.show('Error occurred while voting', { autoHideDuration: 3000, severity: 'error' });
             }
         }, 500);  // 500ms debounce time

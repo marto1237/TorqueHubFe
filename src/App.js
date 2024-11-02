@@ -141,8 +141,10 @@ const App = () => {
                         onClick={toggleTheme}
                         sx={{
                             position: 'fixed',
-                            bottom: 80, // Keeps it above the scroll-to-top button
-                            right: 16,
+                            bottom: { xs: 70, sm: 80 }, // Position slightly higher on extra-small screens
+                            right: { xs: 8, sm: 16 }, // Move closer to the edge on extra-small screens
+                            width: { xs: 40, sm: 56 }, // Smaller button on extra-small screens
+                            height: { xs: 40, sm: 56 }
                         }}
                     >
                         {themeMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
@@ -155,8 +157,10 @@ const App = () => {
                         onClick={scrollToTop}
                         sx={{
                             position: 'fixed',
-                            bottom: 16,
-                            right: 16,
+                            bottom: { xs: 16, sm: 16 },
+                            right: { xs: 8, sm: 16 },
+                            width: { xs: 40, sm: 56 },
+                            height: { xs: 40, sm: 56 }
                         }}
                     >
                         <KeyboardArrowUpIcon />

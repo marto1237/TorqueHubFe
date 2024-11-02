@@ -15,15 +15,16 @@ const Footer = () => {
             component="footer"
             sx={{
                 backgroundColor: theme.palette.background.paper,
-                padding: '2rem',
-                marginTop: 'auto',
+                padding: { xs: '1rem', sm: '1.5rem', md: '2rem' },
                 borderTop: `1px solid ${theme.palette.divider}`,
+                mt: 'auto',   // Pushes footer to the bottom
+                overflow: 'hidden', // Ensures no clipping of content
             }}
         >
             <Container maxWidth="lg">
                 <Grid container spacing={4}>
                     {/* About Section */}
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6} md={4}>
                         <Typography variant="h6" gutterBottom color="textSecondary">
                             About Us
                         </Typography>
@@ -33,7 +34,7 @@ const Footer = () => {
                     </Grid>
 
                     {/* Contact Section */}
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6} md={4}>
                         <Typography variant="h6" gutterBottom color="textSecondary">
                             Contact Us
                         </Typography>
@@ -49,11 +50,11 @@ const Footer = () => {
                     </Grid>
 
                     {/* Social Media Links */}
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={12} md={4}>
                         <Typography variant="h6" gutterBottom color="textSecondary">
                             Follow Us
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: '1rem' }}>
+                        <Box sx={{ display: 'flex', gap: { xs: '0.5rem', sm: '1rem' }, overflow: 'visible' }}>
                             <IconButton component="a" href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">
                                 <FacebookIcon />
                             </IconButton>

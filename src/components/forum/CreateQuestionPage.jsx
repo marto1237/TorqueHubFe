@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     Box,
     Button,
@@ -7,11 +7,16 @@ import {
     Autocomplete,
     TextField,
     Paper,
-    Divider
+    Divider,
+    IconButton
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import Picker from 'emoji-picker-react';
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon';
+import { storage } from '../../firebase';
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 const AskQuestion = () => {
     const theme = useTheme();
@@ -24,6 +29,7 @@ const AskQuestion = () => {
         description: false,
         tags: false,
     });
+    const [emojiPickerOpen, setEmojiPickerOpen] = useState(null);
 
     const maxTags = 5;
     const availableTags = [
@@ -34,6 +40,29 @@ const AskQuestion = () => {
         { name: 'Alternator' },
         { name: 'Oil leak' },
     ];
+
+    const descriptionModules = {
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['link', 'image'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'script': 'sub' }, { 'script': 'super' }],
+                ['clean']
+            ]
+        }
+    };
+
+    const handleEmojiClick = (emojiObject, target) => {
+        const emoji = emojiObject.emoji;
+        if (target === 'title') setTitle(title + emoji);
+        if (target === 'description') setDescription(description + emoji);
+        setEmojiPickerOpen(null); // Close picker after selection
+    };
 
     const handleTagChange = (event, newValue) => {
         const uniqueTags = Array.from(new Set(newValue.map((item) => item.name)));
@@ -55,41 +84,79 @@ const AskQuestion = () => {
     };
 
     return (
-        <Box sx={{ padding: { xs: '20px', md: '40px' }, backgroundColor: theme.palette.background.default }}>
+        <Box sx={{ padding: { xs: '1rem', sm: '1.25rem', md: '2rem' },paddingTop: { xs: '4.5rem', sm: '4rem', md: '5rem', }, backgroundColor: theme.palette.background.default }}>
             <Box sx={{ maxWidth: '800px', margin: 'auto' }}>
-                <Paper elevation={3} sx={{ padding: '30px', backgroundColor: theme.palette.background.paper }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', marginBottom: '20px' }}>
+                <Paper elevation={3} sx={{ padding: { xs: '1.25rem', md: '2rem' }, backgroundColor: theme.palette.background.paper, mb: { xs: '1.5rem', md: '2.5rem' } }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', marginBottom: { xs: '1rem', md: '1.5rem' }, fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
                         Ask a Question
                     </Typography>
 
-                    <Divider sx={{ marginBottom: '20px' }} />
+                    <Divider sx={{ marginBottom: { xs: '1.25rem', md: '1.5rem' } }} />
 
                     <Box component="form" noValidate autoComplete="off">
                         {/* Title Input with ReactQuill */}
-                        <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>Title:</Typography>
-                        <ReactQuill
-                            theme="snow"
-                            value={title}
-                            onChange={(value) => setTitle(value)}
-                            placeholder="Enter the title of your question"
-                            style={{ height: '100px', marginBottom: '24px' }}
-                        />
-                        {error.title && <Typography color="error" sx={{ mb: 2 }}>Title is required</Typography>}
+                        <Typography variant="h6" sx={{ fontWeight: 'medium', mb: { xs: '0.5rem', md: '1rem' }, fontSize: '1rem' }}>Title:</Typography>
+                        <Box sx={{ position: 'relative', mb: { xs: '1.5rem', md: '2rem' } }}>
+                            <ReactQuill
+                                theme="snow"
+                                value={title}
+                                modules={descriptionModules}
+                                onChange={(value) => setTitle(value)}
+                                placeholder="Enter the title of your question"
+                                style={{
+                                    height: '5rem',
+                                    marginBottom: '0.5rem',
+                                    maxWidth: '100%',
+                                    overflowWrap: 'break-word',
+                                }}
+                            />
+                            <IconButton
+                                sx={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
+                                onClick={() => setEmojiPickerOpen(emojiPickerOpen === 'title' ? null : 'title')}
+                            >
+                                <InsertEmoticonIcon />
+                            </IconButton>
+                            {emojiPickerOpen === 'title' && (
+                                <Box sx={{ position: 'absolute', top: '3rem', right: '0', zIndex: 10 }}>
+                                    <Picker onEmojiClick={(emojiObject) => handleEmojiClick(emojiObject, 'title')} />
+                                </Box>
+                            )}
+                        </Box>
+                        {error.title && <Typography color="error" sx={{ mb: '1rem' }}>Title is required</Typography>}
 
-                        <Divider sx={{ marginBottom: '25px' }} />
+                        <Divider sx={{ marginBottom: { xs: '7.5rem', md: '3.5rem' } }} />
 
                         {/* Description Input with ReactQuill */}
-                        <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>Description:</Typography>
-                        <ReactQuill
-                            theme="snow"
-                            value={description}
-                            onChange={(value) => setDescription(value)}
-                            placeholder="Describe the details of your problem here"
-                            style={{ height: '200px', marginBottom: '24px' }}
-                        />
-                        {error.description && <Typography color="error" sx={{ mb: 2 }}>Description is required</Typography>}
+                        <Typography variant="h6" sx={{ fontWeight: 'medium', mb: { xs: '0.5rem', md: '1rem' }, fontSize: '1rem' }}>Description:</Typography>
+                        <Box sx={{ position: 'relative', mb: { xs: '1.5rem', md: '2rem' } }}>
+                            <ReactQuill
+                                theme="snow"
+                                value={description}
+                                modules={descriptionModules}
+                                onChange={(value) => setDescription(value)}
+                                placeholder="Describe the details of your problem here"
+                                style={{
+                                    height: '10rem',
+                                    marginBottom: '0.5rem',
+                                    maxWidth: '100%',
+                                    overflowWrap: 'break-word',
+                                }}
+                            />
+                            <IconButton
+                                sx={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
+                                onClick={() => setEmojiPickerOpen(emojiPickerOpen === 'description' ? null : 'description')}
+                            >
+                                <InsertEmoticonIcon />
+                            </IconButton>
+                            {emojiPickerOpen === 'description' && (
+                                <Box sx={{ position: 'absolute', top: '3rem', right: '0', zIndex: 10 }}>
+                                    <Picker onEmojiClick={(emojiObject) => handleEmojiClick(emojiObject, 'description')} />
+                                </Box>
+                            )}
+                        </Box>
+                        {error.description && <Typography color="error" sx={{ mb: '1rem' }}>Description is required</Typography>}
 
-                        <Divider sx={{ marginBottom: '25px' }} />
+                        <Divider sx={{ marginBottom: { xs: '7.5rem', md: '3.5rem' } }} />
 
                         {/* Tags Input */}
                         <Autocomplete
@@ -104,7 +171,7 @@ const AskQuestion = () => {
                                         key={index}
                                         label={option.name}
                                         {...getTagProps({ index })}
-                                        sx={{ m: 0.5 }}
+                                        sx={{ m: '0.25rem' }}
                                     />
                                 ))
                             }
@@ -119,15 +186,15 @@ const AskQuestion = () => {
                                 />
                             )}
                             limitTags={maxTags}
-                            sx={{ mb: 3 }}
+                            sx={{ mb: { xs: '1rem', md: '1.5rem' } }}
                         />
 
                         {/* Buttons aligned in a row */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: '1rem', md: '1.5rem' } }}>
                             <Button 
                                 variant="outlined" 
                                 onClick={() => setPreview(!preview)}
-                                sx={{ minWidth: '150px' }}
+                                sx={{ minWidth: '8rem', fontSize: { xs: '0.8rem', sm: '1rem' } }}
                             >
                                 {preview ? 'Hide Preview' : 'Show Preview'}
                             </Button>
@@ -136,7 +203,7 @@ const AskQuestion = () => {
                                 variant="contained"
                                 color="primary"
                                 onClick={handleSubmit}
-                                sx={{ minWidth: '150px' }}
+                                sx={{ minWidth: '8rem', fontSize: { xs: '0.8rem', sm: '1rem' } }}
                             >
                                 Ask Question
                             </Button>
@@ -144,17 +211,13 @@ const AskQuestion = () => {
 
                         {/* Styled Preview Section */}
                         {preview && (
-                            <Paper variant="outlined" sx={{ p: 3, backgroundColor: theme.palette.background.default }}>
-                                <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            <Paper variant="outlined" sx={{ p: '1.5rem', backgroundColor: theme.palette.background.default, mb: { xs: '1.5rem', md: '2rem' } }}>
+                                <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                     <Box dangerouslySetInnerHTML={{ __html: title || "Title of the Question" }} />
                                 </Typography>
-
-
-                                
-
                                 <Box sx={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: description || "<em>Description of the question appears here...</em>" }} />
                                 
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', mb: 2 }}>
                                     {tags.length > 0 ? (
                                         tags.map((tag, index) => (
                                             <Chip key={index} label={tag} size="small" sx={{ backgroundColor: '#333', color: '#fff' }} />

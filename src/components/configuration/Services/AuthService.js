@@ -2,7 +2,7 @@ import api from '../api';
 
 const AuthService = {
     login: (loginData) => {
-        return api.post(`/auth/login`, loginData)
+        return api.post(`/auth/login`, loginData, { withCredentials: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
@@ -13,17 +13,18 @@ const AuthService = {
             .catch(error => Promise.reject(error));
     },
 
-    refreshToken: (refreshToken) => {
-        return api.post(`/auth/refresh-token`)
+    refreshToken: () => {
+        return api.post(`/auth/refresh-token`, {}, { withCredentials: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
 
     logout: () => {
-        return api.post(`/auth/logout`)
+        return api.post(`/auth/logout`, {}, { withCredentials: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
+
     checkSession: () => {
         return api.get(`/auth/check-session`, { withCredentials: true })
             .then(response => response.data)
@@ -32,3 +33,4 @@ const AuthService = {
 };
 
 export default AuthService;
+
