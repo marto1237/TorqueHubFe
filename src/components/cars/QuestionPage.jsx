@@ -7,6 +7,8 @@ import PostForm from "../forum/PostForm";
 import {useParams , useNavigate} from "react-router-dom";
 import axios from 'axios';
 import QuestionService from '../configuration/Services/QuestionService';
+import AnswerService from '../configuration/Services/AnswerService';
+import CommentService from '../configuration/Services/CommentService'
 import { useAppNotifications } from '../common/NotificationProvider';
 import { timeAgo } from '../configuration/utils/TimeFormating';
 import AnswerWebSocketService from '../configuration/WebSocket/AnswersWebSocketService'
@@ -41,6 +43,8 @@ const QuestionPage = () => {
     const [questionVotes, setQuestionVotes] = useState(0); // For question votes
     const [answerVotes, setAnswerVotes] = useState([]);    // For answer votes
     const [commentVotes, setCommentVotes] = useState({});  // For comment votes
+
+    const [answerText, setAnswerText] = useState('');
 
     const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
     const answerUser = { username: 'AnswerUser456', profileLink: '/user/answeruser456' };
@@ -314,15 +318,38 @@ const QuestionPage = () => {
     };
 
 
-    const handleAnswerSubmit = (newAnswer) => {
-        const currentTime = new Date().toISOString();
-        setAnswers([...answers, {
-            text: newAnswer,
-            user: answerUser,
-            comments: [],
-            postedTime: currentTime
-        }]);
+    const handleAnswerSubmit = async () => {
+        if (answerText.length < 3 || answerText.length > 100000) {
+            notifications.show("Answer must be between 3 and 100000 characters", { severity: "warning" });
+            return;
+        }
+    
+        try {
+            const response = await AnswerService.createAnswer({ text: answerText, questionId });
+            notifications.show("Answer posted successfully!", { severity: "success" });
+            queryClient.invalidateQueries(['answersByQuestion']); // Refetch answers to reflect the new one
+            setAnswerText("");
+        } catch (error) {
+            notifications.show("Failed to post answer", { severity: "error" });
+        }
     };
+
+    const handleCommentSubmit = async (commentText, answerId) => {
+        if (commentText.length < 3 || commentText.length > 100000) {
+            notifications.show("Comment must be between 3 and 100000 characters", { severity: "warning" });
+            return;
+        }
+    
+        try {
+            const response = await CommentService.addComment({ text: commentText, answerId });
+            notifications.show("Comment posted successfully!", { severity: "success" });
+            queryClient.invalidateQueries(['commentsByAnswer', answerId]); // Refetch comments to reflect the new one
+        } catch (error) {
+            notifications.show("Failed to post comment", { severity: "error" });
+        }
+    };
+    
+    
 
 
     const handleAcceptAnswer = (index) => {
@@ -446,7 +473,7 @@ const QuestionPage = () => {
 
     return (
         <Box sx={{ padding: { xs: '20px', sm: '100px' }, backgroundColor: theme.palette.background.paper }}>
-            <Box sx={{ padding: '20px', maxWidth: '1000px', margin: 'auto', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}>
+            <Box sx={{  padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, maxWidth: '1000px', margin: 'auto', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}>
                 <Typography variant="h5"
                             dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.title) }}
                             sx={{
@@ -457,17 +484,17 @@ const QuestionPage = () => {
                             }}>
                 </Typography>
 
-                <Paper sx={{ padding: '20px', marginBottom: '40px', backgroundColor: theme.palette.background.paper }}>
+                <Paper sx={{  padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, marginBottom: '40px', backgroundColor: theme.palette.background.paper }}>
                     <Grid container spacing={2}>
-                        <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
+                        <Grid item xs={2} sm={1} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
-                                <IconButton onClick={() => handleQuestionVote('up')}>
+                                <IconButton onClick={() => handleQuestionVote('up')}  sx={{ padding: 0 }}>
                                     <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'}/>
                                 </IconButton>
                             </Tooltip>
                             <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
                             <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
-                                <IconButton onClick={() => handleQuestionVote('down')}>
+                                <IconButton onClick={() => handleQuestionVote('down')}  sx={{ padding: 0 }}>
                                     <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
                                 </IconButton>
                             </Tooltip>
@@ -546,15 +573,15 @@ const QuestionPage = () => {
                     {question.answers.content.map((answer, index) => (
                         <Paper key={index} sx={{ padding: '20px', marginBottom: '20px' }}>
                             <Grid container spacing={2}>
-                                <Grid item xs={2} sm={1} sx={{ textAlign: 'center' }}>
+                                <Grid item xs={2} sm={1} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <Tooltip title="This answer is useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleAnswerVote('up')}>
+                                        <IconButton onClick={() => handleAnswerVote('up')} sx={{ padding: 0 }}>
                                             <KeyboardArrowUp />
                                         </IconButton>
                                     </Tooltip>
                                     <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{answer.votes}</Typography>
                                     <Tooltip title="This answer is not useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleAnswerVote('down')}>
+                                        <IconButton onClick={() => handleAnswerVote('down')} sx={{ padding: 0 }}>
                                             <KeyboardArrowDown />
                                         </IconButton>
                                     </Tooltip>
@@ -623,7 +650,7 @@ const QuestionPage = () => {
 
                                     {/* Comments Section */}
                                     {answer.comments.map((comment, commentIndex) => (
-                                        <Box key={commentIndex} sx={{ marginTop: '10px', paddingLeft: '20px', borderLeft: '3px solid #ccc' }}>
+                                        <Box key={commentIndex} sx={{ marginTop: '10px', paddingLeft: { xs: 0, sm: '20px' }, borderLeft: '3px solid #ccc' }}>
                                             <Grid container>
                                                 <Grid item xs={9}>
                                                     <Typography variant="body2"

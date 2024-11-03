@@ -90,6 +90,14 @@ const QuestionListPage = () => {
         return formatDistanceToNow(new Date(date), { addSuffix: true });
     };
 
+    const formatTextWithTags = (text) => {
+        return text
+            .replace(/\[b\](.*?)\[\/b\]/g, '<b>$1</b>')
+            .replace(/\[i\](.*?)\[\/i\]/g, '<i>$1</i>')
+            .replace(/\[u\](.*?)\[\/u\]/g, '<u>$1</u>')
+            .replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>');
+    };
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
             <Box sx={{ maxWidth: '900px', margin: 'auto', minHeight: '60vh' }}>
@@ -173,8 +181,9 @@ const QuestionListPage = () => {
                                                     variant="h6"
                                                     sx={{ cursor: 'pointer', fontWeight: 'bold' }}
                                                     onClick={() => handleQuestionClick(question.id)}
+                                                    dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.title) }}
                                                 >
-                                                    {question.title}
+                                                    
                                                 </Typography>
 
                                                 <Box sx={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>

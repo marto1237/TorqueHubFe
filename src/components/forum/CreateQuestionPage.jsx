@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
     Box,
     Button,
@@ -17,9 +17,18 @@ import Picker from 'emoji-picker-react';
 import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon';
 import { storage } from '../../firebase';
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import QuestionService from '../configuration/Services/QuestionService';
+import TagService from '../configuration/Services/TagService';
+import { useAppNotifications } from '../common/NotificationProvider';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const AskQuestion = () => {
     const theme = useTheme();
+    const navigate = useNavigate();
+    const notifications = useAppNotifications();
+    const queryClient = useQueryClient();
+
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState([]);
@@ -30,16 +39,23 @@ const AskQuestion = () => {
         tags: false,
     });
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(null);
+    const [tagSearch, setTagSearch] = useState('');
 
     const maxTags = 5;
-    const availableTags = [
-        { name: 'BMW' },
-        { name: 'Engine' },
-        { name: 'Radiator' },
-        { name: 'Mazda' },
-        { name: 'Alternator' },
-        { name: 'Oil leak' },
-    ];
+    const { data: availableTags = [] } = useQuery({
+        queryKey: ['tags'],
+        queryFn: TagService.getAllTags,
+        staleTime: 5 * 60 * 1000, // Cache tags for 5 minutes
+        refetchOnWindowFocus: false,
+    });
+
+    // Filter tags based on search input
+    const filteredTags = useMemo(() => {
+        return availableTags.filter(tag =>
+            tag.name.toLowerCase().includes(tagSearch.toLowerCase())
+        );
+    }, [availableTags, tagSearch]);
+
 
     const descriptionModules = {
         toolbar: {
@@ -69,17 +85,41 @@ const AskQuestion = () => {
         setTags(uniqueTags.slice(0, maxTags));
     };
 
-    const validateForm = () => title.trim() && description.trim() && tags.length > 0;
+    const validateForm = () => {
+        const titleValid = title.trim().length >= 3 && title.trim().length <= 500;
+        const descriptionValid = description.trim().length >= 3 && description.trim().length <= 100000;
+        const tagsValid = tags.length > 0;
 
-    const handleSubmit = () => {
+        setError({
+            title: !titleValid,
+            description: !descriptionValid,
+            tags: !tagsValid,
+        });
+
+        return titleValid && descriptionValid && tagsValid;
+    };
+
+    const handleSubmit = async () => {
         if (validateForm()) {
-            console.log('Question submitted:', { title, description, tags });
-        } else {
-            setError({
-                title: !title.trim(),
-                description: !description.trim(),
-                tags: tags.length === 0,
-            });
+            const userDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+            if (!userDetails || !userDetails.id) {
+                notifications.show('You need to be logged in', { autoHideDuration: 3000, severity: 'error' });
+                return;
+            }
+            const userId = userDetails.id;
+
+            const questionData = { title, description, tags, userId };
+
+            try {
+                await QuestionService.askQuestion(questionData);
+
+                notifications.show('Question submitted successfully!', { autoHideDuration: 3000, severity: 'success' });
+
+                navigate('/questions');
+            } catch (error) {
+                console.error('Error submitting question:', error);
+                notifications.show('Failed to submit question', { autoHideDuration: 3000, severity: 'error' });
+            }
         }
     };
 
@@ -161,7 +201,7 @@ const AskQuestion = () => {
                         {/* Tags Input */}
                         <Autocomplete
                             multiple
-                            options={availableTags}
+                            options={filteredTags}
                             getOptionLabel={(option) => option.name}
                             onChange={handleTagChange}
                             value={tags.map(tag => ({ name: tag }))}

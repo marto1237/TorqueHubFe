@@ -316,22 +316,22 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                             onClose={handleCloseNavMenu}
                             sx={{ display: { xs: 'block', md: 'none' } }}
                         >
-                            <MenuItem onClick={handleCloseUserMenu} className="MuiMenuItem-root">
+                            <MenuItem onClick={() => {handleCloseNavMenu();handleCarFormClick();}} className="MuiMenuItem-root">
                                 <AccountCircle sx={{ mr: 2 }} /> My Profile
                             </MenuItem>
-                            <MenuItem onClick={handleCloseNavMenu} className="MuiMenuItem-root">
+                            <MenuItem onClick={() => {handleCloseNavMenu();handleCarFormClick();}} className="MuiMenuItem-root">
                                 Car Forms
                             </MenuItem>
-                            <MenuItem onClick={handleCloseNavMenu} className="MuiMenuItem-root">
+                            <MenuItem onClick={() => {handleCloseNavMenu();handleEventClick();}} className="MuiMenuItem-root">
                                 Events
                             </MenuItem>
-                            <MenuItem onClick={handleCloseNavMenu} className="MuiMenuItem-root">
+                            <MenuItem onClick={() => {handleCloseNavMenu();handleShowcaseClick();}} className="MuiMenuItem-root">
                                 Showcase
                             </MenuItem>
-                            <MenuItem onClick={handleCloseNavMenu} className="MuiMenuItem-root">
+                            <MenuItem onClick={() => {handleCloseNavMenu();}} className="MuiMenuItem-root">
                                 Search
                             </MenuItem>
-                            <MenuItem onClick={handleCloseNavMenu} className="MuiMenuItem-root">
+                            <MenuItem onClick={() => {handleCloseNavMenu();}} className="MuiMenuItem-root">
                                 About Us
                             </MenuItem>
                         </Menu>
