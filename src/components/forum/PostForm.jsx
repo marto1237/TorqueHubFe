@@ -100,6 +100,7 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
 
     // Handle form submission
     const handleSubmit = () => {
+        console.log("Submitting Post Content:", postContent);
         if (postContent.trim()) {
             onSubmit(postContent);
             setPostContent('');

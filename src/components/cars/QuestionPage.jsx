@@ -46,6 +46,75 @@ const QuestionPage = () => {
 
     const [answerText, setAnswerText] = useState('');
 
+    const validateAnswer = (answerText) => {
+        return answerText.trim().length >= 3 && answerText.trim().length <= 100000;
+    };
+    
+    const validateComment = (commentText) => {
+        return commentText.trim().length >= 3 && commentText.trim().length <= 100000;
+    };
+
+    const handleAnswerSubmit = async (submittedAnswer) => {
+        console.log("Answer Text:", submittedAnswer);
+        if (!validateAnswer(submittedAnswer)) {
+            notifications.show("Your answer is too short or too long", { autoHideDuration: 3000, severity: "error" });
+            return;
+        }
+    
+        const userDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        if (!userDetails || !userDetails.id) {
+            notifications.show('You need to be logged in to answer', { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+    
+        const userId = userDetails.id;
+    
+        try {
+            const response = await AnswerService.createAnswer({ text: submittedAnswer, questionId, userId });
+            notifications.show("Answer posted successfully", { autoHideDuration: 3000, severity: "success" });
+            queryClient.invalidateQueries(['question', questionId]); // Refetch answers
+            setAnswerText(""); // Clear the input after submitting
+        } catch (error) {
+            notifications.show("Failed to post answer", { autoHideDuration: 3000, severity: "error" });
+        }
+    };
+
+
+    const handleAnswerCommentSubmit = async (commentText, answerId) => {
+        if (!validateComment(commentText)) {
+            notifications.show("Your comment is too short or too long", { autoHideDuration: 3000, severity: "error" });
+            return;
+        }
+    
+        const userDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        if (!userDetails || !userDetails.id) {
+            notifications.show('You need to be logged in to comment', { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+    
+        const userId = userDetails.id;
+
+        try {
+            const newComment = await CommentService.addComment({ text: commentText, answerId, userId });
+            notifications.show("Comment posted successfully!", { autoHideDuration: 3000, severity: "success" });
+    
+            // Update cache by invalidating the current data, forcing a refetch
+            queryClient.invalidateQueries(['question', questionId, currentPage]);
+
+            // Add comment directly to the state for immediate display
+            setComments((prev) => ({
+                ...prev,
+                [answerId]: [...(prev[answerId] || []), newComment]
+            }));
+    
+            // Optionally clear comment input or close form
+            setAnswerText("");
+            toggleCommentForm(answerId);
+        }  catch (error) {
+            notifications.show("Failed to post comment", { autoHideDuration: 3000, severity: "error" });
+        }
+    };
+
     const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
     const answerUser = { username: 'AnswerUser456', profileLink: '/user/answeruser456' };
     const commentUser = { username: 'CommentUser789', profileLink: '/user/commentuser789' }; // Static user for the example, can be dynamic
@@ -232,25 +301,6 @@ const QuestionPage = () => {
 
 
 
-
-    // Function to handle comment submission for answers
-    const handleAnswerCommentSubmit = (comment, index) => {
-        // Get the current time when the comment is submitted
-        const currentTime = new Date().toISOString();
-
-        const updatedAnswers = [...answers];
-        updatedAnswers[index].comments.push({
-            text: comment,
-            user: commentUser,
-            votes: 0,
-            postedTime: currentTime  // Adding posted time here
-        });
-        setAnswers(updatedAnswers);
-
-        // Hide the comment form and show the "Add Comment" button again
-        toggleCommentForm(index);
-    };
-
     // Function to handle comment voting
     const handleCommentVote = (answerIndex, commentIndex, type) => {
         const updatedAnswers = [...answers];
@@ -318,36 +368,6 @@ const QuestionPage = () => {
     };
 
 
-    const handleAnswerSubmit = async () => {
-        if (answerText.length < 3 || answerText.length > 100000) {
-            notifications.show("Answer must be between 3 and 100000 characters", { severity: "warning" });
-            return;
-        }
-    
-        try {
-            const response = await AnswerService.createAnswer({ text: answerText, questionId });
-            notifications.show("Answer posted successfully!", { severity: "success" });
-            queryClient.invalidateQueries(['answersByQuestion']); // Refetch answers to reflect the new one
-            setAnswerText("");
-        } catch (error) {
-            notifications.show("Failed to post answer", { severity: "error" });
-        }
-    };
-
-    const handleCommentSubmit = async (commentText, answerId) => {
-        if (commentText.length < 3 || commentText.length > 100000) {
-            notifications.show("Comment must be between 3 and 100000 characters", { severity: "warning" });
-            return;
-        }
-    
-        try {
-            const response = await CommentService.addComment({ text: commentText, answerId });
-            notifications.show("Comment posted successfully!", { severity: "success" });
-            queryClient.invalidateQueries(['commentsByAnswer', answerId]); // Refetch comments to reflect the new one
-        } catch (error) {
-            notifications.show("Failed to post comment", { severity: "error" });
-        }
-    };
     
     
 
@@ -428,6 +448,7 @@ const QuestionPage = () => {
     // Handle pagination click
     const handlePageChange = (page) => {
         if (page >= 0 && page < totalPages) {
+            setCurrentPage(page);
             fetchAnswers(page);
         }
     };
@@ -451,8 +472,22 @@ const QuestionPage = () => {
             // Ensure votes field is initialized or defaulted
             newAnswer.votes = newAnswer.votes !== undefined ? newAnswer.votes : 0;
 
-            // Safely update the state with the new answer
-            setAnswers((prevAnswers) => [...prevAnswers, newAnswer]);
+            // Directly update the cached data with the new answer
+            queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
+                if (!oldData) return;
+
+                // Merge the new answer into the existing answers array
+                const updatedAnswers = [...oldData.answers.content, newAnswer];
+
+                // Return the updated data structure
+                return {
+                    ...oldData,
+                    answers: {
+                        ...oldData.answers,
+                        content: updatedAnswers,
+                    },
+                };
+            });
         } catch (error) {
             console.error("Error parsing message body:", error);
         }
@@ -571,17 +606,17 @@ const QuestionPage = () => {
                     <Typography variant="h6" sx={{ marginBottom: '20px' }}>Answers</Typography>
 
                     {question.answers.content.map((answer, index) => (
-                        <Paper key={index} sx={{ padding: '20px', marginBottom: '20px' }}>
+                        <Paper key={answer.id} sx={{ padding: '20px', marginBottom: '20px' }}>
                             <Grid container spacing={2}>
                                 <Grid item xs={2} sm={1} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <Tooltip title="This answer is useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleAnswerVote('up')} sx={{ padding: 0 }}>
+                                        <IconButton onClick={() => handleAnswerVote(answer.id,'up')} sx={{ padding: 0 }}>
                                             <KeyboardArrowUp />
                                         </IconButton>
                                     </Tooltip>
                                     <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{answer.votes}</Typography>
                                     <Tooltip title="This answer is not useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleAnswerVote('down')} sx={{ padding: 0 }}>
+                                        <IconButton onClick={() => handleAnswerVote(answer.id,'down')} sx={{ padding: 0 }}>
                                             <KeyboardArrowDown />
                                         </IconButton>
                                     </Tooltip>
@@ -687,11 +722,11 @@ const QuestionPage = () => {
                                             </Grid>
 
                                             <Box sx={{ marginTop: '5px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                <IconButton onClick={() => handleCommentVote(index, commentIndex, 'up')}>
+                                                <IconButton onClick={() => handleCommentVote(answer.id, commentIndex, 'up')}>
                                                     <KeyboardArrowUp />
                                                 </IconButton>
                                                 <Typography>{comment.votes}</Typography>
-                                                <IconButton onClick={() => handleCommentVote(index, commentIndex, 'down')}>
+                                                <IconButton onClick={() => handleCommentVote(answer.id, commentIndex, 'down')}>
                                                     <KeyboardArrowDown />
                                                 </IconButton>
                                             </Box>
@@ -714,15 +749,15 @@ const QuestionPage = () => {
 
                                     {/* Add Comment Section */}
                                     <Box sx={{ marginTop: '20px' }}>
-                                        {showCommentForms[index] ? (
+                                        {showCommentForms[answer.id] ? (
                                             <PostForm
                                                 placeholder="Write your comment here..."
                                                 buttonText="Submit Answer"
-                                                onSubmit={(comment) => handleAnswerCommentSubmit(comment, index)}
-                                                onCancel={() => toggleCommentForm(index)}
+                                                onSubmit={(comment) => handleAnswerCommentSubmit(comment, answer.id)}
+                                                onCancel={() => toggleCommentForm(answer.id)}
                                             />
                                         ) : (
-                                            <Button variant="outlined" size="small" onClick={() => toggleCommentForm(index)}>
+                                            <Button variant="outlined" size="small" onClick={() => toggleCommentForm(answer.id)}>
                                                 Add Comment
                                             </Button>
                                         )}
