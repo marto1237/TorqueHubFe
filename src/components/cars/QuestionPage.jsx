@@ -98,14 +98,13 @@ const QuestionPage = () => {
             const newComment = await CommentService.addComment({ text: commentText, answerId, userId });
             notifications.show("Comment posted successfully!", { autoHideDuration: 3000, severity: "success" });
     
-            // Update cache by invalidating the current data, forcing a refetch
-            queryClient.invalidateQueries(['question', questionId, currentPage]);
-
-            // Add comment directly to the state for immediate display
-            setComments((prev) => ({
-                ...prev,
-                [answerId]: [...(prev[answerId] || []), newComment]
+            // Update the cache directly for the answer
+            queryClient.invalidateQueries(['question', questionId, currentPage])
+            setComments((prevComments) => ({
+                ...prevComments,
+                [answerId]: [...(prevComments[answerId] || []), newComment]
             }));
+    
     
             // Optionally clear comment input or close form
             setAnswerText("");
@@ -114,10 +113,6 @@ const QuestionPage = () => {
             notifications.show("Failed to post comment", { autoHideDuration: 3000, severity: "error" });
         }
     };
-
-    const questionUser = { username: 'QuestionUser123', profileLink: '/user/questionuser123' };
-    const answerUser = { username: 'AnswerUser456', profileLink: '/user/answeruser456' };
-    const commentUser = { username: 'CommentUser789', profileLink: '/user/commentuser789' }; // Static user for the example, can be dynamic
 
     const queryClient = useQueryClient(); // Access queryClient to manage cache
 
@@ -379,9 +374,11 @@ const QuestionPage = () => {
     const theme = useTheme();
 
     const toggleCommentForm = (index) => {
-        const updatedVisibility = [...showCommentForms];
-        updatedVisibility[index] = !updatedVisibility[index];
-        setShowCommentForms(updatedVisibility);
+        setShowCommentForms((prev) => {
+            const updatedVisibility = [...prev];
+            updatedVisibility[index] = !updatedVisibility[index];
+            return updatedVisibility;
+        });
     };
 
     const getTagStyles = () => ({
@@ -582,7 +579,7 @@ const QuestionPage = () => {
                                 {/* Username and reputation points */}
                                 <Typography variant="caption" color="textSecondary">
                                     Asked by{' '}
-                                    <Link href={questionUser.profileLink} color="primary" underline="hover">
+                                    <Link href={`/user/${question.userName}`} color="primary" underline="hover">
                                         {question.userName} ({question.userPoints})
                                     </Link>
                                 </Typography>
