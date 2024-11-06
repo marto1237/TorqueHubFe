@@ -72,7 +72,7 @@ const QuestionPage = () => {
         try {
             const response = await AnswerService.createAnswer({ text: submittedAnswer, questionId, userId });
             notifications.show("Answer posted successfully", { autoHideDuration: 3000, severity: "success" });
-            queryClient.invalidateQueries(['question', questionId]); // Refetch answers
+            queryClient.invalidateQueries(['question', questionId]);
             setAnswerText(""); // Clear the input after submitting
         } catch (error) {
             notifications.show("Failed to post answer", { autoHideDuration: 3000, severity: "error" });
@@ -98,18 +98,39 @@ const QuestionPage = () => {
             const newComment = await CommentService.addComment({ text: commentText, answerId, userId });
             notifications.show("Comment posted successfully!", { autoHideDuration: 3000, severity: "success" });
     
-            // Update the cache directly for the answer
-            queryClient.invalidateQueries(['question', questionId, currentPage])
-            setComments((prevComments) => ({
-                ...prevComments,
-                [answerId]: [...(prevComments[answerId] || []), newComment]
-            }));
-    
-    
-            // Optionally clear comment input or close form
-            setAnswerText("");
-            toggleCommentForm(answerId);
+            // Update the state to immediately show the new comment
+        setComments((prevComments) => ({
+            ...prevComments,
+            [answerId]: [...(prevComments[answerId] || []), newComment],
+        }));
+
+        // Update the query cache directly for immediate UI feedback
+        queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
+            if (!oldData) return oldData;
+
+            const updatedAnswers = oldData.answers.content.map((answer) => {
+                if (answer.id === answerId) {
+                    return {
+                        ...answer,
+                        comments: [...(answer.comments || []), newComment], // Ensure existing comments are maintained
+                    };
+                }
+                return answer;
+            });
+
+            return {
+                ...oldData,
+                answers: {
+                    ...oldData.answers,
+                    content: updatedAnswers,
+                },
+            };
+        });
+
+        setAnswerText(""); // Clear the comment input
+        toggleCommentForm(answerId);
         }  catch (error) {
+            const errorMessage = error.message || JSON.stringify(error);
             notifications.show("Failed to post comment", { autoHideDuration: 3000, severity: "error" });
         }
     };
