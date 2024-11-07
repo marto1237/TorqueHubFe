@@ -35,7 +35,8 @@ const QuestionPage = () => {
     const [showCommentForms, setShowCommentForms] = useState([]); // Track visibility of comment forms
     const [isBookmarked, setIsBookmarked] = useState(false); // State to track bookmarked status
     const [isFollowing, setIsFollowing] = useState(false);   // State to track following status
-
+    const [isAnswerBookmarked, setIsAnswerBookmarked] = useState({});
+    const [isAnswerFollowing, setIsAnswerFollowing] = useState({});
     const notifications = useAppNotifications();
     const [debounceTimeout, setDebounceTimeout] = useState(null);
     const [userVote, setUserVote] = useState(null);
@@ -345,6 +346,28 @@ const QuestionPage = () => {
         setIsFollowing(!isFollowing);
     };
 
+    const handleAnswerBookmarkToggle = async (answerId) => {
+        const jwtToken = sessionStorage.getItem('jwtToken');
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to bookmark', { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+
+        try {
+            const response = await BookmarkService.toggleBookmarkAnswer(answerId);
+            setIsAnswerBookmarked((prev) => ({
+                ...prev,
+                [answerId]: !prev[answerId],
+            }));
+            notifications.show(response ? 'Bookmarked successfully' : 'Bookmark removed', {
+                autoHideDuration: 3000,
+                severity: response ? 'success' : 'info',
+            });
+        } catch (error) {
+            notifications.show('Error toggling bookmark', { autoHideDuration: 3000, severity: 'error' });
+            console.error("Error bookmarking answer:", error);
+        }
+    };
 
     const handleFollowQuestionToggle = async () => {
         const jwtToken = sessionStorage.getItem('jwtToken'); // Check if the user is logged in
@@ -360,6 +383,26 @@ const QuestionPage = () => {
         } catch (error) {
             notifications.show('Error toggling follow ', { autoHideDuration: 3000, severity: 'error' });
             console.error("Error toggling follow status:", error);
+        }
+    };
+
+    const handleAnswerFollowToggle = async () => {
+        const jwtToken = sessionStorage.getItem('jwtToken');
+        if (!jwtToken) {
+            notifications.show('You need to be logged in to bookmark', { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+
+        try {
+            const response = await FollowService.toggleBookmarkAnswer(answer.id);
+            setIsAnswerFollowing(!isAnswerFollowing);
+            notifications.show(response ? 'Bookmarked successfully' : 'Bookmark removed', {
+                autoHideDuration: 3000,
+                severity: response ? 'success' : 'info',
+            });
+        } catch (error) {
+            notifications.show('Error toggling bookmark', { autoHideDuration: 3000, severity: 'error' });
+            console.error("Error bookmarking answer:", error);
         }
     };
 
@@ -394,13 +437,13 @@ const QuestionPage = () => {
 
     const theme = useTheme();
 
-    const toggleCommentForm = (index) => {
-        setShowCommentForms((prev) => {
-            const updatedVisibility = [...prev];
-            updatedVisibility[index] = !updatedVisibility[index];
-            return updatedVisibility;
-        });
+    const toggleCommentForm = (answerId) => {
+        setShowCommentForms((prev) => ({
+            ...prev,
+            [answerId]: !prev[answerId],  // Toggle visibility for the specific answer ID
+        }));
     };
+    
 
     const getTagStyles = () => ({
         backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#e1ecf4',
@@ -431,6 +474,13 @@ const QuestionPage = () => {
             setAnswers(fetchedAnswers);
             setTotalPages(fetchedTotalPages);
             setCurrentPage(page);
+
+            // Initialize isAnswerBookmarked based on fetched answer data
+            const bookmarkStatus = {};
+            fetchedAnswers.forEach(answer => {
+                bookmarkStatus[answer.id] = answer.isBookmarked;  // assuming each answer has an `isBookmarked` property
+            });
+            setIsAnswerBookmarked(bookmarkStatus);
         } catch (error) {
             console.error("Error fetching answers:", error);
         }
@@ -439,7 +489,7 @@ const QuestionPage = () => {
     // Fetch initial 5 comments for an answer
     const fetchInitialComments = async (answerId) => {
         try {
-            const response = await axios.get(`http://localhost:8080/comments/answer/${answerId}`, {
+            const response = await axios.get(`/comments/answer/${answerId}`, {
                 params: { page: 0, size: commentsPageSize }
             });
             setComments(prev => ({ ...prev, [answerId]: response.data.content }));
@@ -463,6 +513,24 @@ const QuestionPage = () => {
             console.error("Error fetching all comments:", error);
         }
     };
+    
+    // Fetch next 10 comments
+    const fetchMoreComments = async (answerId) => {
+        try {
+            const nextPage = commentPages[answerId] + 1;
+            const response = await axios.get(`/comments/answer/${answerId}`, {
+                params: { page: nextPage, size: 10 }
+            });
+            setComments(prev => ({
+                ...prev,
+                [answerId]: [...prev[answerId], ...response.data.content] // Append new comments
+            }));
+            setCommentPages(prev => ({ ...prev, [answerId]: nextPage }));
+        } catch (error) {
+            console.error("Error fetching more comments:", error);
+        }
+    };
+
     // Handle pagination click
     const handlePageChange = (page) => {
         if (page >= 0 && page < totalPages) {
@@ -475,7 +543,7 @@ const QuestionPage = () => {
         const answerWebSocketService = AnswerWebSocketService(questionId, handleNewAnswer);
         answerWebSocketService.connect();
         return () => answerWebSocketService.disconnect(); // Cleanup WebSocket on component unmount
-      }, [questionId]);
+    }, [questionId]);
 
     
 
@@ -553,9 +621,9 @@ const QuestionPage = () => {
                             </Tooltip>
                             {/* Bookmark Button */}
                             <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
-                                <IconButton onClick={handleBookmarkQuestionToggle}>
-                                    {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
-                                </IconButton>
+                                        <IconButton onClick={handleBookmarkToggle}>
+                                            {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
+                                        </IconButton>
                             </Tooltip>
                         </Grid>
 
@@ -639,9 +707,9 @@ const QuestionPage = () => {
                                         </IconButton>
                                     </Tooltip>
                                     {/* Bookmark Button */}
-                                    <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
-                                        <IconButton onClick={handleBookmarkToggle}>
-                                            {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
+                                    <Tooltip title={isAnswerBookmarked[answer.id] ? "Remove Bookmark" : "Bookmark this answer"} placement="right" arrow>
+                                        <IconButton onClick={() => handleAnswerBookmarkToggle(answer.id)}>
+                                            {isAnswerBookmarked[answer.id] ? <Bookmark /> : <BookmarkBorder />}
                                         </IconButton>
                                     </Tooltip>
                                 </Grid>
@@ -674,9 +742,9 @@ const QuestionPage = () => {
 
                                         <Box sx={{ marginTop: '20px', textAlign: 'left' }}>
                                             {/* Follow Button */}
-                                            <Tooltip title={isFollowing ? "Unfollow this answer" : "Follow this answer"} placement="right" arrow>
-                                                <Button onClick={handleFollowToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
-                                                    {isFollowing ? "Following" : "Follow"}
+                                            <Tooltip title={isAnswerFollowing[answer.id] ? "Unfollow this answer" : "Follow this answer"} placement="right" arrow>
+                                                <Button onClick={() => handleAnswerFollowToggle(answer.id)} variant={isAnswerFollowing[answer.id] ? "contained" : "outlined"} size="small">
+                                                    {isAnswerFollowing[answer.id] ? "Following" : "Follow"}
                                                 </Button>
                                             </Tooltip>
                                         </Box>
@@ -702,7 +770,7 @@ const QuestionPage = () => {
                                     </Box>
 
                                     {/* Comments Section */}
-                                    {answer.comments.map((comment, commentIndex) => (
+                                     {answer.comments.slice(0, 5).map((comment, commentIndex) => (
                                         <Box key={commentIndex} sx={{ marginTop: '10px', paddingLeft: { xs: 0, sm: '20px' }, borderLeft: '3px solid #ccc' }}>
                                             <Grid container>
                                                 <Grid item xs={9}>
@@ -728,14 +796,7 @@ const QuestionPage = () => {
                                                         </Link>
                                                     </Typography>
 
-                                                    {/* Points moved to new line */}
-                                                    <Box sx={{ marginTop: '5px' }}>
-                                                        <Tooltip title="Reputation score" placement="left-start" arrow>
-                                                            <Typography variant="caption" color="textSecondary">
-                                                                {comment.reputationResponse}
-                                                            </Typography>
-                                                        </Tooltip>
-                                                    </Box>
+                                                    
                                                 </Grid>
                                             </Grid>
 
@@ -764,21 +825,29 @@ const QuestionPage = () => {
                                         </Box>
 
                                     ))}
+                                    {answer.comments.length > 5 && (
+                                        <Button variant="outlined" size="small" onClick={() => fetchMoreComments(answer.id)}>
+                                            Load More Comments
+                                        </Button>
+                                    )}
 
                                     {/* Add Comment Section */}
                                     <Box sx={{ marginTop: '20px' }}>
-                                        {showCommentForms[answer.id] ? (
+                                        {showCommentForms[answer.id] && (
                                             <PostForm
                                                 placeholder="Write your comment here..."
-                                                buttonText="Submit Answer"
+                                                buttonText="Submit Comment"
                                                 onSubmit={(comment) => handleAnswerCommentSubmit(comment, answer.id)}
-                                                onCancel={() => toggleCommentForm(answer.id)}
+                                                onCancel={() => toggleCommentForm(answer.id)}  // Close the form on cancel
                                             />
-                                        ) : (
-                                            <Button variant="outlined" size="small" onClick={() => toggleCommentForm(answer.id)}>
-                                                Add Comment
-                                            </Button>
                                         )}
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => toggleCommentForm(answer.id)}
+                                        >
+                                            {showCommentForms[answer.id] ? "Close Comment" : "Add Comment"}
+                                        </Button>
                                     </Box>
 
 
