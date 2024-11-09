@@ -6,13 +6,13 @@ const AnswerService = {
     },
 
     upvoteAnswer: (answerId, userId) => {
-        return api.post(`/answers/${answerId}/upvote`, { userId }, { requiresAuth: true })
+        return api.post(`/answers/${answerId}/upvote`, {}, { requiresAuth: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
 
     downvoteAnswer: (answerId, userId) => {
-        return api.post(`/answers/${answerId}/downvote`, { userId }, { requiresAuth: true })
+        return api.post(`/answers/${answerId}/downvote`, {}, { requiresAuth: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
