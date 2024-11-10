@@ -48,6 +48,7 @@ const QuestionPage = () => {
 
     const [answerText, setAnswerText] = useState('');
     const [userAnswerVotes, setUserAnswerVotes] = useState({});
+    const [commentUserVotes, setUserCommentVotes] = useState({}); // Track vote state for each comment
 
     const validateAnswer = (answerText) => {
         return answerText.trim().length >= 3 && answerText.trim().length <= 100000;
@@ -173,15 +174,25 @@ const QuestionPage = () => {
         const bookmarkState = {};
         const answerVotesState = {};
         const answerUserVotesState = {};
+        const commentVotesState = {};
+        const commentUserVotesState = {};
         
         answersContent.forEach((answer) => {
             followState[answer.id] = answer.isFollowing;
             bookmarkState[answer.id] = answer.isBookmarked;
+            answerUserVotesState[answer.id] = answer.userVote;
+            answer.comments.forEach((comment) => {
+                commentUserVotesState[comment.id] = comment.userVote;
+            });
             
         });
     
         setIsAnswerFollowing((prev) => ({ ...prev, ...followState }));
         setIsAnswerBookmarked((prev) => ({ ...prev, ...bookmarkState }));
+        setAnswerVotes(answerVotesState);  // Initialize votes state
+        setUserAnswerVotes(answerUserVotesState);  // Initialize user votes state
+        setCommentVotes(commentVotesState);
+        setUserCommentVotes(commentUserVotesState);
     };
     
     useEffect(() => {
@@ -262,12 +273,12 @@ const QuestionPage = () => {
             notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
             return;
         }
-
+    
         // Clear the previous debounce timeout if the user clicks again before delay
         if (debounceTimeout) {
             clearTimeout(debounceTimeout);
         }
-
+    
         const newDebounceTimeout = setTimeout(async () => {
             try {
                 let response;
@@ -276,26 +287,36 @@ const QuestionPage = () => {
                 let newVotes;
     
                 if (type === 'up') {
-                    response = await AnswerService.upvoteAnswer(answerId);
                     if (currentVote === 'up') {
+                        // Neutralize the upvote by removing it
+                        response = await AnswerService.upvoteAnswer(answerId);
                         newVotes = currentVotes - 1;
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: null }));
                     } else if (currentVote === 'down') {
+                        // Switch from downvote to upvote
+                        response = await AnswerService.upvoteAnswer(answerId);
                         newVotes = currentVotes + 2;
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: 'up' }));
                     } else {
+                        // Add an upvote
+                        response = await AnswerService.upvoteAnswer(answerId);
                         newVotes = currentVotes + 1;
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: 'up' }));
                     }
                 } else if (type === 'down') {
-                    response = await AnswerService.downvoteAnswer(answerId);
                     if (currentVote === 'down') {
+                        // Neutralize the downvote by removing it
+                        response = await AnswerService.downvoteAnswer(answerId);
                         newVotes = currentVotes + 1;
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: null }));
                     } else if (currentVote === 'up') {
+                        // Switch from upvote to downvote
+                        response = await AnswerService.downvoteAnswer(answerId);
                         newVotes = currentVotes - 2;
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: 'down' }));
                     } else {
+                        // Add a downvote
+                        response = await AnswerService.downvoteAnswer(answerId);
                         newVotes = currentVotes - 1;
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: 'down' }));
                     }
@@ -318,9 +339,6 @@ const QuestionPage = () => {
                         answers: { ...oldData.answers, content: updatedAnswers },
                     };
                 });
-
-                await queryClient.invalidateQueries(['question', questionId]);
-                await queryClient.refetchQueries(['question', questionId]); // Force refetch
     
                 notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
             } catch (error) {
@@ -344,43 +362,60 @@ const QuestionPage = () => {
     
         try {
             let response;
-            const currentVote = commentVotes[commentId] || null;
-            let newVotes = comments[commentId]?.votes || 0;
-
+            const currentVote = commentUserVotes[commentId] || null;
+            const currentVotes = commentVotes[commentId] || 0;
+            let newVotes = currentVotes;
+    
             if (type === 'up') {
-                response = await CommentService.upvoteComment(commentId);
                 if (currentVote === 'up') {
+                    response = await CommentService.upvoteComment(commentId);
                     newVotes -= 1;
-                    setCommentVotes((prev) => ({ ...prev, [commentId]: null }));
+                    setUserCommentVotes((prev) => ({ ...prev, [commentId]: null }));
                 } else if (currentVote === 'down') {
+                    // Switch from downvote to upvote
+                    response = await CommentService.upvoteComment(commentId);
                     newVotes += 2;
-                    setCommentVotes((prev) => ({ ...prev, [commentId]: 'up' }));
+                    setUserCommentVotes((prev) => ({ ...prev, [commentId]: 'up' }));
                 } else {
+                    // Add an upvote
+                    response = await CommentService.upvoteComment(commentId);
                     newVotes += 1;
-                    setCommentVotes((prev) => ({ ...prev, [commentId]: 'up' }));
+                    setUserCommentVotes((prev) => ({ ...prev, [commentId]: 'up' }));
                 }
             } else if (type === 'down') {
-                response = await CommentService.downvoteComment(commentId);
                 if (currentVote === 'down') {
+                    // Neutralize the downvote by removing it
+                    response = await CommentService.downvoteComment(commentId); 
                     newVotes += 1;
-                    setCommentVotes((prev) => ({ ...prev, [commentId]: null }));
+                    setUserCommentVotes((prev) => ({ ...prev, [commentId]: null }));
                 } else if (currentVote === 'up') {
+                    // Switch from upvote to downvote
+                    response = await CommentService.downvoteComment(commentId);
                     newVotes -= 2;
-                    setCommentVotes((prev) => ({ ...prev, [commentId]: 'down' }));
+                    setUserCommentVotes((prev) => ({ ...prev, [commentId]: 'down' }));
                 } else {
+                    // Add a downvote
+                    response = await CommentService.downvoteComment(commentId);
                     newVotes -= 1;
-                    setCommentVotes((prev) => ({ ...prev, [commentId]: 'down' }));
+                    setUserCommentVotes((prev) => ({ ...prev, [commentId]: 'down' }));
                 }
             }
     
-            // Update UI state immediately
-            setCommentVotes((prev) => ({ ...prev, [commentId]: type }));
-            setComments((prevComments) => ({
-                ...prevComments,
-                [commentId]: { ...prevComments[commentId], votes: newVotes },
-            }));
+            // Update the UI state immediately
+            setCommentVotes((prevVotes) => ({ ...prevVotes, [commentId]: newVotes }));
+    
+            // Update the query cache to maintain consistency
+            queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
+                if (!oldData) return oldData;
+                const updatedAnswers = oldData.answers.content.map((answer) => {
+                    const updatedComments = answer.comments.map((comment) =>
+                        comment.id === commentId ? { ...comment, votes: newVotes } : comment
+                    );
+                    return { ...answer, comments: updatedComments };
+                });
+                return { ...oldData, answers: { ...oldData.answers, content: updatedAnswers } };
+            });
 
-             // Invalidate the question cache to update the UI
             queryClient.invalidateQueries(['question', questionId]);
     
             notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
@@ -388,7 +423,9 @@ const QuestionPage = () => {
             notifications.show('Error occurred while voting on comment', { autoHideDuration: 3000, severity: 'error' });
             console.error("Error voting on comment:", error);
         }
-    };    
+    };
+    
+    
 
 
     // Handle bookmarking the question
@@ -511,11 +548,6 @@ const QuestionPage = () => {
         }
     };
 
-
-    
-    
-
-
     const handleAcceptAnswer = (index) => {
         setAcceptedAnswerIndex(index);
     };
@@ -571,18 +603,6 @@ const QuestionPage = () => {
         }
     };
 
-    // Fetch initial 5 comments for an answer
-    const fetchInitialComments = async (answerId) => {
-        try {
-            const response = await axios.get(`/comments/answer/${answerId}`, {
-                params: { page: 0, size: commentsPageSize }
-            });
-            setComments(prev => ({ ...prev, [answerId]: response.data.content }));
-            setCommentPages(prev => ({ ...prev, [answerId]: 0 })); // Initialize page number for this answer's comments
-        } catch (error) {
-            console.error("Error fetching initial comments:", error);
-        }
-    };
 
     const fetchAllComments = async (answerId) => {
         try {
@@ -894,11 +914,11 @@ const QuestionPage = () => {
 
                                             <Box sx={{ marginTop: '5px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                                                 <IconButton onClick={() => handleCommentVote(comment.id, 'up')}>
-                                                    <KeyboardArrowUp />
+                                                    <KeyboardArrowUp color={commentUserVotes[comment.id] === 'up' ? 'primary' : 'inherit'} />
                                                 </IconButton>
                                                 <Typography>{comment.votes}</Typography>
                                                 <IconButton onClick={() => handleCommentVote(comment.id, 'down')}>
-                                                    <KeyboardArrowDown />
+                                                    <KeyboardArrowDown color={commentUserVotes[comment.id] === 'down' ? 'primary' : 'inherit'} />
                                                 </IconButton>
                                             </Box>
 
