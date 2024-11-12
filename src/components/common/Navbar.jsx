@@ -83,6 +83,11 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         }
     }, [loggedIn, userId, userDetails]);
 
+    const handleShowAllNotifications = () => {
+        handleCloseNotifMenu();
+        navigate('/notifications');
+    };
+
 
 
     // Handle user logout
@@ -474,10 +479,9 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                             primary={
                                                 <span
                                                     onClick={() => handleNotificationClick(notif.id, notif.url)}
-                                                    style={{ cursor: 'pointer' }}
-                                                >
-                                                    {notif.message}
-                                                </span>
+                                                    style={{ cursor: 'pointer', wordWrap: 'break-word', overflowWrap: 'anywhere' }}
+                                                    dangerouslySetInnerHTML={{ __html: notif.message }} // Render HTML formatting
+                                                />
                                             }
                                             secondary={timeAgo(notif.createdAt).toLocaleString()}
                                         />
@@ -495,9 +499,14 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                 ))}
 
                                 <Divider />
-                                <MenuItem  onClick={handleMarkAllAsRead}>
-                                    <Typography textAlign="center">Mark all as read</Typography>
-                                </MenuItem>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1 }}>
+                                        <Button onClick={handleMarkAllAsRead} variant="text" size="small">
+                                            Mark All as Read
+                                        </Button>
+                                        <Button onClick={handleShowAllNotifications} variant="text" size="small">
+                                            Show All
+                                        </Button>
+                                    </Box>
                             </Menu>
                             </MenuItem>
                             <MenuItem>

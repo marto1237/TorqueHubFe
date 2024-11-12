@@ -39,6 +39,7 @@ const QuestionListing = lazy(() => import('./components/cars/QuestionList'));
 const NotFoundPage = lazy(() => import('./components/common/NotFoundPage'));
 const PaymentPage = lazy(() => import('./pages/Payment'));
 const Users = lazy(() => import('./pages/Users'));
+const NotificationsPage = lazy(() => import('./components/common/NotificationPage'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -130,6 +131,7 @@ const App = () => {
                                 <Route path="/payment" element={<PaymentPage />} />
                                 <Route path="*" element={<NotFoundPage />} />
                                 <Route path={"/users"} element={<Users />} />
+                                <Route path="/notifications" element={<NotificationsPage />} />
                             </Routes>
                         </NotificationProvider>
                     </Suspense>
