@@ -4,7 +4,7 @@ import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown } from '@mui/
 import {BookmarkBorder} from "@material-ui/icons";
 import { useTheme } from '@mui/material/styles';
 import PostForm from "../forum/PostForm";
-import {useParams , useNavigate} from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from 'axios';
 import QuestionService from '../configuration/Services/QuestionService';
 import AnswerService from '../configuration/Services/AnswerService';
@@ -20,13 +20,17 @@ const QuestionPage = () => {
 
     const { questionId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const initialized = useRef(false);
 
-    const pageSize = 10;  // Number of answers per page
+    const queryParams = new URLSearchParams(location.search);
+    const initialPage = parseInt(queryParams.get('page') || '0', 10);
+    const pageSize = parseInt(queryParams.get('size') || '10', 10);
+
     const commentsPageSize = 5;  // Number of comments to load initially per answer
     const [answer, setAnswer] = useState('');
     const [answers, setAnswers] = useState([]);
-    const [currentPage, setCurrentPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(initialPage);
     const [totalPages, setTotalPages] = useState(1);
     const [commentPages, setCommentPages] = useState({});
     const [comments, setComments] = useState({});
@@ -637,10 +641,10 @@ const QuestionPage = () => {
     };
 
     // Handle pagination click
-    const handlePageChange = (page) => {
-        if (page >= 0 && page < totalPages) {
-            setCurrentPage(page);
-            fetchAnswers(page);
+    const handlePageChange = (newPage) => {
+        if (newPage >= 0 && newPage < totalPages) {
+            setCurrentPage(newPage);
+            navigate(`/questions/${questionId}?page=${newPage}&size=${pageSize}`); // Update URL with page and size
         }
     };
 

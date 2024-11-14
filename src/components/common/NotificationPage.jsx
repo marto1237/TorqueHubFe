@@ -1,17 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Typography, Paper, List, ListItem, ListItemText, Divider, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Box, Button, Typography, Paper, List, ListItem, ListItemText, Divider } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { useLocation, useNavigate } from 'react-router-dom';
 import NotificationService from "../configuration/Services/NotificationService";
 import { timeAgo } from "../configuration/utils/TimeFormating";
-import { useTheme } from '@mui/material/styles';
 import { useAppNotifications } from '../common/NotificationProvider';
 
 const NotificationsPage = () => {
     const theme = useTheme();
     const notificationsApp = useAppNotifications();
     const [notifications, setNotifications] = useState([]);
-    const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Parse URL query parameters for page and pageSize
+    const queryParams = new URLSearchParams(location.search);
+    const initialPage = parseInt(queryParams.get('page') || '0', 10);
+    const initialPageSize = parseInt(queryParams.get('pageSize') || '20', 10);
+
+    const [page, setPage] = useState(initialPage);
+    const [pageSize, setPageSize] = useState(initialPageSize);
 
     useEffect(() => {
         fetchNotifications(page, pageSize);
@@ -19,8 +28,6 @@ const NotificationsPage = () => {
 
     const fetchNotifications = async (currentPage, size) => {
         const token = sessionStorage.getItem('jwtToken');
-        console.log("Token:", token);
-
         if (!token) {
             notificationsApp.show('You need to be logged in to see your notifications', {
                 autoHideDuration: 3000,
@@ -31,8 +38,8 @@ const NotificationsPage = () => {
 
         try {
             const response = await NotificationService.getAllUserNotifications(currentPage, size);
-            setNotifications(response.content); // Save fetched notifications
-            setTotalPages(response.totalPages); // Set total pages based on API response
+            setNotifications(response.content);
+            setTotalPages(response.totalPages);
         } catch (error) {
             console.error('Error fetching notifications:', error);
             notificationsApp.show('Error fetching notifications. Please try again later.', {
@@ -45,7 +52,30 @@ const NotificationsPage = () => {
     const handlePageChange = (newPage) => {
         if (newPage >= 0 && newPage < totalPages) {
             setPage(newPage);
+            // Update URL with new page and pageSize values
+            navigate(`/notifications?page=${newPage}&pageSize=${pageSize}`);
             window.scrollTo(0, 0);
+        }
+    };
+
+    const markAsRead = async (notificationId) => {
+        try {
+            await NotificationService.markNotificationAsRead(notificationId);
+            setNotifications((prevNotifications) =>
+                prevNotifications.map(notif => 
+                    notif.id === notificationId ? { ...notif, read: true } : notif
+                )
+            );
+            notificationsApp.show('Notification marked as read.', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            notificationsApp.show('Failed to mark notification as read.', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
         }
     };
 
@@ -68,6 +98,15 @@ const NotificationsPage = () => {
                                         primary={<span dangerouslySetInnerHTML={{ __html: notif.message }} />}
                                         secondary={`${timeAgo(notif.createdAt)} - ${notif.read ? 'Read' : 'Unread'}`}
                                     />
+                                    {!notif.read && (
+                                        <Button 
+                                            onClick={() => markAsRead(notif.id)} 
+                                            variant="outlined" 
+                                            sx={{ marginLeft: '10px' }}
+                                        >
+                                            Mark as Read
+                                        </Button>
+                                    )}
                                 </ListItem>
                             </Paper>
                         ))
@@ -96,7 +135,7 @@ const NotificationsPage = () => {
                         Next
                     </Button>
                 </Box>
-                </Box>
+            </Box>
         </Box>
     );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Grid, Paper, Chip, IconButton, Link, Tooltip, Pagination, Skeleton } from '@mui/material';
 import { KeyboardArrowUp, KeyboardArrowDown, Bookmark } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import FilterPanel from '../common/FilterPanel';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,14 +11,21 @@ import QuestionService from '../configuration/Services/QuestionService';
 const QuestionListPage = () => {
     const theme = useTheme();
     const navigate = useNavigate();
+    const location = useLocation(); 
     const queryClient = useQueryClient(); // Access queryClient to manage cache
 
     const [selectedTags, setSelectedTags] = useState([]);
     const [noAnswers, setNoAnswers] = useState(false);
     const [noAcceptedAnswer, setNoAcceptedAnswer] = useState(false);
     const [sortOption, setSortOption] = useState('newest');
-    const [page, setPage] = useState(1);
-    const pageSize = 10;
+
+    const queryParams = new URLSearchParams(location.search);
+    const initialPage = parseInt(queryParams.get('page') || '1', 10);
+    const [page, setPage] = useState(initialPage);
+    
+    
+    
+    const pageSize = parseInt(queryParams.get('size') || '10', 10);
 
     const handleTagClick = (tag) => {
         setSelectedTags((prevTags) =>
@@ -44,9 +51,9 @@ const QuestionListPage = () => {
 
     // Fetch questions using react-query
     const { data, isLoading, error } = useQuery({
-        queryKey: ['questions', page],
+        queryKey: ['questions',  page, pageSize],
         queryFn: async () => {
-            const cachedData = queryClient.getQueryData(['questions', page]); // Check for cached data
+            const cachedData = queryClient.getQueryData(['questions', page, pageSize]); // Check for cached data
             if (cachedData) {
                 console.log("Using cached data for page:", page);
             }
@@ -56,7 +63,7 @@ const QuestionListPage = () => {
                 console.log("API Response Data:", response); // Log API response
     
                 // Set the query data into the cache manually after successful API fetch
-                queryClient.setQueryData(['questions', page], response);
+                queryClient.setQueryData(['questions', page, pageSize], response);
                 console.log("Data cached for page:", page, response); // Log cache insertion
     
                 return response;
@@ -78,12 +85,13 @@ const QuestionListPage = () => {
     
     // Single useEffect to log cached data
     useEffect(() => {
-        const cachedData = queryClient.getQueryData(['questions', page]);
+        const cachedData = queryClient.getQueryData(['questions', page, pageSize]);
         console.log("Cached Data (on page load):", cachedData); // Print cached data if exists
-    }, [page, queryClient]);
+    }, [page, pageSize, queryClient]);
 
     const handlePageChange = (event, value) => {
         setPage(value);
+        navigate(`?page=${value}&size=${pageSize}`);
     };
 
     const formatTimeAgo = (date) => {
