@@ -33,7 +33,12 @@ const TagService = {
         return api.delete(`/tags/${tagId}`, { requiresAuth: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
-    }
+    },
+    getTopTags: (query) => {
+        return api.get('/tags/top', { params: { query } })
+            .then(response => response.data)
+            .catch(error => Promise.reject(error));
+    },
 };
 
 export default TagService;

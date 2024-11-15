@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import DOMPurify from 'dompurify';
 
 const CreatePost = () => {
     const [title, setTitle] = useState('');

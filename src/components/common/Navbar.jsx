@@ -535,7 +535,8 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                                         {/* Display the profile image if it exists, else display the default avatar */}
                                         {avatarURL ?(
-                                            <Avatar src={avatarURL} sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }}/>
+                                            <Avatar src={avatarURL} sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }}
+                                            alt={userDetails?.username ? `${userDetails.username}'s profile picture` : 'User profile picture'} />
                                         ) : (
                                             <Avatar {...stringAvatar(userDetails?.username ? userDetails.username[0] : 'User' )} />
                                         )}

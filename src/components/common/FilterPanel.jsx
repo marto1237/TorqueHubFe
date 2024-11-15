@@ -1,25 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import {
-    Box,
-    Typography,
-    Chip,
-    FormControlLabel,
-    Checkbox,
-    RadioGroup,
-    Radio,
-    TextField,
-    CircularProgress,
-    Button,
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemText,
-    IconButton,
-    Tooltip,
+import React, { useState, useEffect, useMemo } from 'react';
+import {Box,Typography,Chip,FormControlLabel,Checkbox,RadioGroup,Radio,TextField,CircularProgress,
+    Button,List,ListItem,ListItemButton,ListItemText,IconButton,Tooltip,Autocomplete
 } from '@mui/material';
 import { HelpOutline } from '@mui/icons-material'; // For the info icon
 import axios from 'axios';
 import { useTheme } from '@mui/material/styles';
+import TagService from '../configuration/Services/TagService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import FilterService from '../configuration/Services/FilterService';
 
 const FilterPanel = ({
                          selectedTags,
@@ -30,49 +18,41 @@ const FilterPanel = ({
                          setNoAcceptedAnswer,
                          sortOption,
                          setSortOption,
-                         onApplyFilters
+                         onApplyFilters,
+                         page,
+                         pageSize
                      }) => {
     const theme = useTheme();
     const [loadingTags, setLoadingTags] = useState(false);
-    const [availableTags, setAvailableTags] = useState([]);
-    const [filteredTags, setFilteredTags] = useState([]);
     const [tagSearch, setTagSearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false); // To control visibility of dropdown
 
-    // Fetch tags from the server as user types
-    useEffect(() => {
-        if (tagSearch) {
-            setLoadingTags(true);
-            axios
-                .get(`http://localhost:8080/tags/search?query=${tagSearch}`) // Replace with your backend API
-                .then((response) => {
-                    setAvailableTags(response.data); // Assuming API returns an array of tag objects { name: 'tag', count: 123 }
-                    setFilteredTags(response.data);
-                    setLoadingTags(false);
-                })
-                .catch((error) => {
-                    console.error('Error fetching tags:', error);
-                    setLoadingTags(false);
-                });
-        } else {
-            setAvailableTags([]);
-            setFilteredTags([]);
-        }
-    }, [tagSearch]);
+    const maxTags = 5;
+    const { data: availableTags = [], isLoading } = useQuery({
+        queryKey: ['tags', tagSearch],
+        queryFn: TagService.getAllTags,
+        staleTime: 5 * 60 * 1000, // Cache tags for 5 minutes
+        refetchOnWindowFocus: false,
+    });
 
-    // Filter tags based on input value
-    useEffect(() => {
-        if (tagSearch) {
-            const filtered = availableTags.filter((tag) =>
-                tag.name.toLowerCase().includes(tagSearch.toLowerCase())
-            );
-            setFilteredTags(filtered);
-            setShowDropdown(true); // Show dropdown when user types
-        } else {
-            setShowDropdown(false); // Hide dropdown if search is cleared
-        }
-    }, [tagSearch, availableTags]);
+    // Filter tags based on search input
+    const filteredTags = useMemo(() => {
+        return (availableTags || []).filter(tag =>
+            tag.name.toLowerCase().includes(tagSearch.toLowerCase())
+        );
+    }, [availableTags, tagSearch]);
+    
 
+
+    // Handle tag selection with a limit
+    const handleTagChange = (event, newValue) => {
+        const uniqueTags = Array.from(new Set(newValue.map((item) => item.name)));
+        setSelectedTags(uniqueTags.slice(0, maxTags)); // Limit tags to maxTags
+
+        // Log selected tags for debugging
+        console.log("Selected Tags after tag change:", uniqueTags);
+    };
+   
     const handleTagClick = (tag) => {
         if (!selectedTags.includes(tag.name)) {
             setSelectedTags([...selectedTags, tag.name]); // Only add tag name to selected
@@ -81,6 +61,39 @@ const FilterPanel = ({
         setShowDropdown(false); // Hide the dropdown after selecting
     };
 
+    const handleTagSearchChange = (event) => {
+        setTagSearch(event.target.value);
+        setShowDropdown(true); // Show dropdown when typing
+    };
+
+    const handleApplyFilters = async (event) => {
+        event.preventDefault();
+    
+        // Log the API request parameters before calling FilterService
+        console.log("Applying Filters with the following parameters:", {
+            tags: selectedTags,
+            noAnswers,
+            noAcceptedAnswer,
+            sortOption,
+            page,
+            pageSize
+        });
+    
+        try {
+            const filteredQuestions = await FilterService.filterQuestions(
+                selectedTags,
+                noAnswers,
+                noAcceptedAnswer,
+                sortOption,
+                page,
+                pageSize
+            );
+            onApplyFilters(filteredQuestions);
+        } catch (error) {
+            console.error("Failed to fetch filtered questions:", error);
+        }
+    };
+    
     return (
         <Box
             sx={{
@@ -136,73 +149,42 @@ const FilterPanel = ({
                 <Typography variant="body1" fontWeight="bold">
                     Tagged With
                 </Typography>
-                <TextField
-                    variant="filled"
-                    placeholder="Search tags"
-                    value={tagSearch}
-                    onChange={(e) => setTagSearch(e.target.value)}
-                    size="small"
-                    fullWidth
-                    sx={{ marginTop: '10px', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}
-                />
-                {loadingTags ? (
-                    <CircularProgress size={20} sx={{ marginTop: '10px' }} />
-                ) : (
-                    showDropdown && (
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                zIndex: 1000,
-                                backgroundColor: theme.palette.background.paper,
-                                boxShadow: theme.shadows[2],
-                                maxHeight: '200px',
-                                overflowY: 'auto',
-                                width: '100%',
-                                mt: 1,
+                <Autocomplete
+                    multiple
+                    options={filteredTags}
+                    getOptionLabel={(option) => option.name}
+                    onChange={handleTagChange}
+                    renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                            <Chip
+                                key={index}
+                                label={option.name}
+                                {...getTagProps({ index })}
+                                sx={{ m: '0.25rem' }}
+                            />
+                        ))
+                    }
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Tags"
+                            placeholder="Search and select tags"
+                            variant="filled"
+                            onChange={handleTagSearchChange}
+                            InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                    <>
+                                        {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                        {params.InputProps.endAdornment}
+                                    </>
+                                ),
                             }}
-                        >
-                            {filteredTags.length === 0 ? (
-                                <Typography sx={{ padding: '10px', color: theme.palette.text.secondary }}>
-                                    No tags found
-                                </Typography>
-                            ) : (
-                                <List>
-                                    {filteredTags.map((tag, index) => (
-                                        <ListItem key={index} disablePadding>
-                                            <ListItemButton onClick={() => handleTagClick(tag)}>
-                                                {/* Tag name */}
-                                                <ListItemText
-                                                    primary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                            <Chip
-                                                                label={tag.name}
-                                                                sx={{
-                                                                    backgroundColor: theme.palette.background.default,
-                                                                    fontWeight: 'bold',
-                                                                    marginRight: '8px',
-                                                                }}
-                                                            />
-                                                            {/* Tag count */}
-                                                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                                                                {tag.count}
-                                                            </Typography>
-                                                            {/* Info icon */}
-                                                            <Tooltip title={`Info about ${tag.name}`}>
-                                                                <IconButton sx={{ marginLeft: 'auto' }}>
-                                                                    <HelpOutline fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </Box>
-                                                    }
-                                                />
-                                            </ListItemButton>
-                                        </ListItem>
-                                    ))}
-                                </List>
-                            )}
-                        </Box>
-                    )
-                )}
+                        />
+                    )}
+                    limitTags={maxTags}
+                    sx={{ mt: 1 }}
+                />
 
                 {/* Selected Tags */}
                 <Box sx={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
@@ -222,7 +204,7 @@ const FilterPanel = ({
 
             {/* Apply Button */}
             <Box sx={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '20px' }}>
-                <Button variant="contained" color="primary" onClick={onApplyFilters}>Apply Filter</Button>
+                <Button type="button" variant="contained" color="primary" onClick={handleApplyFilters}>Apply Filter</Button>
             </Box>
         </Box>
     );

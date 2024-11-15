@@ -5,6 +5,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useTheme } from '@mui/material/styles';
 import Picker from 'emoji-picker-react';
+import DOMPurify from 'dompurify';
 
 // Define toolbar options for the Quill editor
 const toolbarOptions = [
@@ -100,9 +101,9 @@ const PostForm = ({ placeholder, buttonText, onSubmit }) => {
 
     // Handle form submission
     const handleSubmit = () => {
-        console.log("Submitting Post Content:", postContent);
-        if (postContent.trim()) {
-            onSubmit(postContent);
+        const sanitizedContent = DOMPurify.sanitize(postContent);
+        if (sanitizedContent.trim()) {
+            onSubmit(sanitizedContent);
             setPostContent('');
             setHistory([]);
         }

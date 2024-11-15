@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Button, Typography, IconButton, Grid, Divider, Paper, Tooltip, Link, Chip } from '@mui/material';
+import { Box, Button, Typography, IconButton, Grid, Divider, Paper, Tooltip, Link, Chip, Skeleton } from '@mui/material';
 import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown } from '@mui/icons-material';
 import {BookmarkBorder} from "@material-ui/icons";
 import { useTheme } from '@mui/material/styles';
@@ -610,9 +610,7 @@ const QuestionPage = () => {
 
     const fetchAllComments = async (answerId) => {
         try {
-            const response = await axios.get(`http://localhost:8080/comments/answer/${answerId}`, {
-                params: { page: commentPages[answerId] + 1, size: commentsPageSize }
-            });
+            const response = await CommentService.getCommentsByAnswerId(answerId,commentPages[answerId] + 1,commentsPageSize)
             setComments(prev => ({
                 ...prev,
                 [answerId]: [...prev[answerId], ...response.data.content] // Append new comments
@@ -711,39 +709,62 @@ const QuestionPage = () => {
     return (
         <Box sx={{ padding: { xs: '20px', sm: '100px' }, backgroundColor: theme.palette.background.paper }}>
             <Box sx={{  padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, maxWidth: '1000px', margin: 'auto', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}>
-                <Typography variant="h5"
-                            dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.title) }}
-                            sx={{
-                                fontWeight: 'bold', marginBottom: '20px',
-                                wordWrap: 'break-word',   // Breaks long words
-                                overflowWrap: 'anywhere', // Allows breaking words anywhere
-                                whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
-                            }}>
-                </Typography>
-
+                {/* Question Title */}
+                {isQuestionLoading ? (
+                    <Skeleton variant="text" width="80%" height={40} />
+                ) : (
+                    <Typography variant="h5"
+                                dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.title) }}
+                                sx={{
+                                    fontWeight: 'bold', marginBottom: '20px',
+                                    wordWrap: 'break-word',   // Breaks long words
+                                    overflowWrap: 'anywhere', // Allows breaking words anywhere
+                                    whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
+                                }}>
+                    </Typography>
+                )}
+                
                 <Paper sx={{  padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, marginBottom: '40px', backgroundColor: theme.palette.background.paper }}>
                     <Grid container spacing={2}>
                         <Grid item xs={2} sm={1} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
-                                <IconButton onClick={() => handleQuestionVote('up')}  sx={{ padding: 0 }}>
-                                    <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'}/>
-                                </IconButton>
-                            </Tooltip>
-                            <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
-                            <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
-                                <IconButton onClick={() => handleQuestionVote('down')}  sx={{ padding: 0 }}>
-                                    <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
-                                </IconButton>
-                            </Tooltip>
-                            {/* Bookmark Button */}
-                            <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
-                                        <IconButton onClick={handleBookmarkToggle}>
-                                            {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
+                             {/* Vote Buttons and Bookmark Icon with Skeletons */}
+                             {isQuestionLoading ? (
+                                <>
+                                    <Skeleton variant="circular" width={40} height={40} />
+                                    <Skeleton variant="text" width={40} height={30} />
+                                    <Skeleton variant="circular" width={40} height={40} />
+                                </>
+                            ) : (
+                                    <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
+                                        <IconButton onClick={() => handleQuestionVote('up')}  sx={{ padding: 0 }}>
+                                            <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'}/>
                                         </IconButton>
-                            </Tooltip>
+                                    </Tooltip>
+                                    )}
+                                    <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
+                                    <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
+                                        <IconButton onClick={() => handleQuestionVote('down')}  sx={{ padding: 0 }}>
+                                            <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
+                                        </IconButton>
+                                    </Tooltip>
+                                    
+                                    {/* Bookmark Button */}
+                                    <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
+                                                <IconButton onClick={handleBookmarkToggle}>
+                                                    {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
+                                                </IconButton>
+                                    </Tooltip>
+                                
                         </Grid>
 
                         <Grid item xs={10} sm={11}>
+                            {isQuestionLoading ? (
+                                    <>
+                                        <Skeleton variant="text" width="100%" height={30} />
+                                        <Skeleton variant="text" width="90%" height={30} />
+                                        <Skeleton variant="text" width="80%" height={30} />
+                                    </>
+                                ) : (
                             <Typography variant="body1"
                                         dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.description) }}
                                         sx={{
@@ -753,9 +774,14 @@ const QuestionPage = () => {
                                             whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
                                         }}>
                             </Typography>
+                            )}
 
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                {question.tags.map((tag, index) => (
+                            {isQuestionLoading
+                                    ? [...Array(3)].map((_, idx) => (
+                                        <Skeleton key={idx} variant="rectangular" width={60} height={24} />
+                                    ))
+                                    : question.tags.map((tag, index) => (
                                     <Chip key={index} label={tag} className={'Mui-unselected'}
                                           sx={{
                                               cursor: 'pointer',

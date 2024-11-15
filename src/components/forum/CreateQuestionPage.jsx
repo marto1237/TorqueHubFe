@@ -22,6 +22,7 @@ import TagService from '../configuration/Services/TagService';
 import { useAppNotifications } from '../common/NotificationProvider';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 
 const AskQuestion = () => {
     const theme = useTheme();
@@ -107,8 +108,10 @@ const AskQuestion = () => {
                 return;
             }
             const userId = userDetails.id;
+            const sanitizedTitle = DOMPurify.sanitize(title);
+            const sanitizedDescription = DOMPurify.sanitize(description);
 
-            const questionData = { title, description, tags, userId };
+            const questionData = { sanitizedTitle, sanitizedDescription, tags, userId };
 
             try {
                 await QuestionService.askQuestion(questionData);
@@ -253,9 +256,9 @@ const AskQuestion = () => {
                         {preview && (
                             <Paper variant="outlined" sx={{ p: '1.5rem', backgroundColor: theme.palette.background.default, mb: { xs: '1.5rem', md: '2rem' } }}>
                                 <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                                    <Box dangerouslySetInnerHTML={{ __html: title || "Title of the Question" }} />
+                                    <Box dangerouslySetInnerHTML={{ __html:  DOMPurify.sanitize(title) || "Title of the Question" }} />
                                 </Typography>
-                                <Box sx={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: description || "<em>Description of the question appears here...</em>" }} />
+                                <Box sx={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) || "<em>Description of the question appears here...</em>" }} />
                                 
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', mb: 2 }}>
                                     {tags.length > 0 ? (
