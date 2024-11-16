@@ -1,4 +1,7 @@
 import api from '../api';
+import { storage } from '../../../firebase';
+import { listAll, ref, getDownloadURL } from 'firebase/storage';
+
 
 const QuestionService = {
     getAllQuestions: (page = 0, size = 10) => {
@@ -27,6 +30,20 @@ const QuestionService = {
             params: { page, size },
         }).then(response => response.data)
             .catch(error => Promise.reject(error));
+    },
+
+    getQuestionImages: async (questionId) => {
+        const imagesRef = ref(storage, `questionImages/${questionId}`);
+        try {
+            const result = await listAll(imagesRef);
+            const urls = await Promise.all(
+                result.items.map((itemRef) => getDownloadURL(itemRef))
+            );
+            return urls;
+        } catch (error) {
+            console.error('Error fetching question images:', error);
+            return [];
+        }
     },
 
     getCommentsByAnswerId: (answerId, page = 0, size = 5) => {

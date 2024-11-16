@@ -19,8 +19,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 const QuestionPage = () => {
 
     const { questionId } = useParams();
+    
+    const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
+    const queryClient = useQueryClient(); // Access queryClient to manage cache
     const initialized = useRef(false);
 
     const queryParams = new URLSearchParams(location.search);
@@ -53,6 +56,7 @@ const QuestionPage = () => {
     const [answerText, setAnswerText] = useState('');
     const [userAnswerVotes, setUserAnswerVotes] = useState({});
     const [commentUserVotes, setUserCommentVotes] = useState({}); // Track vote state for each comment
+    const [imageUrls, setImageUrls] = useState([]);
 
     const validateAnswer = (answerText) => {
         return answerText.trim().length >= 3 && answerText.trim().length <= 100000;
@@ -143,8 +147,6 @@ const QuestionPage = () => {
         }
     };
 
-    const queryClient = useQueryClient(); // Access queryClient to manage cache
-
     // Fetch Question details and its answers using useQuery
     const { data: question, isLoading: isQuestionLoading } = useQuery({
         queryKey: ['question', questionId, currentPage], // Include page number in queryKey for pagination
@@ -206,6 +208,16 @@ const QuestionPage = () => {
             initializeFollowAndBookmarkStates(cachedData.answers.content);
         }
     }, [currentPage, questionId]);
+
+    useEffect(() => {
+        const fetchImages = async () => {
+            if (questionId) {
+                const urls = await QuestionService.getQuestionImages(questionId);
+                setImageUrls(urls);
+            }
+        };
+        fetchImages();
+    }, [questionId]);
 
 
     const handleQuestionVote = async (type) => {
@@ -556,7 +568,6 @@ const QuestionPage = () => {
         setAcceptedAnswerIndex(index);
     };
 
-    const theme = useTheme();
 
     const toggleCommentForm = (answerId) => {
         setShowCommentForms((prev) => ({
@@ -758,73 +769,98 @@ const QuestionPage = () => {
                         </Grid>
 
                         <Grid item xs={10} sm={11}>
-                            {isQuestionLoading ? (
-                                    <>
-                                        <Skeleton variant="text" width="100%" height={30} />
-                                        <Skeleton variant="text" width="90%" height={30} />
-                                        <Skeleton variant="text" width="80%" height={30} />
-                                    </>
-                                ) : (
-                            <Typography variant="body1"
-                                        dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.description) }}
-                                        sx={{
-                                            marginBottom: '10px',
-                                            wordWrap: 'break-word',   // Breaks long words
-                                            overflowWrap: 'anywhere', // Allows breaking words anywhere
-                                            whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
-                                        }}>
-                            </Typography>
-                            )}
+    {isQuestionLoading ? (
+        <>
+            <Skeleton variant="text" width="100%" height={30} />
+            <Skeleton variant="text" width="90%" height={30} />
+            <Skeleton variant="text" width="80%" height={30} />
+        </>
+    ) : (
+        <>
+            {/* Question Description */}
+            <Typography
+                variant="body1"
+                dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.description) }}
+                sx={{
+                    marginBottom: '10px',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere',
+                    whiteSpace: 'pre-wrap',
+                }}
+            />
 
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                            {isQuestionLoading
-                                    ? [...Array(3)].map((_, idx) => (
-                                        <Skeleton key={idx} variant="rectangular" width={60} height={24} />
-                                    ))
-                                    : question.tags.map((tag, index) => (
-                                    <Chip key={index} label={tag} className={'Mui-unselected'}
-                                          sx={{
-                                              cursor: 'pointer',
-                                              '&:hover': {
-                                                  opacity: 0.8, // Adds a hover effect
-                                              },
-                                          }}
-                                    />
-                                ))}
-                            </Box>
+            {/* Question Images */}
+            {imageUrls.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' }}>
+                    {imageUrls.map((url, index) => (
+                        <img
+                            key={index}
+                            src={url}
+                            alt={`Question Image ${index + 1}`}
+                            style={{
+                                maxWidth: '100%',
+                                maxHeight: '300px',
+                                borderRadius: '8px',
+                                border: '1px solid #ccc',
+                            }}
+                        />
+                    ))}
+                </Box>
+            )}
 
-                            <Box sx={{ marginTop: '20px', textAlign: 'right' }}>
-                                <Box sx={{  textAlign: 'left' }}>
-                                    {/* Follow Button */}
-                                    <Tooltip title={isFollowing ? "Unfollow this question" : "Follow this question"} placement="right" arrow>
-                                        <Button onClick={handleFollowQuestionToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
-                                            {isFollowing ? "Following" : "Follow"}
-                                        </Button>
-                                    </Tooltip>
-                                </Box>
-                                {/* Ask time */}
-                                <Typography variant="caption" color="textSecondary" sx={{ marginBottom: '5px', display: 'block' }}>
-                                    {timeAgo(question.askedTime)}
-                                </Typography>
+            {/* Question Tags */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {question.tags.map((tag, index) => (
+                    <Chip
+                        key={index}
+                        label={tag}
+                        className={'Mui-unselected'}
+                        sx={{
+                            cursor: 'pointer',
+                            '&:hover': {
+                                opacity: 0.8, // Adds a hover effect
+                            },
+                        }}
+                    />
+                ))}
+            </Box>
 
-                                {/* Username and reputation points */}
-                                <Typography variant="caption" color="textSecondary">
-                                    Asked by{' '}
-                                    <Link href={`/user/${question.userName}`} color="primary" underline="hover">
-                                        {question.userName} ({question.userPoints})
-                                    </Link>
-                                </Typography>
+            {/* Question Metadata */}
+            <Box sx={{ marginTop: '20px', textAlign: 'right' }}>
+                <Box sx={{ textAlign: 'left' }}>
+                    {/* Follow Button */}
+                    <Tooltip title={isFollowing ? "Unfollow this question" : "Follow this question"} placement="right" arrow>
+                        <Button onClick={handleFollowQuestionToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
+                            {isFollowing ? "Following" : "Follow"}
+                        </Button>
+                    </Tooltip>
+                </Box>
+                {/* Ask Time */}
+                <Typography variant="caption" color="textSecondary" sx={{ marginBottom: '5px', display: 'block' }}>
+                    {timeAgo(question.askedTime)}
+                </Typography>
 
-                                {/* Points  */}
-                                <Box sx={{ marginTop: '5px' }}>
-                                    <Tooltip title="Reputation score" placement="left-start" arrow>
-                                        <Typography variant="caption" color="textSecondary">
-                                            {answer.userPoints}
-                                        </Typography>
-                                    </Tooltip>
-                                </Box>
-                            </Box>
-                        </Grid>
+                {/* Username and Reputation Points */}
+                <Typography variant="caption" color="textSecondary">
+                    Asked by{' '}
+                    <Link href={`/user/${question.userName}`} color="primary" underline="hover">
+                        {question.userName} ({question.userPoints})
+                    </Link>
+                </Typography>
+
+                {/* Points (if needed) */}
+                <Box sx={{ marginTop: '5px' }}>
+                    <Tooltip title="Reputation score" placement="left-start" arrow>
+                        <Typography variant="caption" color="textSecondary">
+                            {question.userPoints} {/* Replace with the correct field */}
+                        </Typography>
+                    </Tooltip>
+                </Box>
+            </Box>
+        </>
+    )}
+</Grid>
+
                     </Grid>
                 </Paper>
 

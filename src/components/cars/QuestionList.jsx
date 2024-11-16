@@ -53,10 +53,9 @@ const QuestionListPage = () => {
         if (filters.noAnswers) params.set('noAnswers', filters.noAnswers);
         if (filters.noAcceptedAnswer) params.set('noAcceptedAnswer', filters.noAcceptedAnswer);
         if (filters.sortOption) params.set('sortOption', filters.sortOption);
-        params.set('page', 1); // Reset to page 1 on filter change
+        params.set('page', filters.page || 1);
+        params.set('size', filters.pageSize || 10);
         navigate({ search: params.toString() });
-        setIsFiltering(true);
-        queryClient.invalidateQueries('questions');
     };
 
     const handleClearFilters = () => {
@@ -71,38 +70,21 @@ const QuestionListPage = () => {
         navigate('/questions');
         
         // Invalidate queries to trigger refetch
-        queryClient.invalidateQueries({
-            queryKey: ['allQuestions']
-        });
+        queryClient.invalidateQueries(['questions']);
     };
     
-    const handleApplyFilters = () => {
-        // Create URLSearchParams object
-        const params = new URLSearchParams();
-        
-        // Add all filter parameters to URL
-        if (selectedTags.length > 0) {
-            selectedTags.forEach(tag => params.append('tags', tag));
-        }
-        if (noAnswers) params.set('noAnswers', noAnswers);
-        if (noAcceptedAnswer) params.set('noAcceptedAnswer', noAcceptedAnswer);
-        if (sortOption) params.set('sortOption', sortOption);
-        params.set('page', '1'); // Reset to first page when applying filters
-        params.set('size', pageSize.toString());
-
-        // Update URL with new parameters
-        navigate({ search: params.toString() });
-        
-        // Set filtering state
+    const handleApplyFilters = (filters) => {
         setIsFiltering(true);
-        setPage(1); // Reset page to 1 when applying filters
-        
-        // Invalidate queries to trigger refetch
-        queryClient.invalidateQueries({
-            queryKey: ['filteredQuestions']
-        });
+        setSelectedTags(filters.tags || []);
+        setNoAnswers(filters.noAnswers || false);
+        setNoAcceptedAnswer(filters.noAcceptedAnswer || false);
+        setSortOption(filters.sortOption || 'newest');
+        setPage(filters.page || 1);
+
+        updateURLWithFilters(filters);
+        queryClient.invalidateQueries(['questions']);
     };
-    
+
     const handleTagClick = (tag) => {
         setSelectedTags((prevTags) =>
             prevTags.includes(tag)
@@ -110,8 +92,6 @@ const QuestionListPage = () => {
                 : [...prevTags, tag]
         );
     };
-
-
     const handleQuestionClick = (questionId) => {
         navigate(`/questions/${questionId}`);
     };
@@ -122,32 +102,28 @@ const QuestionListPage = () => {
 
     // Fetch questions using react-query
     const { data, isLoading, error } = useQuery({
-        queryKey: isFiltering
-            ? ['filteredQuestions', selectedTags, noAnswers, noAcceptedAnswer, sortOption, page - 1, pageSize]
-            : ['allQuestions', page - 1, pageSize],
-        queryFn: async () => {
-            try {
-                const response = isFiltering
-                    ? await FilterService.filterQuestions(
-                          selectedTags,
-                          noAnswers,
-                          noAcceptedAnswer,
-                          sortOption,
-                          page - 1,
-                          pageSize
-                      )
-                    : await QuestionService.getAllQuestions(page - 1, pageSize);
-                
-                console.log("API Response Data:", response);
-                return response;
-            } catch (error) {
-                console.error("API Error:", error);
-                throw error;
-            }
-        },
-        keepPreviousData: true, // Keep previous data while loading new data
-        staleTime: 0, // Always fetch new data when filters change
-        retry: 1, // Only retry failed requests once
+        queryKey: [
+            isFiltering ? 'filteredQuestions' : 'allQuestions',
+            selectedTags,
+            noAnswers,
+            noAcceptedAnswer,
+            sortOption,
+            page,
+            pageSize,
+        ],
+        queryFn: () =>
+            isFiltering
+                ? FilterService.filterQuestions(
+                      selectedTags,
+                      noAnswers,
+                      noAcceptedAnswer,
+                      sortOption,
+                      page - 1,
+                      pageSize
+                  )
+                : QuestionService.getAllQuestions(page - 1, pageSize),
+        keepPreviousData: false,
+        staleTime: 0,
     });
 
     
@@ -160,9 +136,14 @@ const QuestionListPage = () => {
 
     const handlePageChange = (event, value) => {
         setPage(value);
-        const params = new URLSearchParams(location.search);
-        params.set('page', value);
-        navigate({ search: params.toString() });
+        updateURLWithFilters({
+            tags: selectedTags,
+            noAnswers,
+            noAcceptedAnswer,
+            sortOption,
+            page: value,
+            pageSize,
+        });
         
     };
 
@@ -209,7 +190,7 @@ const QuestionListPage = () => {
                         sortOption={sortOption}
                         setSortOption={setSortOption}
                         onApplyFilters={handleApplyFilters}
-                        page={page}     
+                        page={page}
                         pageSize={pageSize}
                     />
                 )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+ import React, { useState, useEffect, useMemo } from 'react';
 import {Box,Typography,Chip,FormControlLabel,Checkbox,RadioGroup,Radio,TextField,CircularProgress,
     Button,List,ListItem,ListItemButton,ListItemText,IconButton,Tooltip,Autocomplete
 } from '@mui/material';
@@ -32,15 +32,16 @@ const FilterPanel = ({
         queryKey: ['tags', tagSearch],
         queryFn: TagService.getAllTags,
         staleTime: 5 * 60 * 1000, // Cache tags for 5 minutes
-        refetchOnWindowFocus: false,
     });
 
     // Filter tags based on search input
-    const filteredTags = useMemo(() => {
-        return (availableTags || []).filter(tag =>
-            tag.name.toLowerCase().includes(tagSearch.toLowerCase())
-        );
-    }, [availableTags, tagSearch]);
+    const filteredTags = useMemo(
+        () =>
+            (availableTags || []).filter((tag) =>
+                tag.name.toLowerCase().includes(tagSearch.toLowerCase())
+            ),
+        [availableTags, tagSearch]
+    );
     
 
 
@@ -66,32 +67,16 @@ const FilterPanel = ({
         setShowDropdown(true); // Show dropdown when typing
     };
 
-    const handleApplyFilters = async (event) => {
-        event.preventDefault();
-    
-        // Log the API request parameters before calling FilterService
-        console.log("Applying Filters with the following parameters:", {
+    const handleApplyFilters = () => {
+        
+        onApplyFilters({
             tags: selectedTags,
             noAnswers,
             noAcceptedAnswer,
             sortOption,
-            page,
-            pageSize
+            page: 1, // Reset to page 1
+            pageSize,
         });
-    
-        try {
-            const filteredQuestions = await FilterService.filterQuestions(
-                selectedTags,
-                noAnswers,
-                noAcceptedAnswer,
-                sortOption,
-                page,
-                pageSize
-            );
-            onApplyFilters(filteredQuestions);
-        } catch (error) {
-            console.error("Failed to fetch filtered questions:", error);
-        }
     };
     
     return (
