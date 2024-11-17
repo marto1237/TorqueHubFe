@@ -16,7 +16,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
-
+import AuthService from "../src/components/configuration/Services/AnswerService";
+import AuthVerify from './components/configuration/utils/AuthVerify';
+import EventBus from "./components/configuration/utils/EventBus";
 
 
 // Lazy load components
@@ -58,6 +60,30 @@ const App = () => {
           },
         },
       });
+
+      const logOut = async () => {
+        try {
+            await AuthService.logout(); // Ensure API logout request is handled
+        } catch (error) {
+            console.error("Logout API call failed:", error); // Log API logout errors
+        } finally {
+            sessionStorage.clear(); // Clear session storage
+            localStorage.clear();   // Clear local storage if needed
+            setLoggedIn(false);     // Update UI state
+            window.location.href = "/login"; // Redirect to login page
+        }
+    };
+    
+
+    useEffect(() => {
+        const handleLogout = () => logOut();
+        EventBus.on("logout", handleLogout);
+    
+        return () => {
+            EventBus.off("logout", handleLogout);
+        };
+    }, []);
+    
 
     // Function to handle avatar updates
     const handleAvatarUpdate = (newAvatar) => {
@@ -105,6 +131,7 @@ const App = () => {
 
                     {/* All Routes */}
                     <Suspense fallback={<LoadingComponent />}>
+                    <AuthVerify logOut={logOut} /> {/* Monitors route changes */}
                         <NotificationProvider>
                             <Routes>
                                 <Route path="/" element={<HomePage />} />

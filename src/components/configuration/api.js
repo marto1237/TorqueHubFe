@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './config';
+import EventBus from './utils/EventBus';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -47,5 +48,16 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
-
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        const message = error.response.data?.message || "";
+        if (message.includes("JWT expired")) {
+          EventBus.dispatch("logout"); // Fire logout event
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
 export default api;

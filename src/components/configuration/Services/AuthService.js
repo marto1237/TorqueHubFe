@@ -22,7 +22,10 @@ const AuthService = {
     logout: () => {
         return api.post(`/auth/logout`, {}, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => Promise.reject(error));
+            .catch(error => {
+                console.error('Logout error:', error.response || error.message || error);
+                return Promise.reject(error);
+            });
     },
 
     checkSession: () => {
@@ -31,6 +34,8 @@ const AuthService = {
             .catch(error => Promise.reject(error));
     },
 };
+
+
 
 export default AuthService;
 
