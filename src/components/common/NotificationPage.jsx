@@ -95,7 +95,15 @@ const NotificationsPage = () => {
                             <Paper key={notif.id} sx={{ marginBottom: '10px', padding: '10px' }}>
                                 <ListItem divider>
                                     <ListItemText
-                                        primary={<span dangerouslySetInnerHTML={{ __html: notif.message }} />}
+                                        primary={
+                                            <span
+                                                style={{
+                                                    fontWeight: notif.read ? 'normal' : 'bold', // Bold for unread notifications
+                                                    wordWrap: 'break-word',
+                                                }}
+                                                dangerouslySetInnerHTML={{ __html: notif.message }} // Render message with HTML
+                                            />
+                                        }
                                         secondary={`${timeAgo(notif.createdAt)} - ${notif.read ? 'Read' : 'Unread'}`}
                                     />
                                     {!notif.read && (

@@ -19,6 +19,7 @@ import Footer from './components/common/Footer';
 import AuthService from "../src/components/configuration/Services/AnswerService";
 import AuthVerify from './components/configuration/utils/AuthVerify';
 import EventBus from "./components/configuration/utils/EventBus";
+import RoleProtectedRoute from './components/auth/RoleProtectedRoute';
 
 
 // Lazy load components
@@ -42,6 +43,7 @@ const NotFoundPage = lazy(() => import('./components/common/NotFoundPage'));
 const PaymentPage = lazy(() => import('./pages/Payment'));
 const Users = lazy(() => import('./pages/Users'));
 const NotificationsPage = lazy(() => import('./components/common/NotificationPage'))
+const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -159,6 +161,14 @@ const App = () => {
                                 <Route path="*" element={<NotFoundPage />} />
                                 <Route path={"/users"} element={<Users />} />
                                 <Route path="/notifications" element={<NotificationsPage />} />
+                                <Route
+                                    path="/create-tag"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} userDetails={userDetails}>
+                                            <CreateTagPage />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
                             </Routes>
                         </NotificationProvider>
                     </Suspense>
