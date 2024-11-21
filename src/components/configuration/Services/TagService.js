@@ -39,6 +39,13 @@ const TagService = {
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
+
+    searchTags: (name) => {
+        return api.get('/tags/search', { params: { name } })
+            .then(response => response.data)
+            .catch(error => Promise.reject(error));
+    },
+    
 };
 
 export default TagService;

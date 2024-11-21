@@ -1,16 +1,20 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
-const RoleProtectedRoute = ({ roles, userDetails, children }) => {
-    if (!userDetails) {
-        return <Navigate to="/login" replace />; // Redirect non-logged-in users
+const RoleProtectedRoute = ({ roles, children }) => {
+    const userDetails = JSON.parse(sessionStorage.getItem('userDetails')); // Retrieve stored details
+    console.log(userDetails)
+    const userRole = userDetails?.role; // Extract role
+
+    if (!userRole) {
+        return <Navigate to="/login" replace />; // Redirect if not logged in
     }
 
-    if (!roles.includes(userDetails.role)) {
-        return <Navigate to="/" replace />; // Redirect users without required roles
+    if (!roles.includes(userRole)) {
+        return <Navigate to="/" replace />; // Redirect if unauthorized
     }
 
-    return children; // Render component for authorized users
+    return children; // Render component if authorized
 };
 
 export default RoleProtectedRoute;

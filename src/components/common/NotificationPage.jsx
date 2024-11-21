@@ -41,7 +41,6 @@ const NotificationsPage = () => {
             setNotifications(response.content);
             setTotalPages(response.totalPages);
         } catch (error) {
-            console.error('Error fetching notifications:', error);
             notificationsApp.show('Error fetching notifications. Please try again later.', {
                 autoHideDuration: 3000,
                 severity: 'error',

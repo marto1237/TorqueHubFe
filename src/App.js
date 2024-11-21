@@ -164,7 +164,7 @@ const App = () => {
                                 <Route
                                     path="/create-tag"
                                     element={
-                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} userDetails={userDetails}>
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} >
                                             <CreateTagPage />
                                         </RoleProtectedRoute>
                                     }
