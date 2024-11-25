@@ -1,22 +1,19 @@
-before_script:
-  - git config --global --add safe.directory "*"
-
 stages:
+  - install
+  - test
   - build
-  - dockerize
+
+install:
+  stage: install
+  script:
+    - npm install --legacy-peer-deps
+
+test:
+  stage: test
+  script:
+    - npm test -- --watchAll=false
 
 build:
   stage: build
   script:
-    - $env:CI = "false"
-    - npm install --legacy-peer-deps
     - npm run build
-    - npm ci
-
-dockerize:
-  stage: dockerize
-  needs: 
-    - job: build
-  script:
-    - $registry = "$env:CI_REGISTRY_IMAGE"
-    - docker build -t my-react-app .
