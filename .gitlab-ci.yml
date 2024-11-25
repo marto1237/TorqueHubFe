@@ -7,6 +7,7 @@ build:
   stage: build
   script:
     - $env:CI = "false"
+    - npm install ajv ajv-keywords --legacy-peer-deps
     - npm install --legacy-peer-deps
     - npm run build
     - npm ci
