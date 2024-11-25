@@ -2,8 +2,20 @@ before_script:
   - git config --global --add safe.directory "C:/GitLab-Runner/builds/A2X5hgzdb/0/I525452/torquehubfe"
 
 stages:
+  - install
+  - test
   - build
   - dockerize
+
+install:
+  stage: install
+  script:
+    - npm install --legacy-peer-deps
+
+test:
+  stage: test
+  script:
+    - npm test -- --watchAll=false
 
 build:
   stage: build
