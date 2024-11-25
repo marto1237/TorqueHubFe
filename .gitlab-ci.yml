@@ -10,7 +10,7 @@ build:
     - npm install ajv ajv-keywords --legacy-peer-deps
     - npm install --legacy-peer-deps
     - npm run build
-    - npm ci
+    - npm ci --legacy-peer-deps
 test:
   stage: test
   script:
