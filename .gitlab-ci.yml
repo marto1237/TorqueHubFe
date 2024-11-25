@@ -1,25 +1,21 @@
 stages:
-  - install
-  - test
   - build
+  - test
   - dockerize
-
-install:
-  stage: install
-  script:
-    - npm ci --legacy-peer-deps
-
-test:
-  stage: test
-  script:
-    - npm test -- --watchAll=false
 
 build:
   stage: build
   script:
     - $env:CI = "false"
-    - npm ci --legacy-peer-deps
+    - npm install --legacy-peer-deps
     - npm run build
+    - npm ci
+test:
+  stage: test
+  script:
+    - npm test -- --watchAll=false
+
+
 
 dockerize:
   stage: dockerize
