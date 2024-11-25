@@ -1,6 +1,3 @@
-before_script:
-  - git config --global --add safe.directory "*"
-
 stages:
   - install
   - test
