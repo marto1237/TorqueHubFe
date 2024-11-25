@@ -1,5 +1,5 @@
 before_script:
-  - git config --global --add safe.directory "C:/GitLab-Runner/builds/A2X5hgzdb/0/I525452/torquehubfe"
+  - git config --global --add safe.directory "*"
 
 stages:
   - build
