@@ -1,7 +1,5 @@
 import React, {useEffect, useState} from 'react';
 import { useTypewriter, Cursor } from 'react-simple-typewriter';
-import Snackbar from '@mui/material/Snackbar';
-import { styled } from '@mui/material/styles';
 import { useAppNotifications } from '../components/common/NotificationProvider';
 
 import '../styles/HomePage.css';
@@ -20,7 +18,13 @@ const HomePage = () => {
 
     useEffect(() => {
         // Check if the user just logged in
-        const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        const storedUserDetails = (() => {
+            try {
+                return JSON.parse(sessionStorage.getItem('userDetails')) || {};
+            } catch {
+                return {};
+            }
+        })();
         if (storedUserDetails?.username) {
             setUsername(storedUserDetails.username);
         }

@@ -1,0 +1,19 @@
+stages:
+  - install
+  - test
+  - build
+
+install:
+  stage: install
+  script:
+    - npm install --legacy-peer-deps
+
+test:
+  stage: test
+  script:
+    - npm test -- --watchAll=false
+
+build:
+  stage: build
+  script:
+    - npm run build
