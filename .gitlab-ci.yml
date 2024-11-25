@@ -20,5 +20,5 @@ dockerize:
   dependencies:
     - build 
   script:
+    - $registry = "$env:CI_REGISTRY_IMAGE"
     - docker build -t my-react-app .
-    - docker push $CI_REGISTRY_IMAGE
