@@ -3,25 +3,41 @@ stages:
   - test
   - dockerize
 
+# Build Stage
 build:
   stage: build
   script:
-    - $env:CI = "false"
+    - $env:CI = "false" # Ensure CI environment is set to false
     - npm install ajv ajv-keywords --legacy-peer-deps
     - npm install --legacy-peer-deps
-    - npm run build
-    - npm ci --legacy-peer-deps
+    - npm run build # Build the React app
+  artifacts:
+    paths:
+      - build/ # Save the build directory for the next stages
+
+# Test Stage
 test:
   stage: test
+  dependencies:
+    - build # Use the output of the build stage
   script:
-    - npm test -- --watchAll=false
+    - npm test -- --watchAll=false # Run tests in non-interactive mode
+  artifacts:
+    when: always # Save test results if available
+    reports:
+      junit: test-results.xml
 
-
-
+# Dockerize Stage
 dockerize:
   stage: dockerize
-  needs: 
-    - job: build
+  dependencies:
+    - build # Use the output of the build stage
   script:
-    - $registry = "$env:CI_REGISTRY_IMAGE"
-    - docker build -t my-react-app .
+    # Login to Docker registry (optional if private)
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    # Build Docker image
+    - docker build -t $CI_REGISTRY_IMAGE .
+    # Push the image to the registry
+    - docker push $CI_REGISTRY_IMAGE
+  only:
+    - main # Ensure this stage runs only for the main branch
