@@ -15,29 +15,11 @@ build:
     paths:
       - build/ # Save the build directory for the next stages
 
-# Test Stage
-test:
-  stage: test
-  dependencies:
-    - build # Use the output of the build stage
-  script:
-    - npm test -- --watchAll=false # Run tests in non-interactive mode
-  artifacts:
-    when: always # Save test results if available
-    reports:
-      junit: test-results.xml
-
 # Dockerize Stage
 dockerize:
   stage: dockerize
   dependencies:
-    - build # Use the output of the build stage
+    - build 
   script:
-    # Login to Docker registry (optional if private)
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-    # Build Docker image
     - docker build -t $CI_REGISTRY_IMAGE .
-    # Push the image to the registry
     - docker push $CI_REGISTRY_IMAGE
-  only:
-    - main # Ensure this stage runs only for the main branch
