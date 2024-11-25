@@ -7,7 +7,7 @@ stages:
 install:
   stage: install
   script:
-    - npm install --legacy-peer-deps
+    - npm ci --legacy-peer-deps
 
 test:
   stage: test
@@ -18,9 +18,8 @@ build:
   stage: build
   script:
     - $env:CI = "false"
-    - npm install
+    - npm ci --legacy-peer-deps
     - npm run build
-    - npm ci
 
 dockerize:
   stage: dockerize
