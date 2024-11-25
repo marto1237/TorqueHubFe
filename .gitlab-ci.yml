@@ -1,6 +1,5 @@
 stages:
   - build
-  - test
   - dockerize
 
 # Build Stage
@@ -21,5 +20,5 @@ dockerize:
   dependencies:
     - build 
   script:
-    - docker build -t $CI_REGISTRY_IMAGE .
+    - docker build -t my-react-app .
     - docker push $CI_REGISTRY_IMAGE
