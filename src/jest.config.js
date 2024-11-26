@@ -13,5 +13,6 @@ module.exports = {
   moduleNameMapper: {
     '^firebase/(.*)$': '<rootDir>/src/__mocks__/firebase.js', // Mock Firebase
     '^axios$': '<rootDir>/__mocks__/axios.js', // Mock Axios
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
 };

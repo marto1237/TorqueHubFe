@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./ 
 
+# Install ajv and ajv-keywords explicitly
+RUN npm install ajv ajv-keywords --legacy-peer-deps
+
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
