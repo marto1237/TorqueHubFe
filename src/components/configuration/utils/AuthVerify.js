@@ -20,13 +20,15 @@ const AuthVerify = ({ logOut }) => {
                 if (decodedToken?.exp * 1000 < Date.now()) {
                     logOut(); // Logout if token is expired
                 }
+                console.log("Token Expiration:", new Date(decodedToken?.exp * 1000).toLocaleString());
+
             }
         };
 
         checkTokenExpiration();
 
         // Set interval to check token expiration every 5 minutes
-        const interval = setInterval(checkTokenExpiration, 5 * 60 * 1000);
+        const interval = setInterval(checkTokenExpiration,  1000);
 
         return () => clearInterval(interval); // Clean up interval on unmount
     }, [location, logOut]);

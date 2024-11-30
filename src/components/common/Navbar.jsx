@@ -22,7 +22,7 @@ import NotificationService from "../configuration/Services/NotificationService";
 import { timeAgo } from  "../configuration/utils/TimeFormating"
 import AuthService from '../configuration/Services/AuthService';
 
-const logo = "/Logo.png";
+const logo = "/Logo.webp";
 
 function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const [scrollingDown, setScrollingDown] = useState(false);
@@ -279,7 +279,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
 
                     {/* LOGO for large and medium screens */}
                     <Box component="a" href="/" className="logo-md" >
-                        <Box component="img" src={logo} alt="Logo" sx={{ height: '100%' }} />
+                        <Box component="img" src={logo} alt="Logo" loading="eager" sx={{ height: '100%' }} />
                     </Box>
 
                     {/* This Typography is only for large and medium screens */}
@@ -344,7 +344,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
 
                     {/* LOGO for small screens */}
                     <Box component="a" href="/" className="logo-xs">
-                        <Box component="img" src={logo} alt="Logo" sx={{ height: '100%' }} />
+                        <Box component="img" src={logo} alt="Logo" loading="eager" sx={{ height: '100%' }} />
                     </Box>
 
                     {/* Typography for small screens */}

@@ -16,7 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
-import AuthService from "../src/components/configuration/Services/AnswerService";
+import AuthService from "../src/components/configuration/Services/AuthService";
 import AuthVerify from './components/configuration/utils/AuthVerify';
 import EventBus from "./components/configuration/utils/EventBus";
 import RoleProtectedRoute from './components/auth/RoleProtectedRoute';

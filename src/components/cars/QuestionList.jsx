@@ -79,7 +79,7 @@ const QuestionListPage = () => {
         setNoAnswers(filters.noAnswers || false);
         setNoAcceptedAnswer(filters.noAcceptedAnswer || false);
         setSortOption(filters.sortOption || 'newest');
-        setPage(filters.page || 1);
+        setPage(1);
 
         updateURLWithFilters(filters);
         queryClient.invalidateQueries(['questions']);
@@ -231,7 +231,7 @@ const QuestionListPage = () => {
                     <Typography color="error">{error.message}</Typography>
                 ) : (
                     data && data.content && data.content.length > 0 ?(
-                        <Grid container spacing={3}>
+                        <Grid container spacing={3} data-testid="question-grid">
                             {data.content.map((question) => (
                                 <Grid item xs={12} key={question.id}>
                                     <Paper sx={{ padding: '20px', marginBottom: '20px' }}>

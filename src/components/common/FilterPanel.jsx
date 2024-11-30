@@ -2,12 +2,9 @@
 import {Box,Typography,Chip,FormControlLabel,Checkbox,RadioGroup,Radio,TextField,CircularProgress,
     Button,List,ListItem,ListItemButton,ListItemText,IconButton,Tooltip,Autocomplete
 } from '@mui/material';
-import { HelpOutline } from '@mui/icons-material'; // For the info icon
-import axios from 'axios';
 import { useTheme } from '@mui/material/styles';
 import TagService from '../configuration/Services/TagService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import FilterService from '../configuration/Services/FilterService';
 
 const FilterPanel = ({
                          selectedTags,
