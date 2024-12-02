@@ -17,8 +17,8 @@ build:
 test:
   stage: test
   script:
-    - npm test -- --watchAll=false
     - npm install --legacy-peer-deps
+    - npm test -- --watchAll=false
 
 # Dockerize Stage
 dockerize:
