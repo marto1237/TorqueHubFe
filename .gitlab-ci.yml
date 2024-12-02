@@ -1,5 +1,6 @@
 stages:
   - build
+  - test
   - dockerize
 
 # Build Stage
@@ -12,6 +13,11 @@ build:
   artifacts:
     paths:
       - build/ # Save the build directory for the next stages
+
+test:
+  stage: test
+  script:
+    - npm test -- --watchAll=false
 
 # Dockerize Stage
 dockerize:
