@@ -148,7 +148,7 @@ const App = () => {
                                 <Route path="/askquestion" element={<CreateQuestionPage />} />
                                 <Route path="/events" element={<EventList />} />
                                 <Route path="/events/:id" element={<EventDetail />} />
-                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/profile" element={<Profile avatar={avatar} userDetails={userDetails} />} />
                                 <Route path="/following" element={<Following />} />
                                 <Route path="/bookmarks" element={<Bookmarks />} />
                                 <Route path="/myshowcase" element={<MyShowcase />} />

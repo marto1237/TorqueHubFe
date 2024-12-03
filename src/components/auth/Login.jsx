@@ -23,8 +23,6 @@ import { styled } from '@mui/material/styles';
 import '../../styles/SignUp.css';
 import AuthService from '../configuration/Services/AuthService';
 import { useAppNotifications } from '../common/NotificationProvider';
-import GoogleIcon from '@mui/icons-material/Google'; // Example for Google Icon
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
 function Copyright() {
     return (
@@ -62,36 +60,7 @@ function Login({ setLoggedIn }) {
         }
     };
 
-    const handleGoogleLogin = async (googleUser) => {
-        const token = googleUser.credential; // Get the Google ID token
-        const response = await fetch("http://localhost:8080/oauth2/google", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-            credentials: "include", // Ensure cookies/session tokens are shared
-        });
-        
     
-        if (response.ok) {
-            const data = await response.json();
-            localStorage.setItem("jwt", data.jwt); // Save JWT locally
-            window.location.href = "/"; // Redirect to dashboard
-        } else {
-            console.error("Login or registration failed");
-        }
-    };
-    
-    const handleGoogleLoginSuccess = (credentialResponse) => {
-        const token = credentialResponse.credential;
-        AuthService.loginWithGoogle(token)
-            .then(() => {
-                setLoggedIn(true);
-                navigate('/'); // Navigate after login
-            })
-            .catch((err) => {
-                console.error('Google Login failed', err);
-            });
-    };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -218,20 +187,6 @@ function Login({ setLoggedIn }) {
                     >
                         Log in
                     </Button>
-                    {/* OAuth Buttons */}
-                    <Box mt={2}>
-                        <Typography align="center" variant="subtitle1">
-                            OR
-                        </Typography>
-                        <GoogleOAuthProvider clientId="163916899004-2vvjfm9ac3cp0dmhcqioq7vs7udcoufk.apps.googleusercontent.com">
-                            <GoogleLogin
-                                onSuccess={handleGoogleLogin}
-                                onError={() => {
-                                    console.error('Google Login Failed');
-                                }}
-                            />
-                    </GoogleOAuthProvider>
-                    </Box>
                     <Box mt={2}>
                         <Grid container justifyContent="center">
                             <Grid item>

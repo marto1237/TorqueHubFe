@@ -1,12 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Grid, Typography, Card, Avatar, Button, Divider, TextField, Rating, Chip, ButtonGroup } from '@mui/material';
 import { Cake, AccessTime, CalendarMonth } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import ProfileService from '../configuration/Services/ProfileService';
 
-const ProfilePage = () => {
+const ProfilePage = ({ avatar, userDetails }) => {
     const theme = useTheme();
     const [isEditingAboutMe, setIsEditingAboutMe] = useState(false);
     const [aboutMe, setAboutMe] = useState("Enthusiast of classic cars, modern cars, and everything in between.");
+    const [avatarURL, setAvatarURL] = useState(avatar);
+
+    function stringToColor(string) {
+        let hash = 0;
+        let i;
+
+        /* eslint-disable no-bitwise */
+        for (i = 0; i < string.length; i += 1) {
+            hash = string.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        let color = '#';
+
+        for (i = 0; i < 3; i += 1) {
+            const value = (hash >> (i * 8)) & 0xff;
+            color += `00${value.toString(16)}`.slice(-2);
+        }
+        /* eslint-enable no-bitwise */
+
+        return color;
+    }
+
+    function stringAvatar(name) {
+        if (!name) {
+            // Fallback if no name is provided
+            return {
+                sx: {
+                    bgcolor: '#ccc', // Default background color
+                },
+                children: '?', // Default avatar content
+            };
+        }
+
+        return {
+            sx: {
+                bgcolor: stringToColor(name),
+                width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 }
+                
+            },
+            children: `${name[0].toUpperCase()}`,
+        };
+    }
 
     const handleEditToggle = () => {
         setIsEditingAboutMe(!isEditingAboutMe);
@@ -16,6 +59,7 @@ const ProfilePage = () => {
         // Handle saving changes here
         setIsEditingAboutMe(false);
     };
+
 
     const posts = [
         { type: 'A', title: 'Why are Rust executables so huge?', votes: 340, date: 'Feb 23, 2019' },
@@ -66,20 +110,49 @@ const ProfilePage = () => {
             default: return 'Top Posts';
         }
     };
+    
+    
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        setAvatarURL(userDetails.profileImage);
+        if (storedUserDetails && storedUserDetails.id) {
+            const userId = storedUserDetails.id; // Retrieve the user ID
+            ProfileService.getUserProfile(userId)
+                .then((data) => {
+                    setProfile(data);
+                    setLoading(false);
+                })
+                .catch((err) => {
+                    setError(err.message);
+                    setLoading(false);
+                });
+        } else {
+            setError('User not logged in or invalid session.');
+            setLoading(false);
+        }
+    }, []);
+
+    if (loading) return <Typography>Loading...</Typography>;
+    if (error) return <Typography color="error">{error}</Typography>;
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
             {/* Full-width Profile Card */}
             <Card sx={{ padding: '20px', mb: 3 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
-                    <Avatar
-                        src="path_to_user_image"
-                        alt="User Avatar"
-                        sx={{ width: 120, height: 120 }}
-                    />
+                        {avatarURL ?(
+                                <Avatar src={avatarURL} sx={{ width: { xs: 80, sm: 120, md: 160, lg:180 }, height: { xs: 80, sm: 120, md: 160, lg:180 } }}
+                                alt={userDetails?.username ? `${userDetails.username}'s profile picture` : 'User profile picture'} />
+                            ) : (
+                                <Avatar sx={{ width: { xs: 32, sm: 40, md: 60, lg:80 }, height: { xs: 32, sm: 40, md: 60, lg:80 } }} {...stringAvatar(userDetails?.username ? userDetails.username[0] : 'User' )} />
+                            )}
                     <Box>
                         <Typography variant="h5" color="textPrimary">
-                            Username
+                            {profile.user.username}
                         </Typography>
                         {/* Box for date-related information, each on a new line */}
                         <Box sx={{ mt: 1 }}>
@@ -119,7 +192,7 @@ const ProfilePage = () => {
                         <Grid container spacing={5}>
                             <Grid item xs={6}>
                                 <Typography variant="body1" color="textPrimary">
-                                    <strong>Reputation:</strong> 1
+                                    <strong>Reputation:</strong> {profile.user.points}
                                 </Typography>
                             </Grid>
                             <Grid item xs={6}>
@@ -129,12 +202,12 @@ const ProfilePage = () => {
                             </Grid>
                             <Grid item xs={6}>
                                 <Typography variant="body1" color="textPrimary">
-                                    <strong>Answers:</strong> 0
+                                    <strong>Answers:</strong> {profile.answerCount}
                                 </Typography>
                             </Grid>
                             <Grid item xs={6}>
                                 <Typography variant="body1" color="textPrimary">
-                                    <strong>Questions:</strong> 0
+                                    <strong>Questions:</strong> {profile.questionCount}
                                 </Typography>
                             </Grid>
                             <Grid item xs={8}>
@@ -212,32 +285,166 @@ const ProfilePage = () => {
                         </Typography>
                         <Divider sx={{ marginBottom: '20px' }} />
                         <Grid container spacing={2}>
-                            {filteredPosts.map((post, index) => (
-                                <Grid item xs={12} key={index} onClick={() => handlePostClick(post.title)}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderRadius: '8px', cursor: 'pointer',border: `2px solid ${theme.palette.divider}`, // Adds a solid border with the theme's divider color
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.action.hover, // Hover effect to change background
-                                            borderColor: theme.palette.primary.main, // Change border color on hover
-                                        } }}>
-                                        <Chip
-                                            label={post.type}
-                                            sx={{ backgroundColor: post.type === 'A' ? '#323232' : '#32a852', color: 'white', padding: '5px','&:hover': {
-                                            opacity: 0.8, // Adds a hover effect
-                                        }, }}
-                                        />
-                                        <Typography variant="body1" color="textPrimary" sx={{ flexGrow: 1, marginLeft: '15px' }}>
-                                            {post.title}
-                                        </Typography>
-                                        <Typography variant="body2" color="textSecondary" sx={{ marginRight: '15px' }}>
-                                            {post.votes} votes
-                                        </Typography>
-                                        <Typography variant="body2" color="textSecondary">
-                                            {post.date}
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-                            ))}
+                            {filter === 'All' && (
+                                <>
+                                    {profile.questions.map((question) => (
+                                        <Grid item xs={12} key={`question-${question.id}`} onClick={() => handlePostClick(question.title)}>
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    padding: '10px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    border: `2px solid ${theme.palette.divider}`,
+                                                    '&:hover': {
+                                                        backgroundColor: theme.palette.action.hover,
+                                                        borderColor: theme.palette.primary.main,
+                                                    },
+                                                }}
+                                            >
+                                                <Chip
+                                                    label="Q"
+                                                    sx={{
+                                                        backgroundColor: '#32a852',
+                                                        color: 'white',
+                                                        padding: '5px',
+                                                        '&:hover': { opacity: 0.8 },
+                                                    }}
+                                                />
+                                                <Typography variant="body1" color="textPrimary" sx={{ flexGrow: 1, marginLeft: '15px' }}>
+                                                    {question.title.replace(/<\/?[^>]+(>|$)/g, '')} {/* Strip HTML tags */}
+                                                </Typography>
+                                                <Typography variant="body2" color="textSecondary" sx={{ marginRight: '15px' }}>
+                                                    {question.votes} votes
+                                                </Typography>
+                                                <Typography variant="body2" color="textSecondary">
+                                                    {new Date(question.askedTime).toLocaleDateString()}
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                    ))}
+                                    {profile.answers.map((answer) => (
+                                        <Grid item xs={12} key={`answer-${answer.id}`}>
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    padding: '10px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    border: `2px solid ${theme.palette.divider}`,
+                                                    '&:hover': {
+                                                        backgroundColor: theme.palette.action.hover,
+                                                        borderColor: theme.palette.primary.main,
+                                                    },
+                                                }}
+                                            >
+                                                <Chip
+                                                    label="A"
+                                                    sx={{
+                                                        backgroundColor: '#323232',
+                                                        color: 'white',
+                                                        padding: '5px',
+                                                        '&:hover': { opacity: 0.8 },
+                                                    }}
+                                                />
+                                                <Typography variant="body1" color="textPrimary" sx={{ flexGrow: 1, marginLeft: '15px' }}>
+                                                    {answer.text.replace(/<\/?[^>]+(>|$)/g, '')} {/* Strip HTML tags */}
+                                                </Typography>
+                                                <Typography variant="body2" color="textSecondary" sx={{ marginRight: '15px' }}>
+                                                    {answer.votes} votes
+                                                </Typography>
+                                                <Typography variant="body2" color="textSecondary">
+                                                    {new Date(answer.postedTime).toLocaleDateString()}
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                    ))}
+                                </>
+                            )}
+                            {filter === 'Q' &&
+                                profile.questions.map((question) => (
+                                    <Grid item xs={12} key={`question-${question.id}`}>
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '10px',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                border: `2px solid ${theme.palette.divider}`,
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.action.hover,
+                                                    borderColor: theme.palette.primary.main,
+                                                },
+                                            }}
+                                        >
+                                            <Chip
+                                                label="Q"
+                                                sx={{
+                                                    backgroundColor: '#32a852',
+                                                    color: 'white',
+                                                    padding: '5px',
+                                                    '&:hover': { opacity: 0.8 },
+                                                }}
+                                            />
+                                            <Typography variant="body1" color="textPrimary" sx={{ flexGrow: 1, marginLeft: '15px' }}>
+                                                {question.title.replace(/<\/?[^>]+(>|$)/g, '')}
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary" sx={{ marginRight: '15px' }}>
+                                                {question.votes} votes
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary">
+                                                {new Date(question.askedTime).toLocaleDateString()}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                ))}
+                            {filter === 'A' &&
+                                profile.answers.map((answer) => (
+                                    <Grid item xs={12} key={`answer-${answer.id}`}>
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '10px',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                border: `2px solid ${theme.palette.divider}`,
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.action.hover,
+                                                    borderColor: theme.palette.primary.main,
+                                                },
+                                            }}
+                                        >
+                                            <Chip
+                                                label="A"
+                                                sx={{
+                                                    backgroundColor: '#323232',
+                                                    color: 'white',
+                                                    padding: '5px',
+                                                    '&:hover': { opacity: 0.8 },
+                                                }}
+                                            />
+                                            <Typography variant="body1" color="textPrimary" sx={{ flexGrow: 1, marginLeft: '15px' }}>
+                                                {answer.text.replace(/<\/?[^>]+(>|$)/g, '')}
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary" sx={{ marginRight: '15px' }}>
+                                                {answer.votes} votes
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary">
+                                                {new Date(answer.postedTime).toLocaleDateString()}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                ))}
                         </Grid>
+
                     </Card>
 
                     {/* Events Section */}
