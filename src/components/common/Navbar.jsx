@@ -170,7 +170,10 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         navigate('/events');
     };
     const handleMyProfileClick = () => {
-        navigate('/profile');
+        const userId = userDetails?.id;
+        if (userId) {
+            navigate(`/profile/${userId}`); // Pass the ID in the URL
+        }
     };
     const handleFollowingClick = () => {
         navigate('/following');

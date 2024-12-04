@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom'; 
 import { Box, Grid, Typography, Card, Avatar, Button, Divider, TextField, Rating, Chip, ButtonGroup } from '@mui/material';
 import { Cake, AccessTime, CalendarMonth } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import { getDownloadURL, ref } from 'firebase/storage';
+import { storage } from '../../firebase';
 import ProfileService from '../configuration/Services/ProfileService';
 
 const ProfilePage = ({ avatar, userDetails }) => {
     const theme = useTheme();
+    const { id } = useParams();
     const [isEditingAboutMe, setIsEditingAboutMe] = useState(false);
     const [aboutMe, setAboutMe] = useState("Enthusiast of classic cars, modern cars, and everything in between.");
     const [avatarURL, setAvatarURL] = useState(avatar);
@@ -44,7 +48,8 @@ const ProfilePage = ({ avatar, userDetails }) => {
         return {
             sx: {
                 bgcolor: stringToColor(name),
-                width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 }
+                width: { xs: 80, sm: 120, md: 160, lg: 180 }, // Match the size of avatarURL
+                height: { xs: 80, sm: 120, md: 160, lg: 180 }, // Match the size of avatarURL
                 
             },
             children: `${name[0].toUpperCase()}`,
@@ -116,25 +121,33 @@ const ProfilePage = ({ avatar, userDetails }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+
     useEffect(() => {
-        const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
-        setAvatarURL(userDetails.profileImage);
-        if (storedUserDetails && storedUserDetails.id) {
-            const userId = storedUserDetails.id; // Retrieve the user ID
-            ProfileService.getUserProfile(userId)
-                .then((data) => {
-                    setProfile(data);
-                    setLoading(false);
-                })
-                .catch((err) => {
-                    setError(err.message);
-                    setLoading(false);
-                });
-        } else {
-            setError('User not logged in or invalid session.');
-            setLoading(false);
-        }
-    }, []);
+        const fetchProfileData = async () => {
+            try {
+                // Fetch user data based on the 'id'
+                const userData = await ProfileService.getUserProfile(id);
+                setProfile(userData);
+
+                // Fetch the profile picture from Firebase
+            const imageRef = ref(storage, `profileImages/${userData.user.username}/profile.jpg`);
+            try {
+                const imageURL = await getDownloadURL(imageRef);
+                setAvatarURL(imageURL); // Set the avatar URL if it exists
+            } catch (imageError) {
+                console.error('Profile picture not found:', imageError);
+                setAvatarURL(null); // Set to null if the image does not exist
+            }
+
+                setLoading(false);
+            } catch (err) {
+                setError('Failed to fetch profile data or image.');
+                setLoading(false);
+            }
+        };
+
+        fetchProfileData();
+    }, [id]);
 
     if (loading) return <Typography>Loading...</Typography>;
     if (error) return <Typography color="error">{error}</Typography>;
@@ -148,7 +161,7 @@ const ProfilePage = ({ avatar, userDetails }) => {
                                 <Avatar src={avatarURL} sx={{ width: { xs: 80, sm: 120, md: 160, lg:180 }, height: { xs: 80, sm: 120, md: 160, lg:180 } }}
                                 alt={userDetails?.username ? `${userDetails.username}'s profile picture` : 'User profile picture'} />
                             ) : (
-                                <Avatar sx={{ width: { xs: 32, sm: 40, md: 60, lg:80 }, height: { xs: 32, sm: 40, md: 60, lg:80 } }} {...stringAvatar(userDetails?.username ? userDetails.username[0] : 'User' )} />
+                                <Avatar  sx={{ width: { xs: 80, sm: 120, md: 160, lg:180 }, height: { xs: 80, sm: 120, md: 160, lg:180 } }} {...stringAvatar(profile?.user?.username || 'User' )} />
                             )}
                     <Box>
                         <Typography variant="h5" color="textPrimary">
