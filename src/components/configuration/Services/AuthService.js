@@ -7,21 +7,6 @@ const AuthService = {
             .catch(error => Promise.reject(error));
     },
 
-    loginWithGoogle: (token) => {
-    return fetch('/oauth2/google', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Google login failed');
-            }
-            return response.json();
-        });
-},
 
     register: (userData) => {
         return api.post(`/auth/register`, userData)
