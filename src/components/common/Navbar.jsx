@@ -180,7 +180,10 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     }
 
     const  handleBookmarksClick = () => {
-        navigate('/bookmarks');
+        const userId = userDetails?.id;
+        if (userId) {
+            navigate(`/bookmarks/${userId}`); 
+        }
     }
     const handleMyShowcaseClick = () => {
         navigate('/myshowcase');

@@ -150,7 +150,7 @@ const App = () => {
                                 <Route path="/events/:id" element={<EventDetail />} />
                                 <Route path="/profile/:id" element={<Profile avatar={avatar} userDetails={userDetails} />} />
                                 <Route path="/following" element={<Following />} />
-                                <Route path="/bookmarks" element={<Bookmarks />} />
+                                <Route path="/bookmarks/:id" element={<Bookmarks />} />
                                 <Route path="/myshowcase" element={<MyShowcase />} />
                                 <Route path="/showcase" element={<Showcase />} />
                                 <Route path="/car/:id" element={<CarDetails />} />

@@ -3,48 +3,95 @@ import {
     Box, Grid, Typography, Card, Button, Divider, Chip, ButtonGroup, Dialog, DialogActions,
     DialogContent, DialogContentText, DialogTitle, TextField, IconButton, Pagination
 } from '@mui/material';
+import { useParams, useNavigate } from 'react-router-dom'; 
 import { Bookmark, CheckCircle, Delete,  Search  } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import BookmarkService from '../configuration/Services/BookmarkService';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 const ProfilePage = () => {
     const theme = useTheme();
+    const { id } = useParams();
+    const navigate = useNavigate(); 
 
-    // State to track bookmarked posts
-    const [bookmarkedPosts, setBookmarkedPosts] = useState([
-        {
-            id: 1,
-            title: 'How to programmatically navigate using React Router?',
-            votes: 2349,
-            answers: 50,
-            views: '1.7m',
-            tags: ['javascript', 'reactjs', 'react-router'],
-            accepted: true,
-            dateAsked: 'Jun 26, 2015',
-            user: 'George Mauer',
-            userReputation: '121k',
-            profileLink: '/profile/GeorgeMauer'
-        },
-        {
-            id: 2,
-            title: 'How configure Spring boot CORS for Restful API?',
-            votes: 1,
-            answers: 1,
-            views: '2k',
-            tags: ['spring', 'reactjs', 'cors'],
-            accepted: true,
-            dateAsked: 'Dec 3, 2018',
-            user: 'Mimmo',
-            userReputation: '123',
-            profileLink: '/profile/Mimmo'
-        }
-    ]);
+    const handleQuestionClick = (id) => {
+        navigate(`/questions/${id}`); 
+    };
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [postToDelete, setPostToDelete] = useState(null);
     const [sortOption, setSortOption] = useState('Score'); // Default sort by Score
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterOption, setFilterOption] = useState('questions');
     const [currentPage, setCurrentPage] = useState(1);
+    const [bookmarkedPosts, setBookmarkedPosts] = useState([]);
     const itemsPerPage = 10;
+
+    // Fetch bookmarked questions
+    const { data: bookmarkedQuestions = [], isLoading: questionsLoading } = useQuery({
+        queryKey: ['bookmarkedQuestions', id],
+        queryFn: () => BookmarkService.getUserBookmarkedQuestions(id),
+        staleTime: 5 * 60 * 1000,
+        onSuccess: (data) => {
+            console.log('Bookmarked Questions Response:', data);
+        },
+        onError: (error) => {
+            console.error('Error fetching bookmarked questions:', error);
+        },
+    });
+
+    // Fetch bookmarked answers
+    const { data: bookmarkedAnswers = [], isLoading: answersLoading } = useQuery({
+        queryKey: ['bookmarkedAnswers', id],
+        queryFn: () => BookmarkService.getUserBookmarkedAnswers(id),
+        staleTime: 5 * 60 * 1000,
+        onSuccess: (data) => {
+            console.log('Bookmarked Answers Response:', data);
+        },
+        onError: (error) => {
+            console.error('Error fetching bookmarked answers:', error);
+        },
+    });
+
+    useEffect(() => {
+        // Combine and filter posts based on filterOption
+        const combinedPosts = [];
+
+        if (filterOption === 'questions' || filterOption === 'all') {
+            combinedPosts.push(
+                ...(bookmarkedQuestions.content || []).map((q) => ({
+                    id: q.id,
+                    title: q.title,
+                    votes: q.votes,
+                    answers: q.totalAnswers,
+                    views: q.views || '0',
+                    tags: q.tags || [],
+                    user: q.username,
+                    dateAsked: q.askedTime,
+                    type: 'question',
+                }))
+            );
+        }
+
+        if (filterOption === 'answers' || filterOption === 'all') {
+            combinedPosts.push(
+                ...(bookmarkedAnswers.content || []).map((a) => ({
+                    id: a.id,
+                    title: a.text,
+                    votes: a.votes,
+                    answers: null,
+                    views: 'N/A',
+                    tags: [],
+                    user: a.username,
+                    dateAsked: a.postedTime,
+                    type: 'answer',
+                }))
+            );
+        }
+
+        setBookmarkedPosts(combinedPosts);
+    }, [bookmarkedQuestions, bookmarkedAnswers, filterOption]);
 
     // Delete confirmation dialog handling
     const handleDeleteClick = (post) => {
@@ -53,6 +100,7 @@ const ProfilePage = () => {
     };
 
     const handleConfirmDelete = () => {
+        // Remove the post from bookmarkedPosts
         setBookmarkedPosts(bookmarkedPosts.filter(post => post.id !== postToDelete.id));
         setDeleteDialogOpen(false);
         setPostToDelete(null);
@@ -73,10 +121,10 @@ const ProfilePage = () => {
                 sortedPosts.sort((a, b) => b.votes - a.votes);
                 break;
             case 'Activity':
-                sortedPosts.sort((a, b) => b.answers - a.answers);
+                sortedPosts.sort((a, b) => (b.answers || 0) - (a.answers || 0));
                 break;
             case 'Views':
-                sortedPosts.sort((a, b) => parseInt(b.views) - parseInt(a.views));
+                sortedPosts.sort((a, b) => parseInt(b.views || '0') - parseInt(a.views || '0'));
                 break;
             case 'Newest':
                 sortedPosts.sort((a, b) => new Date(b.dateAsked) - new Date(a.dateAsked));
@@ -96,10 +144,6 @@ const ProfilePage = () => {
         setCurrentPage(1); // Reset to first page on search
     };
 
-    const handleProfileClick = (profileLink) => {
-        window.location.href = profileLink;
-    };
-
     // Pagination logic
     const indexOfLastPost = currentPage * itemsPerPage;
     const indexOfFirstPost = indexOfLastPost - itemsPerPage;
@@ -112,6 +156,8 @@ const ProfilePage = () => {
     );
 
     const currentPosts = filteredPosts.slice(indexOfFirstPost, indexOfLastPost);
+
+    const isLoading = questionsLoading || answersLoading;
 
 
     return (
@@ -145,6 +191,24 @@ const ProfilePage = () => {
                         <Button onClick={() => handleSort('Views')}>Views</Button>
                         <Button onClick={() => handleSort('Newest')}>Newest</Button>
                         <Button onClick={() => handleSort('Oldest')}>Oldest</Button>
+                        <Button
+                            variant={filterOption === 'questions' ? 'contained' : 'outlined'}
+                            onClick={() => setFilterOption('questions')}
+                        >
+                            Questions
+                        </Button>
+                        <Button
+                            variant={filterOption === 'answers' ? 'contained' : 'outlined'}
+                            onClick={() => setFilterOption('answers')}
+                        >
+                            Answers
+                        </Button>
+                        <Button
+                            variant={filterOption === 'all' ? 'contained' : 'outlined'}
+                            onClick={() => setFilterOption('all')}
+                        >
+                            All
+                        </Button>
                     </ButtonGroup>
                 </Box>
 
@@ -153,27 +217,34 @@ const ProfilePage = () => {
                 <Grid container spacing={3} direction="column">
                     {currentPosts.map((post) => (
                         <Grid item xs={12} key={post.id}>
-                            <Card sx={{ padding: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '8px', flexDirection: { xs: 'column', sm: 'row' } }}>
-
+                            <Card
+                                sx={{
+                                    padding: '15px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: '8px',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                }}
+                            >
                                 {/* Post Info */}
                                 <Box sx={{ flex: 1, marginRight: '15px' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{post.votes} votes</Typography>
-                                        <Typography variant="body1">{post.answers} answers</Typography>
-                                        <Typography variant="body1">{post.views} views</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <Bookmark sx={{ color: theme.palette.text.secondary, marginRight: '5px' }} />
-                                            <Typography variant="body2" color="textSecondary">Saved in For later</Typography>
-                                        </Box>
-                                    </Box>
-
                                     <Typography
                                         variant="h6"
-                                        sx={{ marginTop: '8px', color: theme.palette.primary.main, cursor: 'pointer' }}
-                                        onClick={() => alert(`Clicked on post: ${post.title}`)}
+                                        color="primary"
+                                        sx={{ cursor: 'pointer' }}
+                                        onClick={() => handleQuestionClick(post.id)} // Click handler
                                     >
                                         {post.title}
                                     </Typography>
+
+                                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginTop: 1 }}>
+                                        <Typography variant="body1">Votes: {post.votes}</Typography>
+                                        {post.answers !== null && (
+                                            <Typography variant="body1">Answers: {post.answers}</Typography>
+                                        )}
+                                        <Typography variant="body1">Views: {post.views}</Typography>
+                                    </Box>
 
                                     <Box sx={{ marginTop: '8px', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                                         {post.tags.map((tag, idx) => (
@@ -181,26 +252,21 @@ const ProfilePage = () => {
                                         ))}
                                     </Box>
 
-                                    {post.accepted && (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '8px' }}>
-                                            <CheckCircle fontSize="small" sx={{ color: 'green', marginRight: '5px' }} />
-                                            <Typography variant="body2" color="textSecondary">
-                                                Accepted
-                                            </Typography>
-                                        </Box>
-                                    )}
-
-                                    <Typography variant="body2" color="textSecondary" sx={{ marginTop: '10px', cursor: 'pointer' }} onClick={() => handleProfileClick(post.profileLink)}>
-                                        Asked by {post.user} ({post.userReputation}) on {post.dateAsked}
+                                    <Typography variant="body2" color="textSecondary" sx={{ marginTop: '10px' }}>
+                                        Posted by {post.user} on {new Date(post.dateAsked).toLocaleDateString()}
                                     </Typography>
                                 </Box>
 
-                                {/* Delete Icon */}
-                                <Delete sx={{ color: theme.palette.error.main, cursor: 'pointer' }} onClick={() => handleDeleteClick(post)} />
+                                {/* Bookmark or Delete */}
+                                <Delete
+                                    sx={{ color: theme.palette.error.main, cursor: 'pointer' }}
+                                    onClick={() => handleDeleteClick(post)}
+                                />
                             </Card>
                         </Grid>
                     ))}
                 </Grid>
+
 
                 {/* Pagination */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
