@@ -228,8 +228,6 @@ const ForumPage = () => {
                         <Tab color="textPrimary" label="Followed Discussions" />
                         <Tab color="textPrimary" label="Followed Forums" />
                         <Tab label="Followed Answers" />
-                        <Tab color="textPrimary" label="My Discussions" />
-                        <Tab color="textPrimary" label="Participated Discussions" />
                     </Tabs>
 
                     {/* Dropdown for Managing Followed Forums */}
@@ -434,19 +432,6 @@ const ForumPage = () => {
                                 )}
                             </>
                         )}
-                    </TabPanel>
-
-
-                    <TabPanel value={selectedTab} index={3}>
-                        <Card sx={{ padding: '20px' }}>
-                            <Typography>You haven't created any discussions yet.</Typography>
-                        </Card>
-                    </TabPanel>
-
-                    <TabPanel value={selectedTab} index={4}>
-                        <Card sx={{ padding: '20px' }}>
-                            <Typography>You haven't participated in any discussions yet.</Typography>
-                        </Card>
                     </TabPanel>
                 </Grid>
 
