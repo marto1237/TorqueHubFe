@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { API_BASE_URL, API_BASE_URL_SHOWCASE } from './config';
+import {API_BASE_URL_SHOWCASE } from './config';
 import EventBus from './utils/EventBus';
 
-const api = axios.create({
-    baseURL: API_BASE_URL,
+const showcaseAPI = axios.create({
+    baseURL: API_BASE_URL_SHOWCASE,
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 // Interceptor to include the token if the request requires authentication
-api.interceptors.request.use(
+showcaseAPI.interceptors.request.use(
     (config) => {
         const token = sessionStorage.getItem('jwtToken');
         if (token && config.requiresAuth) {
@@ -28,27 +28,7 @@ api.interceptors.request.use(
     }
 );
 
-// Interceptor to automatically refresh the token when a 401 Unauthorized occurs
-api.interceptors.response.use(
-    response => response,
-    async (error) => {
-        const originalRequest = error.config;
-        if (error.response.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-            try {
-                // Call the refresh token endpoint
-                await api.post('/auth/refresh-token');
-
-                // Retry the original request
-                return api(originalRequest);
-            } catch (refreshError) {
-                return Promise.reject(refreshError);
-            }
-        }
-        return Promise.reject(error);
-    }
-);
-api.interceptors.response.use(
+showcaseAPI.interceptors.response.use(
     (response) => response,
     (error) => {
       if (error.response?.status === 401) {
@@ -60,4 +40,4 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
   );
-export default api;
+export default showcaseAPI;

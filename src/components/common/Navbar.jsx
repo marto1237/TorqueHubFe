@@ -186,7 +186,9 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         }
     }
     const handleMyShowcaseClick = () => {
-        navigate('/myshowcase');
+        console.log("Navigating with userId:", userId);
+
+        navigate(`/usershowcase/${userId}`);
     }
     const handleShowcaseClick = () => {
         navigate('/showcase');

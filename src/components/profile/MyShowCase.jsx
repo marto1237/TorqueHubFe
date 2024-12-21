@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
     Box, Card, Typography, Grid, CardMedia, Divider, Avatar, IconButton, List, ListItem, ListItemText,
     ListItemAvatar, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, LinearProgress
@@ -6,6 +7,7 @@ import {
 import { DirectionsCar, Speed, Build, CameraAlt, Add, Edit } from '@mui/icons-material';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { Carousel } from 'react-responsive-carousel';
+import ShowcaseService from '../configuration/Services/ShowcaseService';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 
 // Simulated Car Data
@@ -32,6 +34,11 @@ const initialCarData = {
 
 // Main Showcase Component
 const MyShowcase = () => {
+    const { userId } = useParams();
+    const [showcaseData, setShowcaseData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [carData, setCarData] = useState(initialCarData);
@@ -41,6 +48,21 @@ const MyShowcase = () => {
     const [newMod, setNewMod] = useState({ date: '', description: '' });
     const [editedMod, setEditedMod] = useState({ date: '', description: '', index: null }); // For editing
     const [updatedStats, setUpdatedStats] = useState(carData.currentStats);
+
+    useEffect(() => {
+        const fetchShowcaseData = async () => {
+            try {
+                const data = await ShowcaseService.getUserShowcase(userId);
+                console.log(data)
+                setShowcaseData(data);
+            } catch (err) {
+                setError(err.message || "Error fetching showcase data");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchShowcaseData();
+    }, [userId]);
 
     // Open/close dialog for adding modification
     const handleModDialogOpen = () => setIsModDialogOpen(true);

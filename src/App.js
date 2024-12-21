@@ -35,6 +35,7 @@ const Profile = lazy(() => import('./components/profile/MyProfile'));
 const Following = lazy(() => import('./components/profile/Following'));
 const Bookmarks = lazy(() => import('./components/profile/Bookmarks'));
 const MyShowcase = lazy(() => import('./components/profile/MyShowCase'));
+const UserShowcases = lazy(()=> import('./components/profile/ShowcaseListPage'));
 const Showcase = lazy(() => import('./pages/Showcase'));
 const CarDetails = lazy(() => import('./pages/CarDetails'));
 const AccountSettings = lazy(() => import('./components/profile/AccountSettings'));
@@ -151,7 +152,8 @@ const App = () => {
                                 <Route path="/profile/:id" element={<Profile avatar={avatar} userDetails={userDetails} />} />
                                 <Route path="/following" element={<Following />} />
                                 <Route path="/bookmarks/:id" element={<Bookmarks />} />
-                                <Route path="/myshowcase" element={<MyShowcase />} />
+                                <Route path="/usershowcase/:id" element={<UserShowcases />} />
+                                <Route path="/myshowcase/:userId" element={<MyShowcase />} />
                                 <Route path="/showcase" element={<Showcase />} />
                                 <Route path="/car/:id" element={<CarDetails />} />
                                 <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
