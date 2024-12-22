@@ -9,6 +9,8 @@ import { useTheme, useMediaQuery } from '@mui/material';
 import { Carousel } from 'react-responsive-carousel';
 import ShowcaseService from '../configuration/Services/ShowcaseService';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
+import { ref, uploadBytes, getDownloadURL, listAll } from 'firebase/storage';
+import { storage } from '../../firebase';
 
 // Simulated Car Data
 const initialCarData = {
@@ -34,7 +36,7 @@ const initialCarData = {
 
 // Main Showcase Component
 const MyShowcase = () => {
-    const { userId } = useParams();
+    const { showcaseId } = useParams();
     const [showcaseData, setShowcaseData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -49,12 +51,22 @@ const MyShowcase = () => {
     const [editedMod, setEditedMod] = useState({ date: '', description: '', index: null }); // For editing
     const [updatedStats, setUpdatedStats] = useState(carData.currentStats);
 
+    const [carImages, setCarImages] = useState([]);
+    const [newImageFile, setNewImageFile] = useState(null);
+    const [isAddImageDialogOpen, setIsAddImageDialogOpen] = useState(false);
+
     useEffect(() => {
         const fetchShowcaseData = async () => {
             try {
-                const data = await ShowcaseService.getUserShowcase(userId);
+                const data = await ShowcaseService.getShowcaseByID(showcaseId);
                 console.log(data)
                 setShowcaseData(data);
+
+                // Fetch images from Firebase storage
+                const imageRef = ref(storage, `showcaseImages/${showcaseId}/`);
+                const imageList = await listAll(imageRef);
+                const imageUrls = await Promise.all(imageList.items.map(item => getDownloadURL(item)));
+                setCarImages(imageUrls);
             } catch (err) {
                 setError(err.message || "Error fetching showcase data");
             } finally {
@@ -62,7 +74,28 @@ const MyShowcase = () => {
             }
         };
         fetchShowcaseData();
-    }, [userId]);
+    }, [showcaseId]);
+
+    // Fetch images from Firebase
+    const fetchImagesFromFirebase = async () => {
+        const imageRef = ref(storage, `showcaseImages/${showcaseId}/`);
+        const imageList = await listAll(imageRef);
+        const urls = await Promise.all(
+            imageList.items.map((item) => getDownloadURL(item))
+        );
+        return urls;
+    };
+
+
+    const handleImageUpload = async () => {
+        if (!newImageFile) return;
+        const storageRef = ref(storage, `showcaseImages/${showcaseId}/${newImageFile.name}`);
+        await uploadBytes(storageRef, newImageFile);
+        const newImageUrl = await getDownloadURL(storageRef);
+        setCarImages((prevImages) => [...prevImages, newImageUrl]);
+        setIsAddImageDialogOpen(false);
+    };
+    
 
     // Open/close dialog for adding modification
     const handleModDialogOpen = () => setIsModDialogOpen(true);
@@ -140,191 +173,111 @@ const MyShowcase = () => {
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper, minHeight: '100vh' }}>
-            <Grid container spacing={3}>
-                {/* Car Details & Gallery */}
-                <Grid item xs={12} md={7}>
-                    <Card sx={{ padding: '20px' }}>
-                        <Typography variant="h4" color="primary" gutterBottom>
-                            {carData.name}
-                        </Typography>
-                        <Divider sx={{ mb: 3 }} />
+            {loading ? (
+                <Typography>Loading...</Typography>
+            ) : error ? (
+                <Typography color="error">{error}</Typography>
+            ) : (
+                <Grid container spacing={3}>
+                    {/* Car Details & Gallery */}
+                    <Grid item xs={12} md={7}>
+                        <Card sx={{ padding: '20px' }}>
+                            <Typography variant="h4" color="primary" gutterBottom>
+                                {showcaseData?.title}
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
 
-                        {/* Car Image Carousel */}
-                        <Box sx={{ textAlign: 'center', mb: 3 }}>
-                            <Carousel
-                                showThumbs={false}
-                                selectedItem={0}
-                                showArrows={true}
-                                infiniteLoop
-                                emulateTouch
-                                dynamicHeight
-                            >
-                                {carData.gallery.map((img, index) => (
-                                    <Box key={index}>
-                                        <CardMedia
-                                            component="img"
-                                            image={img.image}
-                                            alt={`Car image from ${img.year}`}
-                                            sx={{ maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
+                            <Box sx={{ textAlign: 'center', mb: 3 }}>
+                                <Carousel showThumbs={false} showArrows infiniteLoop emulateTouch>
+                                    {carImages.map((img, index) => (
+                                        <Box key={index}>
+                                            <CardMedia
+                                                component="img"
+                                                image={img}
+                                                alt={`Car Image ${index + 1}`}
+                                                sx={{ maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Carousel>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    component="label"
+                                    sx={{ mt: 2 }}
+                                >
+                                    Add New Image
+                                    <input
+                                        type="file"
+                                        hidden
+                                        onChange={handleImageUpload}
+                                    />
+                                </Button>
+                            </Box>
+                        </Card>
+                    </Grid>
+
+                    {/* Performance Stats */}
+                    <Grid item xs={12} md={5}>
+                        <Card sx={{ padding: '20px' }}>
+                            <Typography variant="h5" color="primary" gutterBottom>
+                                Performance Stats
+                                <IconButton onClick={handleStatsDialogOpen}>
+                                    <Edit />
+                                </IconButton>
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
+                            <List>
+                                <ListItem>
+                                    <ListItemText primary="Horsepower" secondary={`${showcaseData?.carPerformance?.horsepower || 'N/A'} HP`} />
+                                </ListItem>
+                                <ListItem>
+                                    <ListItemText primary="Drivetrain" secondary={showcaseData?.carPerformance?.drivetrain || 'N/A'} />
+                                </ListItem>
+                                <ListItem>
+                                    <ListItemText primary="Transmission" secondary={showcaseData?.carPerformance?.transmission || 'N/A'} />
+                                </ListItem>
+                                <ListItem>
+                                    <ListItemText primary="Top Speed" secondary={`${showcaseData?.carPerformance?.topSpeed || 'N/A'} km/h`} />
+                                </ListItem>
+                            </List>
+                        </Card>
+                    </Grid>
+
+                    {/* Modifications */}
+                    <Grid item xs={12}>
+                        <Card sx={{ padding: '20px' }}>
+                            <Typography variant="h5" color="primary" gutterBottom>
+                                Modifications History
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<Add />}
+                                    onClick={handleModDialogOpen}
+                                    sx={{ float: 'right' }}
+                                >
+                                    Add
+                                </Button>
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
+                            <List>
+                                {showcaseData?.modifications?.content.map((mod, index) => (
+                                    <ListItem key={index}>
+                                        <ListItemText
+                                            primary={new Date(mod.modifiedAt).toLocaleDateString()}
+                                            secondary={mod.description}
                                         />
-                                        <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-                                            {img.year} - {img.desc}
-                                        </Typography>
-                                    </Box>
-                                ))}
-                            </Carousel>
-                        </Box>
-                    </Card>
-                </Grid>
-
-                {/* Performance Stats */}
-                <Grid item xs={12} md={5}>
-                    <Card sx={{ padding: '20px' }}>
-                        <Typography variant="h5" color="primary" gutterBottom>
-                            Performance Stats
-                            <IconButton onClick={handleStatsDialogOpen}>
-                                <Edit />
-                            </IconButton>
-                        </Typography>
-                        <Divider sx={{ mb: 3 }} />
-                        <List>
-                            <ListItem>
-                                <ListItemAvatar>
-                                    <Avatar>
-                                        <Speed />
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText primary="Horsepower" secondary={carData.currentStats.horsepower} />
-                            </ListItem>
-                            <ListItem>
-                                <ListItemAvatar>
-                                    <Avatar>
-                                        <Build />
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText primary="Drivetrain" secondary={carData.currentStats.drivetrain} />
-                            </ListItem>
-                            <ListItem>
-                                <ListItemAvatar>
-                                    <Avatar>
-                                        <DirectionsCar />
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText primary="Transmission" secondary={carData.currentStats.transmission} />
-                            </ListItem>
-                            <ListItem>
-                                <ListItemAvatar>
-                                    <Avatar>
-                                        <CameraAlt />
-                                    </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText primary="Class" secondary={carData.currentStats.class} />
-                            </ListItem>
-                        </List>
-                    </Card>
-                </Grid>
-
-                {/* Modification History */}
-                <Grid item xs={12}>
-                    <Card sx={{ padding: '20px' }}>
-                        <Typography variant="h5" color="primary" gutterBottom>
-                            Modifications History
-                        </Typography>
-                        <Divider sx={{ mb: 3 }} />
-                        <List>
-                            {carData.modifications.map((mod, index) => (
-                                <ListItem key={index}>
-                                    <ListItemText primary={`${mod.date}`} secondary={mod.description} />
-                                    <IconButton onClick={() => handleEditModDialogOpen(index)}>
+                                        <IconButton onClick={() => handleEditModDialogOpen(index)}>
                                         <Edit />
                                     </IconButton>
-                                </ListItem>
-                            ))}
-                        </List>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<Add />}
-                            onClick={handleModDialogOpen}
-                        >
-                            Add Modification
-                        </Button>
-                    </Card>
+
+                                    </ListItem>
+                                ))}
+                            </List>
+                        </Card>
+                    </Grid>
                 </Grid>
-            </Grid>
-
-            {/* Dialog for Adding New Modification */}
-            <Dialog open={isModDialogOpen} onClose={handleModDialogClose}>
-                <DialogTitle>Add a New Modification</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        variant="filled"
-                        autoFocus
-                        margin="dense"
-                        name="date"
-                        label="Date (YYYY-MM-DD)"
-                        type="date"
-                        fullWidth
-                        value={newMod.date}
-                        onChange={handleInputChange}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="description"
-                        label="Modification Description"
-                        type="text"
-                        fullWidth
-                        value={newMod.description}
-                        onChange={handleInputChange}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleModDialogClose} color="secondary">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleAddModification} color="primary">
-                        Add Modification
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Dialog for Editing Modification */}
-            <Dialog open={isEditModDialogOpen} onClose={handleEditModDialogClose}>
-                <DialogTitle>Edit Modification</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="date"
-                        label="Date (YYYY-MM-DD)"
-                        type="date"
-                        fullWidth
-                        value={editedMod.date}
-                        onChange={handleEditModInputChange}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="description"
-                        label="Modification Description"
-                        type="text"
-                        fullWidth
-                        value={editedMod.description}
-                        onChange={handleEditModInputChange}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleEditModDialogClose} color="secondary">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSaveEditedMod} color="primary">
-                        Save
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            )}
 
             {/* Dialog for Editing Performance Stats */}
             <Dialog open={isStatsDialogOpen} onClose={handleStatsDialogClose}>
@@ -337,8 +290,7 @@ const MyShowcase = () => {
                         label="Horsepower"
                         type="text"
                         fullWidth
-                        className="MuiTextFieldWhite"
-                        value={updatedStats.horsepower}
+                        value={updatedStats?.horsepower || ''}
                         onChange={handleStatsInputChange}
                     />
                     <TextField
@@ -348,7 +300,7 @@ const MyShowcase = () => {
                         label="Drivetrain"
                         type="text"
                         fullWidth
-                        value={updatedStats.drivetrain}
+                        value={updatedStats?.drivetrain || ''}
                         onChange={handleStatsInputChange}
                     />
                     <TextField
@@ -358,17 +310,17 @@ const MyShowcase = () => {
                         label="Transmission"
                         type="text"
                         fullWidth
-                        value={updatedStats.transmission}
+                        value={updatedStats?.transmission || ''}
                         onChange={handleStatsInputChange}
                     />
                     <TextField
                         variant="filled"
                         margin="dense"
-                        name="class"
-                        label="Class"
+                        name="topSpeed"
+                        label="Top Speed"
                         type="text"
                         fullWidth
-                        value={updatedStats.class}
+                        value={updatedStats?.topSpeed || ''}
                         onChange={handleStatsInputChange}
                     />
                 </DialogContent>
@@ -377,7 +329,43 @@ const MyShowcase = () => {
                         Cancel
                     </Button>
                     <Button onClick={handleUpdateStats} color="primary">
-                        Update Stats
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog for Adding New Modification */}
+            <Dialog open={isModDialogOpen} onClose={handleModDialogClose}>
+                <DialogTitle>Add a New Modification</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        variant="filled"
+                        margin="dense"
+                        name="date"
+                        label="Date (YYYY-MM-DD)"
+                        type="date"
+                        fullWidth
+                        value={newMod.date}
+                        onChange={(e) => setNewMod({ ...newMod, date: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                        variant="filled"
+                        margin="dense"
+                        name="description"
+                        label="Modification Description"
+                        type="text"
+                        fullWidth
+                        value={newMod.description}
+                        onChange={(e) => setNewMod({ ...newMod, description: e.target.value })}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleModDialogClose} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleAddModification} color="primary">
+                        Add
                     </Button>
                 </DialogActions>
             </Dialog>

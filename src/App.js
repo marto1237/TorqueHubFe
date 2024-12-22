@@ -153,7 +153,7 @@ const App = () => {
                                 <Route path="/following" element={<Following />} />
                                 <Route path="/bookmarks/:id" element={<Bookmarks />} />
                                 <Route path="/usershowcase/:id" element={<UserShowcases />} />
-                                <Route path="/myshowcase/:userId" element={<MyShowcase />} />
+                                <Route path="/myshowcase/:showcaseId" element={<MyShowcase />} />
                                 <Route path="/showcase" element={<Showcase />} />
                                 <Route path="/car/:id" element={<CarDetails />} />
                                 <Route path="/accountsettings" element={<AccountSettings userDetails={userDetails} updateAvatar={handleAvatarUpdate} />} />
