@@ -44,7 +44,6 @@ const MyShowcase = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [carData, setCarData] = useState(initialCarData);
-    const [isModDialogOpen, setIsModDialogOpen] = useState(false);
     const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false);
     const [isEditModDialogOpen, setIsEditModDialogOpen] = useState(false); // State for edit dialog
     const [newMod, setNewMod] = useState({ date: '', description: '' });
@@ -55,12 +54,19 @@ const MyShowcase = () => {
     const [newImageFile, setNewImageFile] = useState(null);
     const [isAddImageDialogOpen, setIsAddImageDialogOpen] = useState(false);
 
+    const [isPerformanceDialogOpen, setIsPerformanceDialogOpen] = useState(false);
+    const [isModDialogOpen, setIsModDialogOpen] = useState(false);
+  
+    const [updatedPerformance, setUpdatedPerformance] = useState({});
+    const [modificationToEdit, setModificationToEdit] = useState(null);
+
     useEffect(() => {
         const fetchShowcaseData = async () => {
             try {
                 const data = await ShowcaseService.getShowcaseByID(showcaseId);
                 console.log(data)
                 setShowcaseData(data);
+                setUpdatedPerformance(data.carPerformance);
 
                 // Fetch images from Firebase storage
                 const imageRef = ref(storage, `showcaseImages/${showcaseId}/`);
@@ -76,6 +82,80 @@ const MyShowcase = () => {
         fetchShowcaseData();
     }, [showcaseId]);
 
+    const handleUpdatePerformance = async () => {
+        try {
+          await ShowcaseService.updateShowcase(showcaseId, {
+            id: showcaseId, // Hidden ID passed to API
+            userId: showcaseData.userId,
+            title: showcaseData.title,
+            description: showcaseData.description,
+            brandId: showcaseData.brand.id,
+            modelId: showcaseData.model.id,
+            categoryId: showcaseData.category.id,
+            countryId: showcaseData.country.id,
+            ...updatedPerformance,
+          });
+      
+          // Update local state
+          setShowcaseData((prev) => ({
+            ...prev,
+            carPerformance: updatedPerformance,
+          }));
+          setIsPerformanceDialogOpen(false);
+        } catch (err) {
+          console.error("Error updating performance:", err);
+        }
+      };
+      // Add or update a modification
+      const handleAddOrUpdateModification = async () => {
+        try {
+          if (modificationToEdit?.id) {
+            // Update existing modification
+            await ShowcaseService.updateModification(modificationToEdit.id, modificationToEdit);
+            setShowcaseData((prev) => ({
+              ...prev,
+              modifications: {
+                ...prev.modifications,
+                content: prev.modifications.content.map((mod) =>
+                  mod.id === modificationToEdit.id ? modificationToEdit : mod
+                ),
+              },
+            }));
+          } else {
+            // Add new modification
+            const newMod = await ShowcaseService.addModification({
+              ...modificationToEdit,
+              showcaseId,
+            });
+            setShowcaseData((prev) => ({
+              ...prev,
+              modifications: {
+                ...prev.modifications,
+                content: [...prev.modifications.content, newMod],
+              },
+            }));
+          }
+          setIsModDialogOpen(false);
+        } catch (err) {
+          console.error('Error saving modification:', err);
+        }
+      };
+    
+      // Delete a modification
+      const handleDeleteModification = async (modId) => {
+        try {
+          await ShowcaseService.deleteModification(modId);
+          setShowcaseData((prev) => ({
+            ...prev,
+            modifications: {
+              ...prev.modifications,
+              content: prev.modifications.content.filter((mod) => mod.id !== modId),
+            },
+          }));
+        } catch (err) {
+          console.error('Error deleting modification:', err);
+        }
+      };
     // Fetch images from Firebase
     const fetchImagesFromFirebase = async () => {
         const imageRef = ref(storage, `showcaseImages/${showcaseId}/`);
@@ -98,7 +178,18 @@ const MyShowcase = () => {
     
 
     // Open/close dialog for adding modification
-    const handleModDialogOpen = () => setIsModDialogOpen(true);
+    const handleModDialogOpen = (mod = null) => {
+        setModificationToEdit(
+            mod
+                ? {
+                      id: mod.id,
+                      date: new Date(mod.modifiedAt).toISOString().split('T')[0], // Convert to YYYY-MM-DD
+                      description: mod.description,
+                  }
+                : { date: '', description: '' } // Default values for adding a new modification
+        );
+        setIsModDialogOpen(true);
+    };
     const handleModDialogClose = () => setIsModDialogOpen(false);
 
     // Handle new modification submission
@@ -169,6 +260,42 @@ const MyShowcase = () => {
             modifications: updatedModifications,
         }));
         handleEditModDialogClose();
+    };
+
+
+    // Save the modification (add or update)
+    const handleSaveModification = async () => {
+        try {
+            if (modificationToEdit.id) {
+                // Update existing modification
+                await ShowcaseService.updateModification(modificationToEdit.id, modificationToEdit);
+                setShowcaseData((prev) => ({
+                    ...prev,
+                    modifications: {
+                        ...prev.modifications,
+                        content: prev.modifications.content.map((mod) =>
+                            mod.id === modificationToEdit.id ? modificationToEdit : mod
+                        ),
+                    },
+                }));
+            } else {
+                // Add new modification
+                const newMod = await ShowcaseService.addModification({
+                    ...modificationToEdit,
+                    showcaseId,
+                });
+                setShowcaseData((prev) => ({
+                    ...prev,
+                    modifications: {
+                        ...prev.modifications,
+                        content: [...prev.modifications.content, newMod],
+                    },
+                }));
+            }
+            handleModDialogClose();
+        } catch (err) {
+            console.error('Error saving modification:', err);
+        }
     };
 
     return (
@@ -261,16 +388,21 @@ const MyShowcase = () => {
                             </Typography>
                             <Divider sx={{ mb: 3 }} />
                             <List>
-                                {showcaseData?.modifications?.content.map((mod, index) => (
-                                    <ListItem key={index}>
+                                {showcaseData?.modifications?.content.map((mod) => (
+                                    <ListItem key={mod.id} secondaryAction={
+                                        <>
+                                            <IconButton onClick={() => handleModDialogOpen(mod)}>
+                                                <Edit />
+                                            </IconButton>
+                                            <IconButton onClick={() => handleDeleteModification(mod.id)}>
+                                                🗑️
+                                            </IconButton>
+                                        </>
+                                    }>
                                         <ListItemText
                                             primary={new Date(mod.modifiedAt).toLocaleDateString()}
                                             secondary={mod.description}
                                         />
-                                        <IconButton onClick={() => handleEditModDialogOpen(index)}>
-                                        <Edit />
-                                    </IconButton>
-
                                     </ListItem>
                                 ))}
                             </List>
@@ -283,92 +415,80 @@ const MyShowcase = () => {
             <Dialog open={isStatsDialogOpen} onClose={handleStatsDialogClose}>
                 <DialogTitle>Edit Performance Stats</DialogTitle>
                 <DialogContent>
+                <TextField type="hidden" value={showcaseId} />
+                {Object.entries(updatedPerformance).map(([key, value]) => (
                     <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="horsepower"
-                        label="Horsepower"
-                        type="text"
-                        fullWidth
-                        value={updatedStats?.horsepower || ''}
-                        onChange={handleStatsInputChange}
+                    key={key}
+                    label={key}
+                    variant="filled"
+                    fullWidth
+                    margin="dense"
+                    value={value}
+                    onChange={(e) =>
+                        setUpdatedPerformance((prev) => ({
+                        ...prev,
+                        [key]: e.target.value,
+                        }))
+                    }
                     />
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="drivetrain"
-                        label="Drivetrain"
-                        type="text"
-                        fullWidth
-                        value={updatedStats?.drivetrain || ''}
-                        onChange={handleStatsInputChange}
-                    />
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="transmission"
-                        label="Transmission"
-                        type="text"
-                        fullWidth
-                        value={updatedStats?.transmission || ''}
-                        onChange={handleStatsInputChange}
-                    />
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="topSpeed"
-                        label="Top Speed"
-                        type="text"
-                        fullWidth
-                        value={updatedStats?.topSpeed || ''}
-                        onChange={handleStatsInputChange}
-                    />
+                ))}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleStatsDialogClose} color="secondary">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleUpdateStats} color="primary">
-                        Save
-                    </Button>
-                </DialogActions>
-            </Dialog>
+                        <DialogActions>
+                            <Button onClick={handleStatsDialogClose} color="secondary">
+                                Cancel
+                            </Button>
+                            <Button onClick={handleUpdatePerformance} color="primary">
+                                Save
+                            </Button>
+                        </DialogActions>
+                    </Dialog>
 
             {/* Dialog for Adding New Modification */}
             <Dialog open={isModDialogOpen} onClose={handleModDialogClose}>
-                <DialogTitle>Add a New Modification</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="date"
-                        label="Date (YYYY-MM-DD)"
-                        type="date"
-                        fullWidth
-                        value={newMod.date}
-                        onChange={(e) => setNewMod({ ...newMod, date: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                    <TextField
-                        variant="filled"
-                        margin="dense"
-                        name="description"
-                        label="Modification Description"
-                        type="text"
-                        fullWidth
-                        value={newMod.description}
-                        onChange={(e) => setNewMod({ ...newMod, description: e.target.value })}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleModDialogClose} color="secondary">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleAddModification} color="primary">
-                        Add
-                    </Button>
-                </DialogActions>
-            </Dialog>
+    <DialogTitle>{modificationToEdit?.id ? 'Edit Modification' : 'Add Modification'}</DialogTitle>
+    <DialogContent>
+        <TextField
+            variant="filled"
+            margin="dense"
+            name="date"
+            label="Date"
+            type="date"
+            fullWidth
+            value={modificationToEdit?.date || ''} // Pre-fill with the selected modification's date
+            onChange={(e) =>
+                setModificationToEdit((prev) => ({
+                    ...prev,
+                    date: e.target.value,
+                }))
+            }
+            InputLabelProps={{ shrink: true }}
+        />
+        <TextField
+            variant="filled"
+            margin="dense"
+            name="description"
+            label="Description"
+            type="text"
+            fullWidth
+            value={modificationToEdit?.description || ''} // Pre-fill with the selected modification's description
+            onChange={(e) =>
+                setModificationToEdit((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                }))
+            }
+        />
+    </DialogContent>
+    <DialogActions>
+        <Button onClick={handleModDialogClose} color="secondary">
+            Cancel
+        </Button>
+        <Button onClick={handleSaveModification} color="primary">
+            Save
+        </Button>
+    </DialogActions>
+</Dialog>
+            
         </Box>
     );
 };
