@@ -60,6 +60,11 @@ const MyShowcase = () => {
     const [updatedPerformance, setUpdatedPerformance] = useState({});
     const [modificationToEdit, setModificationToEdit] = useState(null);
 
+    const userDetails = sessionStorage.getItem('userDetails');
+
+    const parsedDetails = JSON.parse(userDetails);
+    const userId = parsedDetails.id;
+    
     useEffect(() => {
         const fetchShowcaseData = async () => {
             try {
@@ -86,7 +91,7 @@ const MyShowcase = () => {
         try {
           await ShowcaseService.updateShowcase(showcaseId, {
             id: showcaseId, // Hidden ID passed to API
-            userId: showcaseData.userId,
+            userId: userId,
             title: showcaseData.title,
             description: showcaseData.description,
             brandId: showcaseData.brand.id,
@@ -183,13 +188,13 @@ const MyShowcase = () => {
             mod
                 ? {
                       id: mod.id,
-                      date: new Date(mod.modifiedAt).toISOString().split('T')[0], // Convert to YYYY-MM-DD
+                      date: mod.modifiedAt ? new Date(mod.modifiedAt).toISOString().split('T')[0] : '', // Convert to YYYY-MM-DD
                       description: mod.description,
                   }
                 : { date: '', description: '' } // Default values for adding a new modification
         );
         setIsModDialogOpen(true);
-    };
+    };    
     const handleModDialogClose = () => setIsModDialogOpen(false);
 
     // Handle new modification submission
@@ -266,22 +271,33 @@ const MyShowcase = () => {
     // Save the modification (add or update)
     const handleSaveModification = async () => {
         try {
+            const currentDate = new Date(); // Get the current date and time
+            const formattedDate = modificationToEdit.date
+                ? `${modificationToEdit.date}T${currentDate.toTimeString().split(' ')[0]}` // Append current time to the provided date
+                : currentDate.toISOString(); // Use current date and time if no date provided
+    
+            const payload = {
+                userId: userId, // Ensure this matches the server expectations
+                description: modificationToEdit.description,
+                modifiedAt: formattedDate, // Use the formatted date
+            };
+    
             if (modificationToEdit.id) {
                 // Update existing modification
-                await ShowcaseService.updateModification(modificationToEdit.id, modificationToEdit);
+                await ShowcaseService.updateModification(modificationToEdit.id, payload);
                 setShowcaseData((prev) => ({
                     ...prev,
                     modifications: {
                         ...prev.modifications,
                         content: prev.modifications.content.map((mod) =>
-                            mod.id === modificationToEdit.id ? modificationToEdit : mod
+                            mod.id === modificationToEdit.id ? { ...mod, ...payload } : mod
                         ),
                     },
                 }));
             } else {
                 // Add new modification
                 const newMod = await ShowcaseService.addModification({
-                    ...modificationToEdit,
+                    ...payload,
                     showcaseId,
                 });
                 setShowcaseData((prev) => ({
@@ -292,11 +308,14 @@ const MyShowcase = () => {
                     },
                 }));
             }
+    
             handleModDialogClose();
         } catch (err) {
-            console.error('Error saving modification:', err);
+            console.error('Error saving modification:', err.response || err.message || err);
         }
     };
+    
+    
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper, minHeight: '100vh' }}>
