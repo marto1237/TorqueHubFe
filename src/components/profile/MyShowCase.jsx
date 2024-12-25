@@ -11,39 +11,23 @@ import ShowcaseService from '../configuration/Services/ShowcaseService';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import { ref, uploadBytes, getDownloadURL, listAll } from 'firebase/storage';
 import { storage } from '../../firebase';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppNotifications } from '../common/NotificationProvider';
 
-// Simulated Car Data
-const initialCarData = {
-    name: 'Toyota Supra MK4',
-    currentStats: {
-        horsepower: '500 HP',
-        drivetrain: 'RWD',
-        transmission: '6-Speed Manual',
-        engine: '3.0L Inline 6 Twin-Turbo 2JZ-GTE',
-        class: 'Sports',
-    },
-    gallery: [
-        { year: 2020, image: 'https://images.collectingcars.com/019648/Toyota-Supra-34.jpg?w=1263&fit=fillmax&crop=edges&auto=format,compress&cs=srgb&q=85', desc: 'Stock appearance' },
-        { year: 2022, image: 'https://i.redd.it/obmat9yo4mi81.jpg', desc: 'Custom paint job & wheels' },
-        { year: 2024, image: 'https://s3.amazonaws.com/rparts-sites/3c6bf818a2c9a12c8c6d6483752dc1f9/images/custom/2014/06/57-2.jpg', desc: 'Bigger turbo & new exhaust' },
-    ],
-    modifications: [
-        { date: '2021-07-10', description: 'Installed aftermarket turbo' },
-        { date: '2022-05-14', description: 'Full paint job: Gloss Black' },
-        { date: '2023-09-22', description: 'Upgraded suspension & exhaust system' },
-    ],
-};
 
 // Main Showcase Component
 const MyShowcase = () => {
     const { showcaseId } = useParams();
+    const queryClient = useQueryClient();
+    const notifications = useAppNotifications();
+    const theme = useTheme();
+
     const [showcaseData, setShowcaseData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [carData, setCarData] = useState(initialCarData);
+    
+    const [carData, setCarData] = useState({});
     const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false);
     const [isEditModDialogOpen, setIsEditModDialogOpen] = useState(false); // State for edit dialog
     const [newMod, setNewMod] = useState({ date: '', description: '' });
@@ -64,6 +48,7 @@ const MyShowcase = () => {
 
     const parsedDetails = JSON.parse(userDetails);
     const userId = parsedDetails.id;
+    
     
     useEffect(() => {
         const fetchShowcaseData = async () => {
@@ -107,8 +92,9 @@ const MyShowcase = () => {
             carPerformance: updatedPerformance,
           }));
           setIsPerformanceDialogOpen(false);
+          notifications.show('Performance updated successfully', { autoHideDuration: 3000, severity: 'success' });
         } catch (err) {
-          console.error("Error updating performance:", err);
+            notifications.show('Error updating performance', { autoHideDuration: 3000, severity: 'error' });
         }
       };
       // Add or update a modification
@@ -178,6 +164,7 @@ const MyShowcase = () => {
         await uploadBytes(storageRef, newImageFile);
         const newImageUrl = await getDownloadURL(storageRef);
         setCarImages((prevImages) => [...prevImages, newImageUrl]);
+        notifications.show('Image uploaded successfully', { autoHideDuration: 3000, severity: 'success' });
         setIsAddImageDialogOpen(false);
     };
     
@@ -311,6 +298,7 @@ const MyShowcase = () => {
     
             handleModDialogClose();
         } catch (err) {
+            notifications.show('Error saving modification', { autoHideDuration: 3000, severity: 'error' });
             console.error('Error saving modification:', err.response || err.message || err);
         }
     };
@@ -329,7 +317,7 @@ const MyShowcase = () => {
                     <Grid item xs={12} md={7}>
                         <Card sx={{ padding: '20px' }}>
                             <Typography variant="h4" color="primary" gutterBottom>
-                                {showcaseData?.title}
+                                {showcaseData.title}
                             </Typography>
                             <Divider sx={{ mb: 3 }} />
 
