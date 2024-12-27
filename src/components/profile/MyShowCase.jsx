@@ -49,6 +49,15 @@ const MyShowcase = () => {
     const parsedDetails = JSON.parse(userDetails);
     const userId = parsedDetails.id;
     
+    const { data: cachedShowcaseData, isLoading: queryLoading, error: queryError } = useQuery({
+        queryKey: ['showcase', showcaseId],
+        queryFn: () => ShowcaseService.getShowcaseByID(showcaseId),
+        onSuccess: (data) => {
+            setShowcaseData(data);
+            setUpdatedPerformance(data.carPerformance);
+            fetchImagesFromFirebase();
+        },
+    });
     
     useEffect(() => {
         const fetchShowcaseData = async () => {
@@ -91,6 +100,7 @@ const MyShowcase = () => {
             ...prev,
             carPerformance: updatedPerformance,
           }));
+          queryClient.invalidateQueries(['showcase', showcaseId]);
           setIsPerformanceDialogOpen(false);
           notifications.show('Performance updated successfully', { autoHideDuration: 3000, severity: 'success' });
         } catch (err) {
@@ -143,6 +153,7 @@ const MyShowcase = () => {
               content: prev.modifications.content.filter((mod) => mod.id !== modId),
             },
           }));
+          queryClient.invalidateQueries(['showcase', showcaseId]);
         } catch (err) {
           console.error('Error deleting modification:', err);
         }
@@ -295,7 +306,7 @@ const MyShowcase = () => {
                     },
                 }));
             }
-    
+            queryClient.invalidateQueries(['showcase', showcaseId]);
             handleModDialogClose();
         } catch (err) {
             notifications.show('Error saving modification', { autoHideDuration: 3000, severity: 'error' });
@@ -422,24 +433,26 @@ const MyShowcase = () => {
             <Dialog open={isStatsDialogOpen} onClose={handleStatsDialogClose}>
                 <DialogTitle>Edit Performance Stats</DialogTitle>
                 <DialogContent>
-                <TextField type="hidden" value={showcaseId} />
-                {Object.entries(updatedPerformance).map(([key, value]) => (
-                    <TextField
+        {/* No visible input for ID */}
+        {Object.entries(updatedPerformance).map(([key, value]) =>
+            key !== 'id' ? ( // Exclude `id` from visible fields
+                <TextField
                     key={key}
-                    label={key}
+                    label={key.charAt(0).toUpperCase() + key.slice(1)} // Capitalize field name
                     variant="filled"
                     fullWidth
                     margin="dense"
                     value={value}
                     onChange={(e) =>
                         setUpdatedPerformance((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
+                            ...prev,
+                            [key]: e.target.value,
                         }))
                     }
-                    />
-                ))}
-                </DialogContent>
+                />
+            ) : null // Do not render `id`
+        )}
+    </DialogContent>
                         <DialogActions>
                             <Button onClick={handleStatsDialogClose} color="secondary">
                                 Cancel
