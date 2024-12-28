@@ -45,6 +45,7 @@ const PaymentPage = lazy(() => import('./pages/Payment'));
 const Users = lazy(() => import('./pages/Users'));
 const NotificationsPage = lazy(() => import('./components/common/NotificationPage'))
 const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
+const CreateShowcase = lazy(() => import('./components/forum/CreateShowcase'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -171,6 +172,8 @@ const App = () => {
                                         </RoleProtectedRoute>
                                     }
                                 />
+                                <Route path="/create-showcase" element={<CreateShowcase/>} />
+                                
                             </Routes>
                         </NotificationProvider>
                     </Suspense>

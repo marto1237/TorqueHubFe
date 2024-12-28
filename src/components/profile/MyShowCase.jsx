@@ -100,7 +100,10 @@ const MyShowcase = () => {
             ...prev,
             carPerformance: updatedPerformance,
           }));
-          queryClient.invalidateQueries(['showcase', showcaseId]);
+          queryClient.setQueryData(['showcase', showcaseId], (oldData) => ({
+            ...oldData,
+            carPerformance: { ...updatedPerformance },
+        }));
           setIsPerformanceDialogOpen(false);
           notifications.show('Performance updated successfully', { autoHideDuration: 3000, severity: 'success' });
         } catch (err) {
@@ -110,7 +113,7 @@ const MyShowcase = () => {
       // Add or update a modification
       const handleAddOrUpdateModification = async () => {
         try {
-          if (modificationToEdit?.id) {
+          if (modificationToEdit.id) {
             // Update existing modification
             await ShowcaseService.updateModification(modificationToEdit.id, modificationToEdit);
             setShowcaseData((prev) => ({

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Paper, Chip, Pagination, Skeleton } from '@mui/material';
+import { Box, Typography, Grid, Paper, Chip, Pagination, Skeleton,Button } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import ShowcaseService from '../configuration/Services/ShowcaseService';
 import { useTheme, useMediaQuery } from '@mui/material';
@@ -53,6 +53,11 @@ const ShowcaseListPage = () => {
         navigate(`/myshowcase/${showcaseId}`);
     };
 
+    const handleCreateShowcase = () => {
+        navigate('/create-showcase'); 
+    };
+
+
     return (
         <Box
             sx={{
@@ -66,6 +71,14 @@ const ShowcaseListPage = () => {
             <Typography variant="h4" gutterBottom>
                 Showcases
             </Typography>
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCreateShowcase}
+                sx={{ marginBottom: '20px' }}
+            >
+                Create New Showcase
+            </Button>
             {loading ? (
                 <Grid container spacing={3}>
                     {[...Array(5)].map((_, index) => (
