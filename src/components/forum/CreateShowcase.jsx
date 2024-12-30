@@ -14,6 +14,7 @@
     import BrandService from '../configuration/Services/BrandService';
     import CategoryService from '../configuration/Services/CategoryService';
     import CountryService from '../configuration/Services/CountryService';
+    import ModelService from '../configuration/Services/ModelService';
     import DOMPurify from 'dompurify';
 
     const ShowcaseCreateForm = () => {
@@ -41,6 +42,16 @@
         const [models, setModels] = useState([]);
         const [filteredModels, setFilteredModels] = useState([]);
         const [model, setModel] = useState(null);
+
+        const [horsepower, setHorsepower] = useState('');
+        const [drivetrain, setDrivetrain] = useState('');
+        const [weight, setWeight] = useState('');
+        const [engineDisplacement, setEngineDisplacement] = useState('');
+        const [transmission, setTransmission] = useState('');
+        const [torque, setTorque] = useState('');
+        const [fuelType, setFuelType] = useState('');
+        const [topSpeed, setTopSpeed] = useState('');
+        const [acceleration, setAcceleration] = useState('');
 
 
         const [error, setError] = useState({
@@ -162,22 +173,22 @@
         useEffect(() => {
             const fetchModelsByBrand = async () => {
                 if (!brand) {
-                    setFilteredModels([]);
-                    setModel(null); // Reset the selected model if no brand is selected
+                    setFilteredModels([]); // Clear models when no brand is selected
+                    setModel(null); // Reset the selected model
                     return;
                 }
         
                 try {
-                    const response = await BrandService.getModelsByBrand(brand.id); // Adjust API call as needed
-                    setModels(response); // Store all models fetched for the brand
-                    setFilteredModels(response); // Display fetched models initially
+                    const models = await ModelService.getModelsByBrandName(brand.name); // Fetch models by brand name
+                    setModels(models); // Store all fetched models
+                    setFilteredModels(models); // Set models for display
                 } catch (error) {
                     console.error('Error fetching models:', error);
                 }
             };
         
             fetchModelsByBrand();
-        }, [brand]); // Refetch models when the brand changes
+        }, [brand]);
         
 
 
@@ -187,33 +198,67 @@
             const categoryValid = !!category;
             const brandValid = !!brand;
             const countryValid = !!country;
-
+            const horsepowerValid = !isNaN(horsepower) && horsepower > 0;
+            const weightValid = !isNaN(weight) && weight > 0;
+            const engineDisplacementValid = !isNaN(engineDisplacement) && engineDisplacement > 0;
+            const torqueValid = !isNaN(torque) && torque > 0;
+            const topSpeedValid = !isNaN(topSpeed) && topSpeed > 0;
+            const accelerationValid = !isNaN(acceleration) && acceleration > 0;
+        
             setError({
                 title: !titleValid,
                 description: !descriptionValid,
                 category: !categoryValid,
                 brand: !brandValid,
                 country: !countryValid,
+                horsepower: !horsepowerValid,
+                weight: !weightValid,
+                engineDisplacement: !engineDisplacementValid,
+                torque: !torqueValid,
+                topSpeed: !topSpeedValid,
+                acceleration: !accelerationValid,
             });
-
-            return titleValid && descriptionValid && categoryValid && brandValid && countryValid;
+        
+            return (
+                titleValid &&
+                descriptionValid &&
+                categoryValid &&
+                brandValid &&
+                countryValid &&
+                horsepowerValid &&
+                weightValid &&
+                engineDisplacementValid &&
+                torqueValid &&
+                topSpeedValid &&
+                accelerationValid
+            );
         };
+        
 
         const handleSubmit = async () => {
             if (!validateForm()) return;
-
+        
             const showcaseData = {
                 title,
                 description: DOMPurify.sanitize(description),
                 categoryId: category.id,
                 brandId: brand.id,
+                modelId: model?.id,
                 countryId: country?.id,
+                horsepower: parseFloat(horsepower),
+                drivetrain,
+                weight: parseFloat(weight),
+                engineDisplacement: parseFloat(engineDisplacement),
+                transmission,
+                torque: parseFloat(torque),
+                fuelType,
+                topSpeed: parseFloat(topSpeed),
+                acceleration: parseFloat(acceleration),
             };
-
+        
             try {
                 const response = await ShowcaseService.createShowcase(showcaseData);
                 console.log('Showcase created:', response);
-                // Navigate to created showcase or show success message
             } catch (error) {
                 console.error('Error creating showcase:', error);
             }
@@ -327,17 +372,112 @@
                             getOptionLabel={(option) => option.name || ''}
                             value={model}
                             onChange={(event, newValue) => setModel(newValue)}
+                            disabled={!brand} // Disable when no brand is selected
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
                                     label="Select Model"
                                     variant="filled"
-                                    error={!model}
-                                    helperText={!model ? 'Please select a model' : ''}
+                                    error={!model && brand} // Show error only if a brand is selected but no model
+                                    helperText={!brand ? 'Please select a brand first' : (!model ? 'Please select a model' : '')}
                                 />
                             )}
                             sx={{ marginBottom: '1.5rem' }}
                         />
+
+                        <Typography variant="h6">Horsepower:</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={horsepower}
+                            onChange={(e) => setHorsepower(e.target.value)}
+                            error={error.horsepower}
+                            helperText={error.horsepower ? 'Horsepower must be a positive number' : ''}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Drivetrain:</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={drivetrain}
+                            onChange={(e) => setDrivetrain(e.target.value)}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Weight (kg):</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={weight}
+                            onChange={(e) => setWeight(e.target.value)}
+                            error={error.weight}
+                            helperText={error.weight ? 'Weight must be a positive number' : ''}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Engine Displacement (L):</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={engineDisplacement}
+                            onChange={(e) => setEngineDisplacement(e.target.value)}
+                            error={error.engineDisplacement}
+                            helperText={error.engineDisplacement ? 'Engine Displacement must be a positive number' : ''}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Transmission:</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={transmission}
+                            onChange={(e) => setTransmission(e.target.value)}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Torque (Nm):</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={torque}
+                            onChange={(e) => setTorque(e.target.value)}
+                            error={error.torque}
+                            helperText={error.torque ? 'Torque must be a positive number' : ''}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Fuel Type:</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={fuelType}
+                            onChange={(e) => setFuelType(e.target.value)}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Top Speed (km/h):</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={topSpeed}
+                            onChange={(e) => setTopSpeed(e.target.value)}
+                            error={error.topSpeed}
+                            helperText={error.topSpeed ? 'Top Speed must be a positive number' : ''}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
+                        <Typography variant="h6">Acceleration (0-100 km/h in seconds):</Typography>
+                        <TextField
+                            fullWidth
+                            variant="filled"
+                            value={acceleration}
+                            onChange={(e) => setAcceleration(e.target.value)}
+                            error={error.acceleration}
+                            helperText={error.acceleration ? 'Acceleration must be a positive number' : ''}
+                            sx={{ marginBottom: '1.5rem' }}
+                        />
+
 
 
                         <Divider sx={{ marginBottom: '2rem' }} />

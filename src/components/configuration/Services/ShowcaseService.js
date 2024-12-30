@@ -11,6 +11,16 @@ const ShowcaseService = {
             .catch(error => Promise.reject(error));
     },
 
+    createShowcase: (showcaseData) => {
+        return showcaseAPI
+            .post('/showcase', showcaseData, {
+                requiresAuth: true,
+            })
+            .then(response => response.data)
+            .catch(error => Promise.reject(error));
+    },
+    
+
     updateShowcase: (id, showcaseData) => {
         return showcaseAPI
             .put(`/showcase/${id}`, showcaseData, {
