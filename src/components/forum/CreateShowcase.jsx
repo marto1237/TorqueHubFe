@@ -14,11 +14,14 @@
     import BrandService from '../configuration/Services/BrandService';
     import CategoryService from '../configuration/Services/CategoryService';
     import CountryService from '../configuration/Services/CountryService';
+    import { useNavigate } from 'react-router-dom';
     import ModelService from '../configuration/Services/ModelService';
     import DOMPurify from 'dompurify';
 
     const ShowcaseCreateForm = () => {
         const theme = useTheme();
+        const navigate = useNavigate();
+
 
         const [title, setTitle] = useState('');
         const [description, setDescription] = useState('');
@@ -53,6 +56,11 @@
         const [topSpeed, setTopSpeed] = useState('');
         const [acceleration, setAcceleration] = useState('');
 
+        const userDetails = sessionStorage.getItem('userDetails');
+
+        const parsedDetails = JSON.parse(userDetails);
+        const userId = parsedDetails.id;
+
 
         const [error, setError] = useState({
             title: false,
@@ -67,7 +75,6 @@
             const fetchTopBrands = async () => {
                 try {
                     const brands = await BrandService.getAllBrands();
-                    console.log(brand);
                     setTopBrands(brands);
                     setFilteredBrands(brands); // Default to showing top brands
                 } catch (error) {
@@ -139,7 +146,6 @@
             const fetchAllCountries = async () => {
                 try {
                     const countries = await CountryService.getAllCountries();
-                    console.log(countries);
                     setallCountries(countries);
                     setFilteredCountries(countries); 
                 } catch (error) {
@@ -239,6 +245,7 @@
             if (!validateForm()) return;
         
             const showcaseData = {
+                userId: userId,
                 title,
                 description: DOMPurify.sanitize(description),
                 categoryId: category.id,
@@ -258,7 +265,7 @@
         
             try {
                 const response = await ShowcaseService.createShowcase(showcaseData);
-                console.log('Showcase created:', response);
+                navigate(`/usershowcase/${userId}`);
             } catch (error) {
                 console.error('Error creating showcase:', error);
             }
@@ -328,7 +335,6 @@
                             value={brand}
                             onChange={(event, newValue) => {
                                 setBrand(newValue); // Update the selected brand
-                                console.log('Selected Brand:', newValue); // Log the selected brand
                             }}
                             inputValue={brandSearch}
                             onInputChange={(event, newInputValue) => setBrandSearch(newInputValue)}
