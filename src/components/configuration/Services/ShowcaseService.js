@@ -19,6 +19,16 @@ const ShowcaseService = {
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
+
+    deleteShowcase: (showcaseId) => {
+        return showcaseAPI
+            .delete(`/showcase/${showcaseId}`, {
+                requiresAuth: true, // Automatically adds the Authorization header
+            })
+            .then(response => response.data)
+            .catch(error => Promise.reject(error));
+    },
+    
     
 
     updateShowcase: (id, showcaseData) => {

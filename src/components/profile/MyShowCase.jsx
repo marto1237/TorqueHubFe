@@ -4,7 +4,8 @@ import {
     Box, Card, Typography, Grid, CardMedia, Divider, Avatar, IconButton, List, ListItem, ListItemText,
     ListItemAvatar, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, LinearProgress
 } from '@mui/material';
-import { DirectionsCar, Speed, Build, CameraAlt, Add, Edit } from '@mui/icons-material';
+import { DirectionsCar, Speed, Build, CameraAlt, Add, Edit,Delete } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { Carousel } from 'react-responsive-carousel';
 import ShowcaseService from '../configuration/Services/ShowcaseService';
@@ -21,6 +22,7 @@ const MyShowcase = () => {
     const queryClient = useQueryClient();
     const notifications = useAppNotifications();
     const theme = useTheme();
+    const navigate = useNavigate();
 
     const [showcaseData, setShowcaseData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -48,6 +50,8 @@ const MyShowcase = () => {
 
     const parsedDetails = JSON.parse(userDetails);
     const userId = parsedDetails.id;
+
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     
     const { data: cachedShowcaseData, isLoading: queryLoading, error: queryError } = useQuery({
         queryKey: ['showcase', showcaseId],
@@ -316,6 +320,22 @@ const MyShowcase = () => {
             console.error('Error saving modification:', err.response || err.message || err);
         }
     };
+
+    const handleDeleteShowcase = async () => {
+        try {
+            await ShowcaseService.deleteShowcase(showcaseId);
+            notifications.show('Showcase deleted successfully', { autoHideDuration: 3000, severity: 'success' });
+            queryClient.invalidateQueries(['showcase']); // Invalidate cache to refresh data
+            navigate(`/usershowcase/${userId}`);
+        } catch (err) {
+            console.error('Error deleting showcase:', err);
+            notifications.show('Error deleting showcase', { autoHideDuration: 3000, severity: 'error' });
+        }
+    };
+
+    const openDeleteDialog = () => setIsDeleteDialogOpen(true);
+    const closeDeleteDialog = () => setIsDeleteDialogOpen(false);
+    
     
     
 
@@ -430,32 +450,47 @@ const MyShowcase = () => {
                         </Card>
                     </Grid>
                 </Grid>
+                
             )}
+            <Grid item xs={12}>
+                <Card sx={{ padding: '20px' }}>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={openDeleteDialog}
+                        >
+                            Delete Showcase
+                        </Button>
+                    <Divider sx={{ mb: 3 }} />
+                    
+                </Card>
+            </Grid>
 
             {/* Dialog for Editing Performance Stats */}
             <Dialog open={isStatsDialogOpen} onClose={handleStatsDialogClose}>
                 <DialogTitle>Edit Performance Stats</DialogTitle>
                 <DialogContent>
-        {/* No visible input for ID */}
-        {Object.entries(updatedPerformance).map(([key, value]) =>
-            key !== 'id' ? ( // Exclude `id` from visible fields
-                <TextField
-                    key={key}
-                    label={key.charAt(0).toUpperCase() + key.slice(1)} // Capitalize field name
-                    variant="filled"
-                    fullWidth
-                    margin="dense"
-                    value={value}
-                    onChange={(e) =>
-                        setUpdatedPerformance((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                        }))
-                    }
-                />
-            ) : null // Do not render `id`
-        )}
-    </DialogContent>
+                    {/* No visible input for ID */}
+                    {Object.entries(updatedPerformance).map(([key, value]) =>
+                        key !== 'id' ? ( // Exclude `id` from visible fields
+                            <TextField
+                                key={key}
+                                label={key.charAt(0).toUpperCase() + key.slice(1)} // Capitalize field name
+                                variant="filled"
+                                fullWidth
+                                margin="dense"
+                                value={value}
+                                onChange={(e) =>
+                                    setUpdatedPerformance((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                    }))
+                                }
+                            />
+                        ) : null // Do not render `id`
+                    )}
+                </DialogContent>
                         <DialogActions>
                             <Button onClick={handleStatsDialogClose} color="secondary">
                                 Cancel
@@ -468,49 +503,72 @@ const MyShowcase = () => {
 
             {/* Dialog for Adding New Modification */}
             <Dialog open={isModDialogOpen} onClose={handleModDialogClose}>
-    <DialogTitle>{modificationToEdit?.id ? 'Edit Modification' : 'Add Modification'}</DialogTitle>
-    <DialogContent>
-        <TextField
-            variant="filled"
-            margin="dense"
-            name="date"
-            label="Date"
-            type="date"
-            fullWidth
-            value={modificationToEdit?.date || ''} // Pre-fill with the selected modification's date
-            onChange={(e) =>
-                setModificationToEdit((prev) => ({
-                    ...prev,
-                    date: e.target.value,
-                }))
-            }
-            InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-            variant="filled"
-            margin="dense"
-            name="description"
-            label="Description"
-            type="text"
-            fullWidth
-            value={modificationToEdit?.description || ''} // Pre-fill with the selected modification's description
-            onChange={(e) =>
-                setModificationToEdit((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                }))
-            }
-        />
-    </DialogContent>
-    <DialogActions>
-        <Button onClick={handleModDialogClose} color="secondary">
-            Cancel
-        </Button>
-        <Button onClick={handleSaveModification} color="primary">
-            Save
-        </Button>
-    </DialogActions>
-</Dialog>
+                <DialogTitle>{modificationToEdit?.id ? 'Edit Modification' : 'Add Modification'}</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        variant="filled"
+                        margin="dense"
+                        name="date"
+                        label="Date"
+                        type="date"
+                        fullWidth
+                        value={modificationToEdit?.date || ''} // Pre-fill with the selected modification's date
+                        onChange={(e) =>
+                            setModificationToEdit((prev) => ({
+                                ...prev,
+                                date: e.target.value,
+                            }))
+                        }
+                        InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                        variant="filled"
+                        margin="dense"
+                        name="description"
+                        label="Description"
+                        type="text"
+                        fullWidth
+                        value={modificationToEdit?.description || ''} // Pre-fill with the selected modification's description
+                        onChange={(e) =>
+                            setModificationToEdit((prev) => ({
+                                ...prev,
+                                description: e.target.value,
+                            }))
+                        }
+                    />
+                </DialogContent>
+        <DialogActions>
+                <Button onClick={handleModDialogClose} color="secondary">
+                    Cancel
+                </Button>
+                <Button onClick={handleSaveModification} color="primary">
+                    Save
+                </Button>
+            </DialogActions>
+        </Dialog>
+
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onClose={closeDeleteDialog}>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogContent>
+                    <Typography>Are you sure you want to delete this showcase? This action cannot be undone.</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            closeDeleteDialog();
+                            handleDeleteShowcase();
+                        }}
+                        color="error"
+                    >
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
             
         </Box>
     );
