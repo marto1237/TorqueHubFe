@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Card, Typography, Grid, CardMedia, IconButton, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
-    TextField, ListItemAvatar, Avatar, Divider, Fade
+    TextField, ListItemAvatar, Avatar, Divider, Fade,Button
 } from '@mui/material';
-import { Comment, Visibility, Add, Close } from '@mui/icons-material';
+import { Comment, Visibility, Add, Close, } from '@mui/icons-material';
 import { useTheme, useMediaQuery } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import ShowcaseFilterPanel from '../components/common/ShowcaseFilterPanel';
+import ShowcaseService from '../components/configuration/Services/ShowcaseService';
 
 const carShowcases = [
     {
@@ -128,9 +131,37 @@ const Showcase = () => {
     };
 
 
+    const [isFiltering, setIsFiltering] = useState(false);
+    
+    const [filters, setFilters] = useState({
+        tags: [],
+        noModifications: false,
+        sortOption: 'newest',
+    });
+
+    const { data: showcases, isLoading } = useQuery({
+        queryKey: ['showcases', filters],
+        queryFn: () => ShowcaseService.getFilteredShowcases(filters), // Create this service function
+        keepPreviousData: true,
+    });
+
+    const handleApplyFilters = (newFilters) => {
+        setFilters(newFilters);
+    };
 
     return (
         <Box sx={{ padding: isMobile ? '20px 10px' : '20px 50px', paddingTop: '100px', minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
+
+                <Button variant="outlined" onClick={() => setIsFiltering(!isFiltering)} sx={{ fontWeight: 'bold' }}>
+                        {isFiltering ? 'Clear Filters' : 'Show Filters'}
+                </Button>
+            {isFiltering && (
+                <ShowcaseFilterPanel
+                selectedFilters={filters}
+                setSelectedFilters={setFilters}
+                onApplyFilters={handleApplyFilters}
+                />
+            )}
             <Grid container spacing={3}>
                 {carShowcases.map((car) => (
                     <Grid item xs={12} sm={6} md={4} key={car.id}>
