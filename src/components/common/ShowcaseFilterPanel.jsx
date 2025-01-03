@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback  } from "react";
 import {
     Box,
     Typography,
@@ -10,10 +10,12 @@ import {
     FormControlLabel,
     TextField,
     Button,
+    CircularProgress,
+    Autocomplete,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import ShowcaseService from "../configuration/Services/ShowcaseService"; // Replace with your actual service call
 import { useQuery } from "@tanstack/react-query";
+import BrandService from "../configuration/Services/BrandService";
 
 const ShowcaseFilterPanel = ({
     selectedFilters,
@@ -21,13 +23,29 @@ const ShowcaseFilterPanel = ({
     onApplyFilters,
 }) => {
     const theme = useTheme();
+    const [brandSearch, setBrandSearch] = useState("");
 
-    // Fetch filter options (brands, countries, categories, models)
-    const { data: filterOptions = {}, isLoading } = useQuery({
-        queryKey: ["showcaseFilters"],
-        queryFn: ShowcaseService.getAllFilters, // Replace with your actual service call
-        staleTime: 5 * 60 * 1000, // Cache filters for 5 minutes
+    // Debounced brand search with caching
+    const { data: brandOptions = [], isLoading: isBrandLoading } = useQuery({
+        queryKey: ["brands", brandSearch],
+        queryFn: () => BrandService.searchBrands(brandSearch),
+        enabled: !!brandSearch, // Trigger only when there's input
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     });
+
+    // Debounce function to reduce API calls
+    const debounce = (func, delay) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), delay);
+        };
+    };
+
+    const handleBrandSearch = useCallback(
+        debounce((value) => setBrandSearch(value), 300),
+        [] // Empty dependencies ensure the debounce function doesn't recreate
+    );
 
     // Handle filter changes
     const handleChange = (key, value) => {
@@ -55,80 +73,92 @@ const ShowcaseFilterPanel = ({
                 gap: "20px",
             }}
         >
-            {/* Filter By Section */}
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {/* Brand Filter */}
-                <FormControl fullWidth>
-                    <InputLabel id="brand-select-label">Brand</InputLabel>
-                    <Select
-                        labelId="brand-select-label"
-                        value={selectedFilters.brand || ""}
-                        onChange={(e) => handleChange("brand", e.target.value)}
-                        disabled={isLoading}
-                    >
-                        {filterOptions.brands?.map((brand) => (
-                            <MenuItem key={brand.id} value={brand.id}>
-                                {brand.name}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+            <Box sx={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+                {/* Dynamic Brand Filter */}
+                {/* Brand Search Dropdown */}
+            <FormControl fullWidth>
+            <Autocomplete
+                options={brandOptions}
+                getOptionLabel={(option) => option.name || ""}
+                onInputChange={(e, value) => handleBrandSearch(value)} // Trigger brand search
+                value={selectedFilters.brand || null}
+                onChange={(event, newValue) =>
+                    handleChange("brand", newValue ? newValue.id : null)
+                }
+                loading={isBrandLoading}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        label="Search Brand"
+                        placeholder="Type to search brands"
+                        variant="filled"
+                        InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                                <>
+                                    {isBrandLoading ? (
+                                        <CircularProgress color="inherit" size={20} />
+                                    ) : null}
+                                    {params.InputProps.endAdornment}
+                                </>
+                            ),
+                        }}
+                    />
+                )}
+            />
+            </FormControl>
 
                 {/* Model Filter */}
                 <FormControl fullWidth>
-                    <InputLabel id="model-select-label">Model</InputLabel>
+                    <InputLabel>Model</InputLabel>
                     <Select
-                        labelId="model-select-label"
                         value={selectedFilters.model || ""}
                         onChange={(e) => handleChange("model", e.target.value)}
-                        disabled={isLoading}
                     >
-                        {filterOptions.models?.map((model) => (
-                            <MenuItem key={model.id} value={model.id}>
-                                {model.name}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-
-                {/* Category Filter */}
-                <FormControl fullWidth>
-                    <InputLabel id="category-select-label">Category</InputLabel>
-                    <Select
-                        labelId="category-select-label"
-                        value={selectedFilters.category || ""}
-                        onChange={(e) => handleChange("category", e.target.value)}
-                        disabled={isLoading}
-                    >
-                        {filterOptions.categories?.map((category) => (
-                            <MenuItem key={category.id} value={category.id}>
-                                {category.name}
-                            </MenuItem>
-                        ))}
+                        <MenuItem value="" disabled>
+                            Select a Model
+                        </MenuItem>
+                        {/* Example: Replace with API data */}
+                        <MenuItem value="model1">Model 1</MenuItem>
+                        <MenuItem value="model2">Model 2</MenuItem>
                     </Select>
                 </FormControl>
 
                 {/* Country Filter */}
                 <FormControl fullWidth>
-                    <InputLabel id="country-select-label">Country</InputLabel>
+                    <InputLabel>Country</InputLabel>
                     <Select
-                        labelId="country-select-label"
                         value={selectedFilters.country || ""}
                         onChange={(e) => handleChange("country", e.target.value)}
-                        disabled={isLoading}
                     >
-                        {filterOptions.countries?.map((country) => (
-                            <MenuItem key={country.id} value={country.id}>
-                                {country.name}
-                            </MenuItem>
-                        ))}
+                        <MenuItem value="" disabled>
+                            Select a Country
+                        </MenuItem>
+                        {/* Example: Replace with API data */}
+                        <MenuItem value="US">United States</MenuItem>
+                        <MenuItem value="JP">Japan</MenuItem>
+                    </Select>
+                </FormControl>
+
+                {/* Category Filter */}
+                <FormControl fullWidth>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                        value={selectedFilters.category || ""}
+                        onChange={(e) => handleChange("category", e.target.value)}
+                    >
+                        <MenuItem value="" disabled>
+                            Select a Category
+                        </MenuItem>
+                        {/* Example: Replace with API data */}
+                        <MenuItem value="SUV">SUV</MenuItem>
+                        <MenuItem value="Sedan">Sedan</MenuItem>
                     </Select>
                 </FormControl>
             </Box>
 
-            {/* Additional Filters */}
+            {/* Year Filters */}
             <Box sx={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-                {/* Manufacturing Year */}
                 <TextField
                     label="Manufacturing Year"
                     type="number"
@@ -140,7 +170,6 @@ const ShowcaseFilterPanel = ({
                     fullWidth
                 />
 
-                {/* No Modifications */}
                 <FormControlLabel
                     control={
                         <Checkbox
@@ -154,19 +183,15 @@ const ShowcaseFilterPanel = ({
                 />
             </Box>
 
-            {/* Apply Button */}
-            <Box>
-                <Button
-                    type="button"
-                    variant="contained"
-                    color="primary"
-                    onClick={handleApplyFilters}
-                    fullWidth
-                    sx={{ textTransform: "none" }}
-                >
-                    Apply Filters
-                </Button>
-            </Box>
+            {/* Apply Filters Button */}
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleApplyFilters}
+                fullWidth
+            >
+                Apply Filters
+            </Button>
         </Box>
     );
 };
