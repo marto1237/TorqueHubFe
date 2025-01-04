@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Grid, Typography, Card, CardContent, Button,Chip , Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { LocationOn, Event as EventIcon, AccessTime, DirectionsCar as CarTag, Sell as Tag, ConfirmationNumber, AttachMoney} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -85,6 +85,19 @@ const EventList = () => {
     const [sort, setSort] = useState('High to Low');
     const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
     const navigate = useNavigate(); // For programmatic navigation
+    const [userRole, setUserRole] = useState(null);
+
+    useEffect(() => {
+        const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
+        if (storedUserDetails) {
+            setUserRole(storedUserDetails.role);
+        }
+    }, []);
+
+    
+    const handleCreateEventClick = () => {
+        navigate('/create-event');
+    };
 
     const handleSortChange = (event) => {
         setSort(event.target.value);
@@ -124,6 +137,17 @@ const EventList = () => {
                                         <MenuItem value="Low to High">Price: Low to High</MenuItem>
                                     </Select>
                                 </FormControl>
+                                {/* Show "Create Event" button only for authorized roles */}
+                                {(userRole === 'ADMIN' || userRole === 'MODERATOR' || userRole === 'EVENT_ORGANISER') && (
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={handleCreateEventClick}
+                                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                                    >
+                                        Create Event
+                                    </Button>
+                                )}
                             </Box>
                         </Box>
 

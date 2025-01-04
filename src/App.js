@@ -46,6 +46,7 @@ const Users = lazy(() => import('./pages/Users'));
 const NotificationsPage = lazy(() => import('./components/common/NotificationPage'))
 const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
 const CreateShowcase = lazy(() => import('./components/forum/CreateShowcase'))
+const CreateEvent = lazy(() => import('./components/forum/CreateEventForm'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -173,6 +174,16 @@ const App = () => {
                                     }
                                 />
                                 <Route path="/create-showcase" element={<CreateShowcase/>} />
+                                <Route
+                                    path="/create-event"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
+                                            <CreateEvent />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+
                                 
                             </Routes>
                         </NotificationProvider>

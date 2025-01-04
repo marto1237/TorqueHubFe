@@ -1,20 +1,16 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
-const RoleProtectedRoute = ({ roles, children }) => {
-    const userDetails = JSON.parse(sessionStorage.getItem('userDetails')); // Retrieve stored details
-    console.log(userDetails)
-    const userRole = userDetails?.role; // Extract role
+const RoleProtectedRoute = ({ roles, userDetails, children }) => {
+    const location = useLocation();
 
-    if (!userRole) {
-        return <Navigate to="/login" replace />; // Redirect if not logged in
+    const hasAccess = userDetails && roles.includes(userDetails.role);
+
+    if (!hasAccess) {
+        return null; 
     }
 
-    if (!roles.includes(userRole)) {
-        return <Navigate to="/" replace />; // Redirect if unauthorized
-    }
-
-    return children; // Render component if authorized
+    return children;
 };
 
 export default RoleProtectedRoute;
