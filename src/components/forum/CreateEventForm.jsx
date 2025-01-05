@@ -185,7 +185,7 @@ const EventCreateForm = () => {
     };
 
     return (
-        <Box sx={{ padding: { xs: '1rem', sm: '2rem' }, backgroundColor: theme.palette.background.default }}>
+        <Box sx={{ padding: { xs: '1rem', sm: '1.25rem', md: '2rem' },paddingTop: { xs: '4.5rem', sm: '4rem', md: '5rem', }, backgroundColor: theme.palette.background.default }}>
             <Box sx={{ maxWidth: '800px', margin: 'auto' }}>
                 <Paper elevation={3} sx={{ padding: '2rem', backgroundColor: theme.palette.background.paper }}>
                     <Typography variant="h4" sx={{ marginBottom: '1rem', fontWeight: 'bold' }}>

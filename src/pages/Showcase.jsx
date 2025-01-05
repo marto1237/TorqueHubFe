@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Card, Typography, Grid, CardMedia, IconButton, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
@@ -120,9 +120,11 @@ const carShowcases = [
 const Showcase = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [selectedShowcase, setSelectedShowcase] = useState(null);
+    const [showcases, setShowcases] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [hoveredCard, setHoveredCard] = useState(null); // To track hover state
+    const [loading, setLoading] = useState(true); // To track loading state
+    const [error, setError] = useState(null); // To track errors
     const navigate = useNavigate();
 
     const handleShowcaseClick = (id) => {
@@ -132,14 +134,14 @@ const Showcase = () => {
 
 
     const [isFiltering, setIsFiltering] = useState(false);
-    
+
     const [filters, setFilters] = useState({
         tags: [],
         noModifications: false,
         sortOption: 'newest',
     });
 
-    const { data: showcases, isLoading } = useQuery({
+    const { data: filtershowcases, isLoading } = useQuery({
         queryKey: ['showcases', filters],
         queryFn: () => ShowcaseService.getFilteredShowcases(filters), // Create this service function
         keepPreviousData: true,
@@ -148,6 +150,33 @@ const Showcase = () => {
     const handleApplyFilters = (newFilters) => {
         setFilters(newFilters);
     };
+
+
+    useEffect(() => {
+        // Fetch the first page of showcases when the component loads
+        const fetchShowcases = async () => {
+            try {
+                const data = await ShowcaseService.getAllShowcases(0, 10); // Fetch first page
+                console.log('Fetched Showcases:', data); // Log the data
+                setShowcases(data.content); // Set the showcases data
+            } catch (err) {
+                console.error('Error fetching showcases:', err);
+                setError('Failed to load showcases.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchShowcases();
+    }, []);
+
+    if (loading) {
+        return <Typography>Loading...</Typography>;
+    }
+
+    if (error) {
+        return <Typography color="error">{error}</Typography>;
+    }
 
     return (
         <Box sx={{ padding: isMobile ? '20px 10px' : '20px 50px', paddingTop: '100px', minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>

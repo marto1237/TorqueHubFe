@@ -47,6 +47,7 @@ const NotificationsPage = lazy(() => import('./components/common/NotificationPag
 const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
 const CreateShowcase = lazy(() => import('./components/forum/CreateShowcase'))
 const CreateEvent = lazy(() => import('./components/forum/CreateEventForm'))
+const CreateCarCategory = lazy(() => import('./components/forum/CreateCarCategoryForm'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -168,8 +169,16 @@ const App = () => {
                                 <Route
                                     path="/create-tag"
                                     element={
-                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} >
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
                                             <CreateTagPage />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/create-category"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
+                                            <CreateCarCategory />
                                         </RoleProtectedRoute>
                                     }
                                 />

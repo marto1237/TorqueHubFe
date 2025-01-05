@@ -1,6 +1,16 @@
 import showcaseAPI from '../showcaseAPI';
 
 const ShowcaseService = {
+
+    getAllShowcases:(page = 0, size = 10) => {
+        return showcaseAPI
+            .get(`/showcase`, {
+                params: { page, size }, 
+            })
+            .then(response => response.data)
+            .catch(error => Promise.reject(error));
+    },
+
     getUserShowcases: (userId, page = 0, size = 10) => {
         return showcaseAPI
             .get(`/showcase/user/${userId}`, {
