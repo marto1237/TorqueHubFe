@@ -9,18 +9,24 @@ import {
     Autocomplete,
     Paper,
     Divider,
+    Chip
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { useAppNotifications } from '../common/NotificationProvider';
 import EventService from '../configuration/Services/EventService';
+import CarCategory from '../configuration/Services/CarCategoryService';
+import TicketTags from '../configuration/Services/TicketTagsService'
 
 const EventCreateForm = () => {
     const theme = useTheme();
     const navigate = useNavigate();
+    const notifications = useAppNotifications();
 
     const [name, setName] = useState('');
+    
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');
     const [hourStart, setHourStart] = useState('');
@@ -35,8 +41,22 @@ const EventCreateForm = () => {
     const autocompleteRef = useRef(null);
     const [eventImageUrl, setEventImageUrl] = useState('');
 
-    const carTypes = ['JDM Only', 'Euro Only', 'Sports Cars', 'Classic Cars'];
+    const [category, setCategory] = useState(null);
+    const [categorySearch, setCategorySearch] = useState('');
+    const [allCategories, setallCategories] = useState([]);
+    const [filteredCategories, setFilteredCategories] = useState([]);
+
+    const [tag, setTag] = useState([]);
+    const [tagSearch, setTagSearch] = useState('');
+    const [allTags, setallTags] = useState([]);
+    const [filteredTags, setFilteredTags] = useState([]);
+
     const [ticketTypes, setTicketTypes] = useState([]);
+
+    const maxTags = 5;
+    const [files, setFiles] = useState([]);
+    const maxImages = 3; 
+
 
     const [error, setError] = useState({
         name: false,
@@ -49,6 +69,11 @@ const EventCreateForm = () => {
         ticketsAvailable: false,
         ticketTypes: false,
     });
+
+    const userDetails = sessionStorage.getItem('userDetails');
+
+    const parsedDetails = JSON.parse(userDetails);
+    const userId = parsedDetails.id;
 
     useEffect(() => {
         // Initialize Google Maps Places Autocomplete
@@ -94,8 +119,6 @@ const EventCreateForm = () => {
         const hourStartValid = !!hourStart;
         const hourEndValid = !!hourEnd;
         const locationValid = location.trim().length > 0;
-        const priceValid = !isNaN(price) && price > 0;
-        const ticketsAvailableValid = !isNaN(ticketsAvailable) && ticketsAvailable > 0;
 
         setError({
             name: !nameValid,
@@ -104,8 +127,6 @@ const EventCreateForm = () => {
             hourStart: !hourStartValid,
             hourEnd: !hourEndValid,
             location: !locationValid,
-            price: !priceValid,
-            ticketsAvailable: !ticketsAvailableValid,
         });
 
         return (
@@ -114,34 +135,43 @@ const EventCreateForm = () => {
             dateValid &&
             hourStartValid &&
             hourEndValid &&
-            locationValid &&
-            priceValid &&
-            ticketsAvailableValid
+            locationValid 
         );
     };
 
     const handleSubmit = async () => {
         if (!validateForm()) return;
-
+    
         const eventData = {
             name,
             description,
-            date,
-            hour: `${hourStart} - ${hourEnd}`,
+            date: `${date}T${hourStart}:00`, // Combine date and time
+            startTime: `${date}T${hourStart}:00`, // Backend expects ISO string
+            endTime: `${date}T${hourEnd}:00`,
             location,
-            locationUrl,
-            price: `$${price}`,
-            ticketsLeft: parseInt(ticketsAvailable, 10),
-            highlights,
-            carsAllowed: carTypesAllowed,
-            imageUrl,
+            mapUrl: locationUrl, // Match backend key
+            highlights, // Should already be an array of strings
+            tags: tag.map((t) => t.name), // Map tag objects to names
+            allowedCars: carTypesAllowed.map((car) => car.name || car),
+            creatorUserId: userId,
         };
+    
+        console.log("Submitting event data:", eventData);
 
+        
+    
         try {
-            await EventService.createEvent(eventData);
+            const response = await EventService.createEvent(eventData);
+            const eventId = response?.id;
+
+             // Upload images
+            const imageUrls = await uploadImages(eventId);
+            console.log('Uploaded image URLs:', imageUrls);
+
+            notifications.show('"Event created successfully!', { autoHideDuration: 3000, severity: 'success' });
             navigate('/events');
         } catch (error) {
-            console.error('Error creating event:', error);
+            console.error('Error response from API:', error.response?.data || error.message);
         }
     };
 
@@ -156,33 +186,174 @@ const EventCreateForm = () => {
     };
 
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const fileRef = ref(storage, `eventImages/`);
-            const uploadTask = uploadBytesResumable(fileRef, file);
+    useEffect(() => {
+        const fetchAllCarCategories = async () => {
+            try {
+                const response = await CarCategory.getAllCategories();
+                const categories = response?.content || []; // Extract the `content` array
+                console.log('Fetched categories:', categories);
+                setallCategories(categories);
+                setFilteredCategories(categories);
+            } catch (error) {
+                console.error('Error fetching car categories:', error);
+                setFilteredCategories([]);
+            }
+        };
+    
+        fetchAllCarCategories();
+    }, []);
+    
+    useEffect(() => {
+        const searchCategories = async () => {
+            if (categorySearch.trim() === '') {
+                setFilteredCategories(allCategories);
+                return;
+            }
+    
+            try {
+                const response = await CarCategory.searchCategories(categorySearch);
+                const searchResults = response?.content || []; // Extract the `content` array
+                setFilteredCategories(searchResults);
+            } catch (error) {
+                console.error('Error searching categories:', error);
+            }
+        };
+    
+        searchCategories();
+    }, [categorySearch, allCategories]);
 
-            uploadTask.on(
-                'state_changed',
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    console.log(`Upload is ${progress}% done`);
-                },
-                (error) => {
-                    console.error('Upload error:', error);
-                },
-                async () => {
-                    try {
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        setEventImageUrl(downloadURL);
-                        console.log('File available at', downloadURL);
-                    } catch (error) {
-                        console.error('Error getting download URL:', error);
-                    }
-                }
-            );
+
+    useEffect(() => {
+        const fetchAllTags = async () => {
+            try {
+                const response = await TicketTags.getAllTags();
+                const tags = response?.content || []; // Extract the `content` array
+                console.log('Fetched categories:', tags);
+                setallTags(tags);
+                setFilteredTags(tags);
+            } catch (error) {
+                console.error('Error fetching tags:', error);
+            }
+        };
+    
+        fetchAllTags();
+    }, []);
+    
+    useEffect(() => {
+        const searchTags = async () => {
+            if (categorySearch.trim() === '') {
+                setFilteredTags(allTags);
+                return;
+            }
+    
+            try {
+                const response = await TicketTags.searchTags(tagSearch);
+                const searchResults = response?.content || []; // Extract the `content` array
+                setFilteredCategories(searchResults);
+            } catch (error) {
+                console.error('Error searching tag:', error);
+            }
+        };
+    
+        searchTags();
+    }, [tagSearch, allTags]);
+
+
+    const handleTagChange = (event, newTags) => {
+        if (newTags.length <= maxTags) {
+            setTag(newTags);
         }
     };
+
+    const handleCategoryChange = (event, newValue) => {
+        setCarTypesAllowed(newValue.map((category) => category.name));
+    };
+    
+
+    const handleFileChange = (e) => {
+        const selectedFiles = Array.from(e.target.files);
+    
+        // Check max image limit
+        if (selectedFiles.length + files.length > maxImages) {
+            notifications.show(`You can only upload up to ${maxImages} images per event.`, { autoHideDuration: 3000, severity: 'error' });
+            return;
+        }
+    
+        // Validate files
+        const validFiles = selectedFiles.filter((file) => {
+            if (!file.type.startsWith('image/')) {
+                notifications.show(`${file.name} is not an image file.`, { severity: 'error' });
+                return false;
+            }
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                notifications.show(`${file.name} is too large (max 5MB).`, { severity: 'error' });
+                return false;
+            }
+            return true;
+        });
+    
+        const newFiles = validFiles.map((file) => ({
+            file,
+            previewURL: URL.createObjectURL(file),
+            name: file.name.replace(/[^a-zA-Z0-9.-]/g, '_'), // Sanitize filename
+        }));
+    
+        setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+    };
+    
+    const uploadImages = async (eventId) => {
+        if (!eventId) {
+            console.error('No event ID provided for image upload.');
+            return [];
+        }
+    
+        const uploadPromises = files.map(async ({ file, name }) => {
+            try {
+                const timestamp = new Date().getTime();
+                const sanitizedName = `${timestamp}_${name}`;
+                const fileRef = ref(storage, `eventImages/${eventId}/${sanitizedName}`);
+    
+                const uploadTask = uploadBytesResumable(fileRef, file);
+    
+                return new Promise((resolve, reject) => {
+                    uploadTask.on(
+                        'state_changed',
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            console.log(`Upload is ${progress}% done.`);
+                        },
+                        (error) => {
+                            console.error('Upload error:', error);
+                            notifications.show(`Error uploading ${name}: ${error.message}`, { severity: 'error', autoHideDuration: 5000 });
+                            reject(error);
+                        },
+                        async () => {
+                            try {
+                                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                resolve(downloadURL);
+                            } catch (error) {
+                                console.error('Error getting download URL:', error);
+                                reject(error);
+                            }
+                        }
+                    );
+                });
+            } catch (error) {
+                console.error(`Error processing ${name}:`, error);
+                return null;
+            }
+        });
+    
+        try {
+            const urls = await Promise.all(uploadPromises);
+            return urls.filter((url) => url !== null); // Filter out failed uploads
+        } catch (error) {
+            console.error('Error uploading images:', error);
+            return [];
+        }
+    };
+    
+    
 
     return (
         <Box sx={{ padding: { xs: '1rem', sm: '1.25rem', md: '2rem' },paddingTop: { xs: '4.5rem', sm: '4rem', md: '5rem', }, backgroundColor: theme.palette.background.default }}>
@@ -341,11 +512,51 @@ const EventCreateForm = () => {
 
                         <Autocomplete
                             multiple
-                            options={carTypes}
-                            value={carTypesAllowed}
-                            onChange={(event, newValue) => setCarTypesAllowed(newValue)}
-                            renderInput={(params) => <TextField {...params} label="Allowed Car Types" variant="filled" />}
+                            options={filteredCategories || []} // Options for categories
+                            getOptionLabel={(option) => option?.name || ''} // Display the name of the category
+                            value={carTypesAllowed} // Bind the value to carTypesAllowed state
+                            onChange={(event, newValue) => setCarTypesAllowed(newValue)} // Update carTypesAllowed
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Allowed Car Categories"
+                                    variant="filled"
+                                    placeholder="Select allowed cars"
+                                />
+                            )}
                             sx={{ marginBottom: '1.5rem' }}
+                        />
+
+
+
+
+                        <Autocomplete
+                            multiple
+                            options={filteredTags}
+                            getOptionLabel={(option) => option.name}
+                            value={tag}
+                            onChange={handleTagChange}
+                            renderTags={(tagValue, getTagProps) =>
+                                tagValue.map((option, index) => {
+                                    const tagProps = getTagProps({ index });
+                                    return (
+                                        <Chip
+                                            key={option.name || index} // Use unique property or fallback to index
+                                            label={option.name}
+                                            {...tagProps} // Spread the remaining props here
+                                        />
+                                    );
+                                })
+                            }
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Search Tags"
+                                    variant="filled"
+                                    sx={{ marginBottom: '1.5rem' }}
+                                    helperText={`You can select up to ${maxTags} tags`}
+                                />
+                            )}
                         />
 
                         {/* Event Image Upload */}
@@ -356,27 +567,31 @@ const EventCreateForm = () => {
                             sx={{ marginBottom: '1rem' }}
                         >
                             Upload Image
-                            <input
-                                type="file"
-                                hidden
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                            />
+                            <input type="file" hidden multiple accept="image/*" onChange={handleFileChange} />
                         </Button>
-                        {eventImageUrl && (
-                            <Box sx={{ my: 2 }}>
-                                <img
-                                    src={eventImageUrl}
-                                    alt="Event"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            </Box>
-                        )}
-                        {error.eventImage && (
-                            <Typography color="error" sx={{ mb: '1rem' }}>
-                                Event image is required
-                            </Typography>
-                        )}
+                        {files.length > 0 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', mb: 2 }}>
+                            {files.map(({ previewURL }, index) => (
+                                <Box
+                                    key={index}
+                                    sx={{
+                                        width: '100px',
+                                        height: '100px',
+                                        overflow: 'hidden',
+                                        borderRadius: '8px',
+                                        border: '1px solid #ccc',
+                                    }}
+                                >
+                                    <img
+                                        src={previewURL}
+                                        alt={`Preview ${index}`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+
 
 
 
