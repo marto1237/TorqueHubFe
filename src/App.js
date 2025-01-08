@@ -48,6 +48,7 @@ const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
 const CreateShowcase = lazy(() => import('./components/forum/CreateShowcase'))
 const CreateEvent = lazy(() => import('./components/forum/CreateEventForm'))
 const CreateCarCategory = lazy(() => import('./components/forum/CreateCarCategoryForm'))
+const EventManagement = lazy(() => import('./components/forum/EventManagement'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -166,6 +167,7 @@ const App = () => {
                                 <Route path="*" element={<NotFoundPage />} />
                                 <Route path={"/users"} element={<Users />} />
                                 <Route path="/notifications" element={<NotificationsPage />} />
+                                <Route path="/manage-events" element={<EventManagement />} />
                                 <Route
                                     path="/create-tag"
                                     element={

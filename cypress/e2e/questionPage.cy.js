@@ -44,7 +44,9 @@ describe('Question Page E2E Test', () => {
         cy.get('button').contains('Add Comment').first().click();
 
         // Attempt to submit a comment
-        cy.get('textarea[placeholder="Write your comment here..."]').type('Test comment');
+        cy.get('div[contenteditable="true"][data-placeholder="Write your comment here..."]', { timeout: 10000 })
+        .should('be.visible')
+        .type('Test comment', { force: true });
         cy.get('button').contains('Submit Comment').click();
 
         // Verify notification

@@ -1,6 +1,7 @@
 stages:
   - build
   - test
+  - e2e
   - dockerize
 
 # Build Stage
@@ -20,6 +21,21 @@ test:
     - npm install --legacy-peer-deps
     - npm test -- --watchAll=false
 
+e2e:
+  stage: e2e
+  image: cypress/browsers:node14.18.1-chrome91-ff89 # Use Cypress's prebuilt Docker image
+  dependencies:
+    - build # Ensure the app is built before running E2E tests
+  script:
+    # Install dependencies
+    - npm install --legacy-peer-deps
+    - npx cypress install # Install Cypress
+    - npx cypress run --config baseUrl=http://localhost:3000 # Run Cypress tests against the built app
+  artifacts:
+    paths:
+      - cypress/screenshots/ # Save screenshots for failed tests
+      - cypress/videos/ # Save test videos
+      
 # Dockerize Stage
 dockerize:
   stage: dockerize

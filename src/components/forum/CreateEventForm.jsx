@@ -51,8 +51,6 @@ const EventCreateForm = () => {
     const [allTags, setallTags] = useState([]);
     const [filteredTags, setFilteredTags] = useState([]);
 
-    const [ticketTypes, setTicketTypes] = useState([]);
-
     const maxTags = 5;
     const [files, setFiles] = useState([]);
     const maxImages = 3; 
@@ -102,15 +100,6 @@ const EventCreateForm = () => {
     }, []);
 
 
-    const handleTicketTypeChange = (index, field, value) => {
-        const updatedTickets = [...ticketTypes];
-        updatedTickets[index][field] = value;
-        setTicketTypes(updatedTickets);
-    };
-
-    const handleAddTicketType = () => {
-        setTicketTypes([...ticketTypes, { type: '', price: '', quantity: 1 }]);
-    };
 
     const validateForm = () => {
         const nameValid = name.trim().length >= 3;
@@ -190,8 +179,7 @@ const EventCreateForm = () => {
         const fetchAllCarCategories = async () => {
             try {
                 const response = await CarCategory.getAllCategories();
-                const categories = response?.content || []; // Extract the `content` array
-                console.log('Fetched categories:', categories);
+                const categories = response?.content || []; 
                 setallCategories(categories);
                 setFilteredCategories(categories);
             } catch (error) {
@@ -227,8 +215,7 @@ const EventCreateForm = () => {
         const fetchAllTags = async () => {
             try {
                 const response = await TicketTags.getAllTags();
-                const tags = response?.content || []; // Extract the `content` array
-                console.log('Fetched categories:', tags);
+                const tags = response?.content || [];
                 setallTags(tags);
                 setFilteredTags(tags);
             } catch (error) {
@@ -423,42 +410,6 @@ const EventCreateForm = () => {
                         />
                     </Box>
 
-                    {/* Ticket Types */}
-                    <Typography variant="h6" sx={{ marginBottom: '1rem' }}>
-                        Ticket Types:
-                    </Typography>
-                    {ticketTypes.map((ticket, index) => (
-                        <Box key={index} sx={{ display: 'flex', gap: 2, marginBottom: '1rem' }}>
-                            <TextField
-                                fullWidth
-                                label="Ticket Type"
-                                variant="filled"
-                                value={ticket.type}
-                                onChange={(e) => handleTicketTypeChange(index, 'type', e.target.value)}
-                            />
-                            <TextField
-                                fullWidth
-                                label="Price"
-                                variant="filled"
-                                type="number"
-                                value={ticket.price}
-                                onChange={(e) => handleTicketTypeChange(index, 'price', e.target.value)}
-                                inputProps={{ min: 1 }} // Prevent negative values or zero in the input
-                            />
-                             <TextField
-                                fullWidth
-                                label="Quantity"
-                                variant="filled"
-                                type="number"
-                                value={ticket.quantity}
-                                onChange={(e) => handleTicketTypeChange(index, 'quantity', e.target.value)}
-                                inputProps={{ min: 1 }} // Prevent negative values or zero in the input
-                            />
-                        </Box>
-                    ))}
-                    <Button variant="contained" onClick={handleAddTicketType}>
-                        Add Ticket Type
-                    </Button>
 
                     <Typography variant="h6" sx={{ marginBottom: '1rem' }}>
                         Search Location:
