@@ -1,11 +1,9 @@
 import ticktsAPI from '../ticketsAPI';
 
 const TicketTypeService = {
-    createTicketType: async (ticketTypeData, token) => {
+    createTicketType: async (ticketTypeData) => {
         try {
-            const response = await ticktsAPI.post('/ticket-types', ticketTypeData, {
-                headers: { Authorization: token },
-            });
+            const response = await ticktsAPI.post(`/ticket-types`, ticketTypeData, { requiresAuth: true });
             return response.data;
         } catch (error) {
             return Promise.reject(error);
@@ -14,29 +12,25 @@ const TicketTypeService = {
 
     getTicketTypeById: async (ticketTypeId) => {
         try {
-            const response = await ticktsAPI.get(`/ticket-types/${ticketTypeId}`);
+            const response = await ticktsAPI.get(`/ticket-types/${ticketTypeId}` , { requiresAuth: true });
             return response.data;
         } catch (error) {
             return Promise.reject(error);
         }
     },
 
-    deleteTicketType: async (ticketTypeId, token) => {
+    deleteTicketType: async (ticketTypeId) => {
         try {
-            await ticktsAPI.delete(`/ticket-types/${ticketTypeId}`, {
-                headers: { Authorization: token },
-            });
+            await ticktsAPI.delete(`/ticket-types/${ticketTypeId}`, { requiresAuth: true });
             return true;
         } catch (error) {
             return Promise.reject(error);
         }
     },
 
-    updateTicketType: async (ticketTypeData, token) => {
+    updateTicketType: async (ticketTypeData) => {
         try {
-            const response = await ticktsAPI.put('/ticket-types', ticketTypeData, {
-                headers: { Authorization: token },
-            });
+            const response = await ticktsAPI.put(`/ticket-types`, ticketTypeData, { requiresAuth: true });
             return response.data;
         } catch (error) {
             return Promise.reject(error);

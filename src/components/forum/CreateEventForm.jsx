@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useAppNotifications } from '../common/NotificationProvider';
+import { useQueryClient } from '@tanstack/react-query';
 import EventService from '../configuration/Services/EventService';
 import CarCategory from '../configuration/Services/CarCategoryService';
 import TicketTags from '../configuration/Services/TicketTagsService'
@@ -24,6 +25,7 @@ const EventCreateForm = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const notifications = useAppNotifications();
+    const queryClient = useQueryClient();
 
     const [name, setName] = useState('');
     
@@ -146,7 +148,6 @@ const EventCreateForm = () => {
         };
     
         console.log("Submitting event data:", eventData);
-
         
     
         try {
@@ -157,7 +158,8 @@ const EventCreateForm = () => {
             const imageUrls = await uploadImages(eventId);
             console.log('Uploaded image URLs:', imageUrls);
 
-            notifications.show('"Event created successfully!', { autoHideDuration: 3000, severity: 'success' });
+            notifications.show('Event created successfully!', { autoHideDuration: 3000, severity: 'success' });
+            queryClient.invalidateQueries(['events']);
             navigate('/events');
         } catch (error) {
             console.error('Error response from API:', error.response?.data || error.message);

@@ -12,37 +12,61 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Chip
+    Chip,
+    TableContainer,
+    Paper,
+    Table,
+    TableHead,
+    TableRow,
+    TableCell,
+    TableBody,
+    Pagination
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import EventService from '../configuration/Services/EventService';
+import TicketTypeService from '../configuration/Services/TicketTypeService';
+import { useAppNotifications } from '../common/NotificationProvider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 
 const EventManagement = () => {
     const theme = useTheme();
     const navigate = useNavigate();
+    const notifications = useAppNotifications();
+    const queryClient = useQueryClient();
+    const [page, setPage] = useState(0);
+    const size = 10;
 
-    const [events, setEvents] = useState([]);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [openEditDialog, setOpenEditDialog] = useState(false);
+    const [ticketTypes, setTicketTypes] = useState([]);
+    const [newTicketType, setNewTicketType] = useState({
+        name: '',
+        price: '',
+        totalTickets: '',
+        availableTickets: '',
+    });
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
+    const [errors, setErrors] = useState({
+        name: '',
+        price: '',
+        totalTickets: '',
+    });
+    
+    const userDetails = sessionStorage.getItem('userDetails');
 
-    const fetchEvents = async () => {
-        try {
-            const response = await EventService.findAllEvents();
-            setEvents(response.content || []);
-        } catch (error) {
-            console.error('Error fetching events:', error);
-        }
-    };
+    const parsedDetails = JSON.parse(userDetails);
+    const userId = parsedDetails.id;
 
-    const handleEditClick = (event) => {
-        setSelectedEvent(event);
-        setOpenEditDialog(true);
-    };
+    const { data: events = { content: [], totalPages: 0 }, isLoading, isError } = useQuery({
+        queryKey: ['events', { page, size }], // Include page and size in the query key
+        queryFn: ({ queryKey }) => {
+            const [, { page, size }] = queryKey; // Destructure page and size from queryKey
+            return EventService.findAllEvents(page, size); // Pass page and size directly
+        },
+    });
+    
 
     const handleCloseEditDialog = () => {
         setSelectedEvent(null);
@@ -53,7 +77,7 @@ const EventManagement = () => {
         try {
             if (selectedEvent) {
                 await EventService.updateEvent(selectedEvent);
-                fetchEvents(); // Refresh the list
+                queryClient.invalidateQueries(['events']);
                 handleCloseEditDialog();
             }
         } catch (error) {
@@ -64,7 +88,7 @@ const EventManagement = () => {
     const handleDeleteClick = async (eventId) => {
         try {
             await EventService.deleteEvent(eventId);
-            fetchEvents(); // Refresh the list
+            queryClient.invalidateQueries(['events']);
         } catch (error) {
             console.error('Error deleting event:', error);
         }
@@ -77,14 +101,105 @@ const EventManagement = () => {
         }));
     };
 
+    const fetchTicketTypes = async (eventId) => {
+        try {
+            const response = await TicketTypeService.getAllByEventId(eventId);
+            setTicketTypes(response.content || []);
+        } catch (error) {
+            console.error('Error fetching ticket types:', error);
+        }
+    };
+    
+    const handleDeleteTicketType = async (ticketId) => {
+        // Optimistically update the cache
+        queryClient.setQueryData(['ticketTypes', selectedEvent.id], (oldData) => {
+            if (!oldData) return oldData;
+            return oldData.filter((ticket) => ticket.id !== ticketId); // Remove the ticket
+        });
+    
+        try {
+            await TicketTypeService.deleteTicketType(ticketId, 'your-auth-token');
+            notifications.show('Ticket type deleted successfully!', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
+        } catch (error) {
+            // Roll back the optimistic update on error
+            queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
+            console.error('Error deleting ticket type:', error);
+            notifications.show('Error deleting ticket type', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
+        }
+    };
+    
+
+    const handleCreateTicketType = async () => {
+        let hasError = false;
+        const newErrors = { name: '', price: '', totalTickets: '' };
+
+        if (!newTicketType.name.trim()) {
+            newErrors.name = 'Ticket Name is required';
+            hasError = true;
+        }
+        if (!newTicketType.price || isNaN(newTicketType.price) || newTicketType.price <= 0) {
+            newErrors.price = 'Price must be a positive number';
+            hasError = true;
+        }
+        if (!newTicketType.totalTickets || isNaN(newTicketType.totalTickets) || newTicketType.totalTickets <= 0) {
+            newErrors.totalTickets = 'Total Tickets must be a positive number';
+            hasError = true;
+        }
+
+        setErrors(newErrors);
+
+        if (hasError) return;
+        try {
+            if (!selectedEvent) return;
+    
+            const sanitizedTicketType = {
+                userId:userId,
+                name: DOMPurify.sanitize(newTicketType.name),
+                price: newTicketType.price,
+                totalTickets: newTicketType.totalTickets,
+                eventId: selectedEvent.id,
+                availableTickets: newTicketType.totalTickets,
+            };
+            
+    
+            await TicketTypeService.createTicketType(sanitizedTicketType);
+            queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
+            setNewTicketType({ name: '', price: '', totalTickets: '', availableTickets: '' });
+            await fetchTicketTypes(selectedEvent.id); // Refresh the list
+            setErrors({ name: '', price: '', totalTickets: '' });
+            notifications.show('Ticket type created successfully!', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            console.error('Error creating ticket type:', error);
+            notifications.show('Error creating ticket type', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
+        }
+    };
+    
+
+    
+    const handleEditClick = async (event) => {
+        setSelectedEvent(event);
+        setOpenEditDialog(true);
+        await fetchTicketTypes(event.id);
+    };
+    
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
-            <Typography variant="h4" sx={{ marginBottom: '20px', fontWeight: 'bold' }}>
+            <Typography variant="h4" color="textSecondary" sx={{ marginBottom: '20px', fontWeight: 'bold' }}>
                 Event Management
             </Typography>
 
             <Grid container spacing={3}>
-                {events.map((event) => (
+                {events.content.map((event) => (
                     <Grid item xs={12} sm={6} md={4} key={event.id}>
                         <Card>
                             <CardContent>
@@ -126,7 +241,17 @@ const EventManagement = () => {
                         </Card>
                     </Grid>
                 ))}
+
+                
             </Grid>
+            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                <Pagination
+                    count={events.totalPages} // Total pages from API response
+                    page={page + 1} // Material-UI Pagination uses 1-indexed pages
+                    onChange={(event, value) => setPage(value - 1)} // Update the 0-indexed page state
+                    color="primary"
+                />
+            </Box>
 
             {/* Edit Event Dialog */}
             <Dialog open={openEditDialog} onClose={handleCloseEditDialog} fullWidth maxWidth="sm">
@@ -138,12 +263,14 @@ const EventManagement = () => {
                                 fullWidth
                                 margin="normal"
                                 label="Event Name"
+                                variant="filled"
                                 value={selectedEvent.name}
                                 onChange={(e) => handleInputChange('name', e.target.value)}
                             />
                             <TextField
                                 fullWidth
                                 margin="normal"
+                                variant="filled"
                                 label="Location"
                                 value={selectedEvent.location}
                                 onChange={(e) => handleInputChange('location', e.target.value)}
@@ -152,13 +279,94 @@ const EventManagement = () => {
                                 fullWidth
                                 margin="normal"
                                 label="Date"
+                                variant="filled"
                                 type="date"
                                 value={selectedEvent.date?.split('T')[0] || ''}
                                 onChange={(e) => handleInputChange('date', e.target.value)}
                             />
+                            <Typography variant="h6" sx={{ marginTop: '20px' }}>
+                Add Ticket Type
+            </Typography>
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Ticket Name"
+                variant="filled"
+                value={newTicketType.name}
+                error={!!errors.name}
+                helperText={errors.name}
+                onChange={(e) => setNewTicketType({ ...newTicketType, name: e.target.value })}
+            />
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Price"
+                variant="filled"
+                type="number"
+                value={newTicketType.price}
+                error={!!errors.price}
+                helperText={errors.price}
+                onChange={(e) => setNewTicketType({ ...newTicketType, price: e.target.value })}
+            />
+            <TextField
+                fullWidth
+                margin="normal"
+                label="Total Tickets"
+                variant="filled"
+                type="number"
+                value={newTicketType.totalTickets}
+                error={!!errors.totalTickets}
+                helperText={errors.totalTickets}
+                onChange={(e) => setNewTicketType({ ...newTicketType, totalTickets: e.target.value })}
+            />
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCreateTicketType}
+                sx={{ marginTop: '10px' }}
+            >
+                Add Ticket Type
+            </Button>
+
+            <Typography variant="h6" sx={{ marginTop: '20px' }}>
+                Ticket Types
+            </Typography>
+                    <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Ticket Name</TableCell>
+                                    <TableCell>Price</TableCell>
+                                    <TableCell>Total Tickets</TableCell>
+                                    <TableCell>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {ticketTypes.map((ticket) => (
+                                    <TableRow key={ticket.id}>
+                                        <TableCell>{ticket.name}</TableCell>
+                                        <TableCell>${ticket.price}</TableCell>
+                                        <TableCell>{ticket.availableTickets}</TableCell>
+                                        <TableCell>
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                color="error"
+                                                onClick={() => handleDeleteTicketType(ticket.id)}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+            
                             <TextField
                                 fullWidth
                                 margin="normal"
+                                variant="filled"
                                 label="Description"
                                 multiline
                                 rows={3}
