@@ -19,7 +19,7 @@ import { useAppNotifications } from '../common/NotificationProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import EventService from '../configuration/Services/EventService';
 import CarCategory from '../configuration/Services/CarCategoryService';
-import TicketTags from '../configuration/Services/TicketTagsService'
+import TicketTags from '../configuration/Services/TicketTagsService';
 
 const EventCreateForm = () => {
     const theme = useTheme();

@@ -20,14 +20,19 @@ import {
     TableRow,
     TableCell,
     TableBody,
-    Pagination
+    Pagination,
+    Autocomplete
 } from '@mui/material';
+import { LocationOn, Event as EventIcon, AccessTime, DirectionsCar as CarTag, Sell as Tag, ConfirmationNumber, AttachMoney} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import EventService from '../configuration/Services/EventService';
 import TicketTypeService from '../configuration/Services/TicketTypeService';
+import CarCategory from '../configuration/Services/CarCategoryService';
+import TicketTags from '../configuration/Services/TicketTagsService';
 import { useAppNotifications } from '../common/NotificationProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import DOMPurify from 'dompurify';
 
 const EventManagement = () => {
@@ -41,6 +46,17 @@ const EventManagement = () => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [ticketTypes, setTicketTypes] = useState([]);
+
+    const [category, setCategory] = useState(null);
+    const [categorySearch, setCategorySearch] = useState('');
+    const [allCategories, setallCategories] = useState([]);
+    const [filteredCategories, setFilteredCategories] = useState([]);
+
+    const [tag, setTag] = useState([]);
+    const [tagSearch, setTagSearch] = useState('');
+    const [allTags, setallTags] = useState([]);
+    const [filteredTags, setFilteredTags] = useState([]);
+
     const [newTicketType, setNewTicketType] = useState({
         name: '',
         price: '',
@@ -76,21 +92,56 @@ const EventManagement = () => {
     const handleEditSave = async () => {
         try {
             if (selectedEvent) {
-                await EventService.updateEvent(selectedEvent);
+
+                const formattedDate = format(new Date(selectedEvent.date), "yyyy-MM-dd'T'HH:mm:ss");
+
+                const updatePayload = {
+                    id: selectedEvent.id,
+                    name: selectedEvent.name,
+                    location: selectedEvent.location,
+                    creatorUserId: userId, // Assuming `userId` is the creator's ID
+                    newTime: formattedDate, // Assuming `date` is the new start time
+                    ticketTypes: ticketTypes, // Ensure `ticketTypes` is populated correctly
+                    tags: selectedEvent.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)), // Map tag names
+                    allowedCars: selectedEvent.allowedCars.map((car) => (typeof car === 'string' ? car : car.name)), // Map car category names
+                };
+    
+                // Log the update payload
+                console.log("Update Event Request Payload:", updatePayload);
+    
+                // Call the update service
+                await EventService.updateEvent(updatePayload);
+                notifications.show('Event was been update successfully!', {
+                    autoHideDuration: 3000,
+                    severity: 'success',
+                });
+
                 queryClient.invalidateQueries(['events']);
                 handleCloseEditDialog();
             }
         } catch (error) {
             console.error('Error updating event:', error);
+            notifications.show('Error updating event.', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
         }
     };
 
     const handleDeleteClick = async (eventId) => {
         try {
             await EventService.deleteEvent(eventId);
+            notifications.show('The event was been deleted successfully!', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
             queryClient.invalidateQueries(['events']);
         } catch (error) {
             console.error('Error deleting event:', error);
+            notifications.show('Error deleting event', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
         }
     };
 
@@ -109,6 +160,91 @@ const EventManagement = () => {
             console.error('Error fetching ticket types:', error);
         }
     };
+
+    useEffect(() => {
+        const fetchTagsAndCars = async () => {
+            try {
+                const tagsResponse = await TicketTags.getAllTags();
+                const carCategoriesResponse = await CarCategory.getAllCategories();
+                setallTags(tagsResponse?.content || []);
+                setallCategories(carCategoriesResponse?.content || []);
+            } catch (error) {
+                console.error('Error fetching tags or car categories:', error);
+            }
+        };
+    
+        fetchTagsAndCars();
+    }, []);
+
+    useEffect(() => {
+        const fetchAllCarCategories = async () => {
+            try {
+                const response = await CarCategory.getAllCategories();
+                const categories = response?.content || []; 
+                setallCategories(categories);
+                setFilteredCategories(categories);
+            } catch (error) {
+                console.error('Error fetching car categories:', error);
+                setFilteredCategories([]);
+            }
+        };
+    
+        fetchAllCarCategories();
+    }, []);
+    
+    useEffect(() => {
+        const searchCategories = async () => {
+            if (categorySearch.trim() === '') {
+                setFilteredCategories(allCategories);
+                return;
+            }
+    
+            try {
+                const response = await CarCategory.searchCategories(categorySearch);
+                const searchResults = response?.content || []; // Extract the `content` array
+                setFilteredCategories(searchResults);
+            } catch (error) {
+                console.error('Error searching categories:', error);
+            }
+        };
+    
+        searchCategories();
+    }, [categorySearch, allCategories]);
+
+
+    useEffect(() => {
+        const fetchAllTags = async () => {
+            try {
+                const response = await TicketTags.getAllTags();
+                const tags = response?.content || [];
+                setallTags(tags);
+                setFilteredTags(tags);
+            } catch (error) {
+                console.error('Error fetching tags:', error);
+            }
+        };
+    
+        fetchAllTags();
+    }, []);
+    
+    useEffect(() => {
+        const searchTags = async () => {
+            if (categorySearch.trim() === '') {
+                setFilteredTags(allTags);
+                return;
+            }
+    
+            try {
+                const response = await TicketTags.searchTags(tagSearch);
+                const searchResults = response?.content || []; // Extract the `content` array
+                setFilteredCategories(searchResults);
+            } catch (error) {
+                console.error('Error searching tag:', error);
+            }
+        };
+    
+        searchTags();
+    }, [tagSearch, allTags]);
     
     const handleDeleteTicketType = async (ticketId) => {
         // Optimistically update the cache
@@ -216,10 +352,18 @@ const EventManagement = () => {
                                     Tickets Left: {event.ticketsAvailable || 'N/A'}
                                 </Typography>
                                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', marginTop: '10px' }}>
-                                    {event.tags?.map((tag, index) => (
-                                        <Chip key={index} label={tag} size="small" />
+                                    <CarTag fontSize="small" />
+                                    {event.allowedCars?.map((car) => (
+                                        <Chip key={car.id} label={car.name} size="small" />
                                     ))}
                                 </Box>
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', marginTop: '10px' }}>
+                                <Tag fontSize="small" />
+                                    {event.tags?.map((tag) => (
+                                        <Chip key={tag.id} label={tag.name} size="small" />
+                                    ))}
+                                </Box>
+                                
                             </CardContent>
                             <CardActions>
                                 <Button
@@ -280,8 +424,8 @@ const EventManagement = () => {
                                 margin="normal"
                                 label="Date"
                                 variant="filled"
-                                type="date"
-                                value={selectedEvent.date?.split('T')[0] || ''}
+                                type="datetime-local"
+                                value={selectedEvent.date || ''}
                                 onChange={(e) => handleInputChange('date', e.target.value)}
                             />
                             <Typography variant="h6" sx={{ marginTop: '20px' }}>
@@ -331,49 +475,75 @@ const EventManagement = () => {
             <Typography variant="h6" sx={{ marginTop: '20px' }}>
                 Ticket Types
             </Typography>
-                    <TableContainer component={Paper} sx={{ marginTop: 2 }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Ticket Name</TableCell>
-                                    <TableCell>Price</TableCell>
-                                    <TableCell>Total Tickets</TableCell>
-                                    <TableCell>Actions</TableCell>
+                <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Ticket Name</TableCell>
+                                <TableCell>Price</TableCell>
+                                <TableCell>Total Tickets</TableCell>
+                                <TableCell>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {ticketTypes.map((ticket) => (
+                                <TableRow key={ticket.id}>
+                                    <TableCell>{ticket.name}</TableCell>
+                                    <TableCell>${ticket.price}</TableCell>
+                                    <TableCell>{ticket.availableTickets}</TableCell>
+                                    <TableCell>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            color="error"
+                                            onClick={() => handleDeleteTicketType(ticket.id)}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {ticketTypes.map((ticket) => (
-                                    <TableRow key={ticket.id}>
-                                        <TableCell>{ticket.name}</TableCell>
-                                        <TableCell>${ticket.price}</TableCell>
-                                        <TableCell>{ticket.availableTickets}</TableCell>
-                                        <TableCell>
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                color="error"
-                                                onClick={() => handleDeleteTicketType(ticket.id)}
-                                            >
-                                                Delete
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                            ))}
+                        </TableBody>
+                    </Table>
                     </TableContainer>
-            
-                            <TextField
-                                fullWidth
-                                margin="normal"
-                                variant="filled"
-                                label="Description"
-                                multiline
-                                rows={3}
-                                value={selectedEvent.description || ''}
-                                onChange={(e) => handleInputChange('description', e.target.value)}
-                            />
-                        </>
+        
+                        <TextField
+                            fullWidth
+                            margin="normal"
+                            variant="filled"
+                            label="Description"
+                            multiline
+                            rows={3}
+                            value={selectedEvent.description || ''}
+                            onChange={(e) => handleInputChange('description', e.target.value)}
+                        />
+                        <Autocomplete
+                            multiple
+                            options={filteredCategories || []}
+                            getOptionLabel={(option) => option.name}
+                            value={selectedEvent?.allowedCars || []}
+                            onChange={(event, newValue) =>
+                                setSelectedEvent({ ...selectedEvent, allowedCars: newValue })
+                            }
+                            renderInput={(params) => (
+                                <TextField {...params} label="Allowed Car Categories" variant="filled" />
+                            )}
+                        />
+
+                        <Autocomplete
+                            multiple
+                            options={filteredTags}
+                            getOptionLabel={(option) => option.name}
+                            value={selectedEvent?.tags || []}
+                            onChange={(event, newValue) =>
+                                setSelectedEvent({ ...selectedEvent, tags: newValue })
+                            }
+                            renderInput={(params) => (
+                                <TextField {...params} label="Tags" variant="filled" />
+                            )}
+                        />
+
+                    </>
                     )}
                 </DialogContent>
                 <DialogActions>

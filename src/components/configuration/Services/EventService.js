@@ -21,7 +21,7 @@ const EventService = {
         }
     },
 
-    deleteEvent: async (eventId, token) => {
+    deleteEvent: async (eventId) => {
         try {
             const response = await ticktsAPI.delete(`/events/${eventId}`, {
                 requiresAuth: true,
@@ -32,10 +32,10 @@ const EventService = {
         }
     },
 
-    updateEvent: async (eventData, token) => {
+    updateEvent: async (eventData) => {
         try {
             const response = await ticktsAPI.put('/events', eventData, {
-                headers: { Authorization: token },
+                requiresAuth: true,
             });
             return response.data;
         } catch (error) {
