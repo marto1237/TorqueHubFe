@@ -23,9 +23,11 @@ import {
     Pagination,
     Autocomplete
 } from '@mui/material';
-import { LocationOn, Event as EventIcon, AccessTime, DirectionsCar as CarTag, Sell as Tag, ConfirmationNumber, AttachMoney} from '@mui/icons-material';
+import { LocationOn, Event as EventIcon, AccessTime, DirectionsCar as CarTag, Sell as Tag, ConfirmationNumber, AttachMoney, Edit} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { storage } from '../../firebase';
+import { ref, uploadBytesResumable, getDownloadURL, listAll } from 'firebase/storage';
 import EventService from '../configuration/Services/EventService';
 import TicketTypeService from '../configuration/Services/TicketTypeService';
 import CarCategory from '../configuration/Services/CarCategoryService';
@@ -42,6 +44,15 @@ const EventManagement = () => {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(0);
     const size = 10;
+    const location = useLocation();
+
+    // Extract query parameters from URL
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const initialPage = parseInt(params.get('page') || '0', 10);
+        setPage(initialPage);
+    }, [location.search]);
+
 
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -56,6 +67,97 @@ const EventManagement = () => {
     const [tagSearch, setTagSearch] = useState('');
     const [allTags, setallTags] = useState([]);
     const [filteredTags, setFilteredTags] = useState([]);
+
+    const [existingImages, setExistingImages] = useState([]); // Images from the server
+    const [newImages, setNewImages] = useState([]); // Newly uploaded images
+
+
+    
+    const fetchEventImages = async (eventId) => {
+        try {
+
+            const imageRef = ref(storage, `eventImages/${eventId}/`);
+            const imageList = await listAll(imageRef);
+            const imageUrls = await Promise.all(imageList.items.map(item => getDownloadURL(item)));
+            setExistingImages(imageUrls.map((url, index) => ({ id: index, url })));
+        } catch (error) {
+            console.error('Error fetching event images:', error);
+        }
+    };
+    
+    useEffect(() => {
+        if (selectedEvent?.id) {
+            fetchEventImages(selectedEvent.id);
+        }
+    }, [selectedEvent]);
+
+    const handleSetFirstImage = (index) => {
+        setExistingImages((prevImages) => {
+            const updatedImages = [...prevImages];
+            const [selectedImage] = updatedImages.splice(index, 1);
+            updatedImages.unshift(selectedImage); // Move to the first position
+            return updatedImages;
+        });
+    };
+    
+    const handleRemoveImage = (index, isExisting) => {
+        if (isExisting) {
+            setExistingImages((prevImages) => prevImages.filter((_, i) => i !== index));
+        } else {
+            setNewImages((prevImages) => prevImages.filter((_, i) => i !== index));
+        }
+    };
+
+
+    const handleNewFileChange = (e) => {
+        const selectedFiles = Array.from(e.target.files);
+    
+        const newFiles = selectedFiles.map((file) => ({
+            file,
+            previewURL: URL.createObjectURL(file),
+            name: file.name.replace(/[^a-zA-Z0-9.-]/g, '_'), // Sanitize filename
+        }));
+    
+        setNewImages((prevFiles) => [...prevFiles, ...newFiles]);
+    };
+    
+    const saveImages = async () => {
+        const uploadPromises = newImages.map(async ({ file, name }) => {
+            try {
+                const fileRef = ref(storage, `eventImages/${selectedEvent.id}/${name}`);
+                const uploadTask = uploadBytesResumable(fileRef, file);
+                await new Promise((resolve, reject) => {
+                    uploadTask.on(
+                        'state_changed',
+                        null,
+                        reject,
+                        async () => resolve(await getDownloadURL(uploadTask.snapshot.ref))
+                    );
+                });
+            } catch (error) {
+                console.error('Error uploading image:', error);
+            }
+        });
+
+        await Promise.all(uploadPromises);
+        // Optionally, send updated image order to the backend
+        setNewImages([]);
+        await fetchEventImages(selectedEvent.id);
+    };
+
+    const handlePageChange = (event, value) => {
+        const zeroBasedPage = value - 1; // Convert 1-based to 0-based
+        setPage(zeroBasedPage);
+
+        // Update query parameters
+        const params = new URLSearchParams(location.search);
+        params.set('page', zeroBasedPage);
+        params.set('size', size); // Add other parameters as needed
+        navigate({ search: params.toString() });
+    };
+    
+    
+    
 
     const [newTicketType, setNewTicketType] = useState({
         name: '',
@@ -300,7 +402,7 @@ const EventManagement = () => {
                 price: newTicketType.price,
                 totalTickets: newTicketType.totalTickets,
                 eventId: selectedEvent.id,
-                availableTickets: newTicketType.totalTickets,
+                availableTickets: newTicketType.availableTickets,
             };
             
     
@@ -319,17 +421,74 @@ const EventManagement = () => {
         }
     };
     
+    const handleEditTicket = (ticketId) => {
+        setTicketTypes((prevTypes) =>
+            prevTypes.map((ticket) =>
+                ticket.id === ticketId ? { ...ticket, isEditing: true } : ticket
+            )
+        );
+    };
 
+    const handleSaveTicketEdit = async (ticketId) => {
+        const ticketToUpdate = ticketTypes.find((ticket) => ticket.id === ticketId);
+        try {
+            await TicketTypeService.updateTicketType({
+                userId: userId,
+                name: ticketToUpdate.name,
+                price: ticketToUpdate.price,
+                eventId: selectedEvent.id,
+                availableTickets: ticketToUpdate.availableTickets,
+                totalTickets: ticketToUpdate.totalTickets,
+                
+            });
+    
+            notifications.show('Ticket type updated successfully!', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
+
+    
+            queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
+    
+            // Exit edit mode
+            setTicketTypes((prevTypes) =>
+                prevTypes.map((ticket) =>
+                    ticket.id === ticketId ? { ...ticket, isEditing: false } : ticket
+                )
+            );
+        } catch (error) {
+            console.error('Error updating ticket type:', error);
+            notifications.show('Error updating ticket type.', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
+        }
+    };
+    
+    const handleCancelTicketEdit = (ticketId) => {
+        queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
+        setTicketTypes((prevTypes) =>
+            prevTypes.map((ticket) =>
+                ticket.id === ticketId ? { ...ticket, isEditing: false } : ticket
+            )
+        );
+    };
+    
+    
     
     const handleEditClick = async (event) => {
         setSelectedEvent(event);
         setOpenEditDialog(true);
+        await fetchEventImages(event.id);
         await fetchTicketTypes(event.id);
     };
     
 
     return (
-        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper ,
+            minHeight: '100vh', 
+            display: 'flex', 
+            flexDirection: 'column',}}>
             <Typography variant="h4" color="textSecondary" sx={{ marginBottom: '20px', fontWeight: 'bold' }}>
                 Event Management
             </Typography>
@@ -391,8 +550,8 @@ const EventManagement = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                 <Pagination
                     count={events.totalPages} // Total pages from API response
-                    page={page + 1} // Material-UI Pagination uses 1-indexed pages
-                    onChange={(event, value) => setPage(value - 1)} // Update the 0-indexed page state
+                    page={page+1} // Material-UI Pagination uses 1-indexed pages
+                    onChange={handlePageChange}
                     color="primary"
                 />
             </Box>
@@ -475,37 +634,176 @@ const EventManagement = () => {
             <Typography variant="h6" sx={{ marginTop: '20px' }}>
                 Ticket Types
             </Typography>
-                <TableContainer component={Paper} sx={{ marginTop: 2 }}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Ticket Name</TableCell>
-                                <TableCell>Price</TableCell>
-                                <TableCell>Total Tickets</TableCell>
-                                <TableCell>Actions</TableCell>
+            <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Ticket Name</TableCell>
+                            <TableCell>Price</TableCell>
+                            <TableCell>Total Tickets</TableCell>
+                            <TableCell>Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {ticketTypes.map((ticket) => (
+                            <TableRow key={ticket.id}>
+                                <TableCell>
+                                    {ticket.isEditing ? (
+                                        <TextField
+                                            variant="filled"
+                                            value={ticket.name}
+                                            onChange={(e) =>
+                                                setTicketTypes((prevTypes) =>
+                                                    prevTypes.map((t) =>
+                                                        t.id === ticket.id ? { ...t, name: e.target.value } : t
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    ) : (
+                                        <Typography>{ticket.name}</Typography>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    {ticket.isEditing ? (
+                                        <TextField
+                                            variant="filled"
+                                            type="number"
+                                            value={ticket.price}
+                                            onChange={(e) =>
+                                                setTicketTypes((prevTypes) =>
+                                                    prevTypes.map((t) =>
+                                                        t.id === ticket.id ? { ...t, price: parseFloat(e.target.value) } : t
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    ) : (
+                                        <Typography>${ticket.price}</Typography>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    {ticket.isEditing ? (
+                                        <TextField
+                                            variant="filled"
+                                            type="number"
+                                            value={ticket.availableTickets}
+                                            onChange={(e) =>
+                                                setTicketTypes((prevTypes) =>
+                                                    prevTypes.map((t) =>
+                                                        t.id === ticket.id
+                                                            ? { ...t, availableTickets: parseInt(e.target.value, 10) }
+                                                            : t
+                                                    )
+                                                )
+                                            }
+                                        />
+                                    ) : (
+                                        <Typography>{ticket.availableTickets}</Typography>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    {ticket.isEditing ? (
+                                        <>
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={() => handleSaveTicketEdit(ticket.id)}
+                                            >
+                                                Save
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="secondary"
+                                                onClick={() => handleCancelTicketEdit(ticket.id)}
+                                                sx={{ marginLeft: 1 }}
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={() => handleEditTicket(ticket.id)}
+                                                startIcon={<Edit />}
+                                            >
+                                                Edit
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                color="error"
+                                                onClick={() => handleDeleteTicketType(ticket.id)}
+                                                sx={{ marginLeft: 1 }}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </>
+                                    )}
+                                </TableCell>
                             </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {ticketTypes.map((ticket) => (
-                                <TableRow key={ticket.id}>
-                                    <TableCell>{ticket.name}</TableCell>
-                                    <TableCell>${ticket.price}</TableCell>
-                                    <TableCell>{ticket.availableTickets}</TableCell>
-                                    <TableCell>
-                                        <Button
-                                            size="small"
-                                            variant="contained"
-                                            color="error"
-                                            onClick={() => handleDeleteTicketType(ticket.id)}
-                                        >
-                                            Delete
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    </TableContainer>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+
+            <Typography variant="h6">Manage Images:</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', mb: 2 }}>
+                        {existingImages.map((img, index) => (
+                            <Box key={index} sx={{ position: 'relative' }}>
+                                <img
+                                    src={img.url}
+                                    alt={`Existing Image ${index}`}
+                                    style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px' }}
+                                />
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ position: 'absolute', top: 5, right: 5 }}
+                                    onClick={() => handleRemoveImage(index, true)}
+                                >
+                                    Remove
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="contained"
+                                    sx={{ position: 'absolute', bottom: 5, right: 5 }}
+                                    onClick={() => handleSetFirstImage(index)}
+                                >
+                                    Set as First
+                                </Button>
+                            </Box>
+                        ))}
+
+                        {newImages.map(({ previewURL }, index) => (
+                            <Box key={index} sx={{ position: 'relative' }}>
+                                <img
+                                    src={previewURL}
+                                    alt={`New Image ${index}`}
+                                    style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px' }}
+                                />
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ position: 'absolute', top: 5, right: 5 }}
+                                    onClick={() => handleRemoveImage(index, false)}
+                                >
+                                    Remove
+                                </Button>
+                            </Box>
+                        ))}
+                    </Box>
+
+                    <Button variant="contained" component="label" sx={{ marginBottom: '1rem' }}>
+                        Add New Images
+                        <input type="file" hidden multiple accept="image/*" onChange={handleNewFileChange} />
+                    </Button>
+
+
         
                         <TextField
                             fullWidth
