@@ -125,9 +125,10 @@ const ProfilePage = ({ avatar, userDetails }) => {
         if (!profile) return [];
 
         const combinedPosts = [
-            ...profile.questions.map(q => ({ ...q, type: 'Q' })),
-            ...profile.answers.map(a => ({ ...a, type: 'A' }))
+            ...(profile?.questions?.map(q => ({ ...q, type: 'Q' })) || []),
+            ...(profile?.answers?.map(a => ({ ...a, type: 'A' })) || [])
         ];
+        
 
         return combinedPosts
             .filter(post => {

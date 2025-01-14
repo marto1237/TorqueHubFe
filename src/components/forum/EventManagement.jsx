@@ -122,28 +122,53 @@ const EventManagement = () => {
     };
     
     const saveImages = async () => {
+        if (!selectedEvent) {
+            console.error("No event selected for saving images.");
+            return;
+        }
+    
         const uploadPromises = newImages.map(async ({ file, name }) => {
             try {
-                const fileRef = ref(storage, `eventImages/${selectedEvent.id}/${name}`);
+                const timestamp = new Date().getTime(); // Unique timestamp
+                const sanitizedFileName = `${selectedEvent.id}_${timestamp}_${name}`; // Rename file
+                const fileRef = ref(storage, `eventImages/${selectedEvent.id}/${sanitizedFileName}`);
                 const uploadTask = uploadBytesResumable(fileRef, file);
-                await new Promise((resolve, reject) => {
+    
+                return new Promise((resolve, reject) => {
                     uploadTask.on(
                         'state_changed',
-                        null,
-                        reject,
-                        async () => resolve(await getDownloadURL(uploadTask.snapshot.ref))
+                        null, // Optional progress function
+                        (error) => {
+                            console.error('Error uploading file:', error);
+                            reject(error);
+                        },
+                        async () => {
+                            const downloadURL = await getDownloadURL(fileRef);
+                            resolve(downloadURL); // Resolve with the file's download URL
+                        }
                     );
                 });
             } catch (error) {
-                console.error('Error uploading image:', error);
+                console.error("Error uploading image:", error);
+                return null;
             }
         });
-
-        await Promise.all(uploadPromises);
-        // Optionally, send updated image order to the backend
-        setNewImages([]);
-        await fetchEventImages(selectedEvent.id);
+    
+        try {
+            const imageUrls = await Promise.all(uploadPromises);
+            const validUrls = imageUrls.filter(Boolean); // Exclude any failed uploads
+            console.log("Uploaded Image URLs:", validUrls);
+    
+            // Refresh images after successful upload
+            await fetchEventImages(selectedEvent.id);
+            setNewImages([]); // Clear the new images
+            notifications.show("Images saved successfully!", {autoHideDuration: 3000, severity: "success" });
+        } catch (error) {
+            console.error("Error saving images:", error);
+            notifications.show("Error saving images. Please try again.", {autoHideDuration: 3000, severity: "error" });
+        }
     };
+    
 
     const handlePageChange = (event, value) => {
         const zeroBasedPage = value - 1; // Convert 1-based to 0-based
@@ -217,6 +242,8 @@ const EventManagement = () => {
                     autoHideDuration: 3000,
                     severity: 'success',
                 });
+
+                await saveImages();
 
                 queryClient.invalidateQueries(['events']);
                 handleCloseEditDialog();

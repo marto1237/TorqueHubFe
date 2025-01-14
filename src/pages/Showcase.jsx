@@ -7,6 +7,7 @@ import {
 import { Comment, Visibility, Add, Close, } from '@mui/icons-material';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
+import { getStorage, ref, getDownloadURL,listAll } from "firebase/storage";
 import ShowcaseFilterPanel from '../components/common/ShowcaseFilterPanel';
 import ShowcaseService from '../components/configuration/Services/ShowcaseService';
 
@@ -153,12 +154,16 @@ const Showcase = () => {
 
 
     useEffect(() => {
-        // Fetch the first page of showcases when the component loads
         const fetchShowcases = async () => {
             try {
-                const data = await ShowcaseService.getAllShowcases(0, 10); // Fetch first page
-                console.log('Fetched Showcases:', data); // Log the data
-                setShowcases(data.content); // Set the showcases data
+                const response = await ShowcaseService.getAllShowcases(0, 10); // Fetch data
+                const showcasesWithImages = await Promise.all(
+                    response.content.map(async (showcase) => {
+                        const imageUrl = await getFirebaseImage(showcase.id); // Fetch image for each showcase
+                        return { ...showcase, image: imageUrl }; // Add image to showcase object
+                    })
+                );
+                setShowcases(showcasesWithImages);
             } catch (err) {
                 console.error('Error fetching showcases:', err);
                 setError('Failed to load showcases.');
@@ -166,9 +171,35 @@ const Showcase = () => {
                 setLoading(false);
             }
         };
-
+    
         fetchShowcases();
     }, []);
+    
+
+
+    const getFirebaseImage = async (showcaseId) => {
+        try {
+            const storage = getStorage();
+            const folderRef = ref(storage, `showcaseImages/${showcaseId}/`);
+    
+            // List all items in the folder
+            const folderContents = await listAll(folderRef);
+    
+            // Ensure there is at least one item
+            if (folderContents.items.length > 0) {
+                // Get the URL for the first image in the folder
+                const firstImageRef = folderContents.items[0];
+                const url = await getDownloadURL(firstImageRef);
+                return url;
+            } else {
+                console.warn(`No images found for showcaseId: ${showcaseId}`);
+                return 'https://via.placeholder.com/150'; // Placeholder if no images exist
+            }
+        } catch (err) {
+            console.error('Error fetching Firebase image:', err);
+            return 'https://via.placeholder.com/150'; // Placeholder for error
+        }
+    };
 
     if (loading) {
         return <Typography>Loading...</Typography>;
@@ -192,7 +223,7 @@ const Showcase = () => {
                 />
             )}
             <Grid container spacing={3}>
-                {carShowcases.map((car) => (
+                {showcases.map((car) => (
                     <Grid item xs={12} sm={6} md={4} key={car.id}>
                         <Card
                             sx={{
@@ -213,7 +244,7 @@ const Showcase = () => {
                                 sx={{ height: '200px', objectFit: 'cover' }}
                             />
                             <Box sx={{ padding: '15px' }}>
-                                <Typography variant="h6" gutterBottom>{car.year} {car.make} {car.model}</Typography>
+                                <Typography variant="h6" gutterBottom>{car.year} {car.make} {car.model.name}</Typography>
                             </Box>
 
                             {/* Hover Overlay */}
