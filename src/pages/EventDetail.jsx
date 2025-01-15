@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, Chip, Card, CardMedia, CardContent, Grid, MenuItem, FormControl, Select,
     InputLabel, Divider, Paper, Avatar, List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions
@@ -6,6 +6,11 @@ import {
 import { LocationOn, Event as EventIcon, AccessTime, AttachMoney, Map, ContactMail, ShoppingCart, DirectionsCar, Star } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
+import { Carousel } from 'react-responsive-carousel';
+import 'react-responsive-carousel/lib/styles/carousel.min.css';
+import EventService from '../components/configuration/Services/EventService';
 
 const carDetails = {
     'JDM Only': {
@@ -48,10 +53,47 @@ const events = [
 const EventDetail = () => {
     const theme = useTheme();
     const { id } = useParams(); // Get the event ID from the URL
-    const event = events.find(e => e.id === parseInt(id)); // Find the event based on the ID
     const [ticketCount, setTicketCount] = useState(1); // For ticket quantity selection
     const navigate = useNavigate();
     const [selectedCar, setSelectedCar] = useState(null);
+    const [eventImages, setEventImages] = useState([]);
+
+    const { data: event, isLoading, isError } = useQuery({
+        queryKey: ['event', id],
+        queryFn: async () => {
+            const response =  await EventService.getEventById(id);
+            console.log(response);
+            return response
+        },
+    });
+
+    useEffect(() => {
+        const fetchEventImages = async () => {
+            try {
+                const storage = getStorage();
+                const folderRef = ref(storage, `eventImages/${id}/`);
+                const folderContents = await listAll(folderRef);
+    
+                if (folderContents.items.length > 0) {
+                    const imageUrls = await Promise.all(
+                        folderContents.items.map(item => getDownloadURL(item))
+                    );
+                    console.log("Fetched Image URLs: ", imageUrls); // Log the fetched URLs
+                    setEventImages(imageUrls);
+                } else {
+                    console.warn(`No images found for event ID ${id}`);
+                    setEventImages([]); // Fallback to empty array
+                }
+            } catch (error) {
+                console.error(`Error fetching images for event ID ${id}:`, error);
+                setEventImages([]); // Fallback to empty array
+            }
+        };
+    
+        fetchEventImages();
+    }, [id]);
+    
+    
 
     if (!event) {
         return <Typography variant="h6">Event not found</Typography>;
@@ -73,26 +115,73 @@ const EventDetail = () => {
         setSelectedCar(null); // Close modal
     };
 
+    if (isLoading) {
+        return <Typography>Loading event details...</Typography>;
+    }
+
+    if (isError) {
+        return <Typography color="error">Failed to load event details. Please try again later.</Typography>;
+    }
+
+    if (!event) {
+        return <Typography variant="h6">Event not found</Typography>;
+    }
+
+    const getEmbedUrl = (mapUrl) => {
+        if (!mapUrl) {
+            // Fallback to default embed link if `mapUrl` is null or undefined
+            return 'https://www.google.com/maps/embed/v1/view?key=AIzaSyDJ45-gWiL5XEnw_xLmqT8kHuZe9XDeQNs&center=0,0&zoom=2';
+        }
+        // Extract the latitude and longitude from the mapUrl
+        const regex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const match = mapUrl.match(regex);
+    
+        if (match && match[1] && match[2]) {
+            const latitude = match[1];
+            const longitude = match[2];
+            return `https://www.google.com/maps/embed/v1/view?key=AIzaSyDJ45-gWiL5XEnw_xLmqT8kHuZe9XDeQNs&center=${latitude},${longitude}&zoom=15`;
+        }
+    
+        // Fallback to default embed link if parsing fails
+        return 'https://www.google.com/maps/embed?pb=!1m18&center=0,0&zoom=2';
+    };
+    
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
             <Grid container spacing={4}>
                 {/* Event Details and Highlights Section */}
                 <Grid item xs={12} md={8}>
                     <Card sx={{ boxShadow: theme.shadows[4] }}>
-                        <CardMedia
-                            component="img"
-                            image={event.imageUrl}
-                            alt={event.name}
-                            sx={{ height: 400, objectFit: 'cover' }}
-                        />
+                    <Card>
+                        <Carousel showThumbs={false} showArrows infiniteLoop emulateTouch>
+                            {eventImages && eventImages.length > 0 ? (
+                                eventImages.map((img, index) => (
+                                    <Box key={index}>
+                                        <CardMedia
+                                            component="img"
+                                            image={img}
+                                            alt={`Event Image ${index + 1}`}
+                                            sx={{ maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
+                                        />
+                                    </Box>
+                                ))
+                            ) : (
+                                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', padding: 2 }}>
+                                    No images available for this event.
+                                </Typography>
+                            )}
+                        </Carousel>
+                    </Card>
+
                         <CardContent>
                             {/* Event Name and Main Info */}
                             <Typography variant="h4" color="primary" gutterBottom>{event.name}</Typography>
                             <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <EventIcon fontSize="small" /> {event.date}
+                                <EventIcon fontSize="small" /> {new Date(event.date).toLocaleDateString()}
                             </Typography>
                             <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 1, marginTop: '10px' }}>
-                                <AccessTime fontSize="small" /> {event.hour}
+                                <AccessTime fontSize="small" /> {event.startTime || 'N/A'} - {event.endTime || 'N/A'}
                             </Typography>
                             <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 1, marginTop: '10px' }}>
                                 <LocationOn fontSize="small" /> {event.location}
@@ -100,38 +189,50 @@ const EventDetail = () => {
 
                             {/* Event Description */}
                             <Typography variant="body1" sx={{ marginTop: '20px' }}>
-                                {event.description}
+                                {event.description || 'No description available.'}
+
                             </Typography>
 
                             {/* Event Highlights */}
                             <Box sx={{ marginTop: '20px', flexDirection: 'column' }}>
                                 <Typography variant="h6" color="primary">Event Highlights:</Typography>
                                 <List sx={{ mt: 2 }}>
-                                    {event.highlights.map((highlight, index) => (
-                                        <ListItem key={index} sx={{ py: 0 }}>
-                                            <Star color="primary" sx={{ mr: 2 }} />
-                                            <ListItemText primary={highlight} />
-                                        </ListItem>
-                                    ))}
+                                    {event.highlights.length > 0 ? (
+                                        event.highlights.map((highlight, index) => (
+                                            <Typography key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Star color="primary" sx={{ mr: 1 }} /> {highlight}
+                                            </Typography>
+                                        ))
+                                    ) : (
+                                        <Typography variant="body2" color="textSecondary">
+                                            No highlights available.
+                                        </Typography>
+                                    )}
                                 </List>
                             </Box>
 
                             {/* Cars Allowed (JDM, Euro, etc.) */}
                             <Box sx={{ marginTop: '20px', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                {event.carsAllowed.map((car, index) => (
-                                    <Chip
-                                        key={index}
-                                        label={car}
-                                        icon={<DirectionsCar />}
-                                        color="secondary"
-                                        variant="outlined"
-                                        onClick={() => handleChipClick(car)}
-                                        sx={{
-                                            backgroundColor:theme.palette.background.default,
-                                            color: theme.palette.text.primary,
-                                        }}
-                                    />
-                                ))}
+                                {event.allowedCars.length > 0 ? (
+                                    event.allowedCars.map((car, index) => (
+                                        <Chip
+                                            key={index}
+                                            label={car}
+                                            icon={<DirectionsCar />}
+                                            color="secondary"
+                                            variant="outlined"
+                                            onClick={() => handleChipClick(car)}
+                                            sx={{
+                                                backgroundColor: theme.palette.background.default,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
+                                    ))
+                                ) : (
+                                    <Typography variant="body2" color="textSecondary">
+                                        No cars allowed information available.
+                                    </Typography>
+                                )}
                             </Box>
                         </CardContent>
                     </Card>
@@ -191,13 +292,13 @@ const EventDetail = () => {
                             Organizer Information
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-                            <Avatar src={event.organizer.avatar} sx={{ width: 50, height: 50, marginRight: '10px' }} />
+                            <Avatar src={event.creatorUserId} sx={{ width: 50, height: 50, marginRight: '10px' }} />
                             <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                                    {event.organizer.name}
+                                    {event.creatorName}
                                 </Typography>
                                 <Typography variant="body2" color="textSecondary">
-                                    <ContactMail fontSize="small" /> {event.organizer.contact}
+                                    <ContactMail fontSize="small" /> {event.creatorEmail}
                                 </Typography>
                             </Box>
                         </Box>
@@ -209,7 +310,7 @@ const EventDetail = () => {
                         </Typography>
                         <Box sx={{ height: '300px' }}>
                             <iframe
-                                src={event.mapUrl}
+                                src={getEmbedUrl(event.mapUrl)}
                                 width="100%"
                                 height="100%"
                                 style={{ border: 0 }}

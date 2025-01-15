@@ -53,7 +53,6 @@ const ShowcaseService = {
     getShowcaseByID: (showcaseId) => {
         return showcaseAPI
             .get(`/showcase/${showcaseId}`, {
-                requiresAuth: true, // Automatically adds the Authorization header
             })
             .then(response => response.data)
             .catch(error => Promise.reject(error));

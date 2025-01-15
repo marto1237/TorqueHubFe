@@ -193,11 +193,11 @@ const Showcase = () => {
                 return url;
             } else {
                 console.warn(`No images found for showcaseId: ${showcaseId}`);
-                return 'https://via.placeholder.com/150'; // Placeholder if no images exist
+                return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; 
             }
         } catch (err) {
             console.error('Error fetching Firebase image:', err);
-            return 'https://via.placeholder.com/150'; // Placeholder for error
+            return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; // Placeholder for error
         }
     };
 
@@ -210,7 +210,7 @@ const Showcase = () => {
     }
 
     return (
-        <Box sx={{ padding: isMobile ? '20px 10px' : '20px 50px', paddingTop: '100px', minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
 
                 <Button variant="outlined" onClick={() => setIsFiltering(!isFiltering)} sx={{ fontWeight: 'bold' }}>
                         {isFiltering ? 'Clear Filters' : 'Show Filters'}

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Grid, Typography, Card, CardContent, Button,Chip , Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Box, Grid, Typography, Card, CardContent, Button,Chip , Select, MenuItem, FormControl, InputLabel,Pagination } from '@mui/material';
 import { LocationOn, Event as EventIcon, AccessTime, DirectionsCar as CarTag, Sell as Tag, ConfirmationNumber, AttachMoney} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import EventService from '../components/configuration/Services/EventService';
+import { format } from 'date-fns';
 
 // Event data with image URL, tickets left, price, etc.
 const events = [
@@ -86,6 +90,10 @@ const EventList = () => {
     const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
     const navigate = useNavigate(); // For programmatic navigation
     const [userRole, setUserRole] = useState(null);
+    const [page, setPage] = useState(0);
+    const size = 9;
+    const [eventsWithImages, setEventsWithImages] = useState([]);
+    const location = useLocation();
 
     useEffect(() => {
         const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
@@ -93,33 +101,99 @@ const EventList = () => {
             setUserRole(storedUserDetails.role);
         }
     }, []);
-
     
-    const handleCreateEventClick = () => {
-        navigate('/create-event');
+
+    // Fetch events from API
+    const { data: events = { content: [], totalPages: 0 }, isLoading, isError } = useQuery({
+        queryKey: ['events', { page, size }],
+        queryFn: async ({ queryKey }) => {
+            const [, { page, size }] = queryKey;
+            const response = await EventService.findAllEvents(page, size);
+            return response;
+        },
+    });
+
+    // Dynamically fetch images for events
+    useEffect(() => {
+        const fetchEventImages = async () => {
+            if (!events?.content?.length) return;
+
+            const updatedEvents = await Promise.all(
+                events.content.map(async (event) => {
+                    const imageUrl = await getFirebaseImage(event.id);
+                    return { ...event, imageUrl }; // Attach the fetched image URL to the event
+                })
+            );
+
+            setEventsWithImages(updatedEvents); // Set the updated events with images
+        };
+
+        fetchEventImages();
+    }, [events]);
+
+    // Function to fetch the first image from Firebase Storage
+    const getFirebaseImage = async (eventId) => {
+        try {
+            const storage = getStorage();
+            const folderRef = ref(storage, `eventImages/${eventId}/`);
+            const folderContents = await listAll(folderRef);
+
+            if (folderContents.items.length > 0) {
+                const firstImageRef = folderContents.items[0];
+                const url = await getDownloadURL(firstImageRef);
+                return url;
+            } else {
+                return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; // Fallback image
+            }
+        } catch (err) {
+            console.error(`Error fetching image for event ID ${eventId}:`, err);
+            return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; // Placeholder for errors
+        }
     };
+
+    // Filter events by selected tags
+    const filteredEvents = selectedTags.length > 0
+        ? eventsWithImages.filter((event) =>
+            selectedTags.every((tag) =>
+                (event.tags || []).includes(tag) ||
+                (event.carsAllowed || []).includes(tag)
+            )
+        )
+        : eventsWithImages;
 
     const handleSortChange = (event) => {
         setSort(event.target.value);
     };
 
+    const handleCreateEventClick = () => {
+        navigate('/create-event');
+    };
+    
+
     const handleTagClick = (tag) => {
         setSelectedTags((prevTags) =>
-            prevTags.includes(tag)
-                ? prevTags.filter((t) => t !== tag)
-                : [...prevTags, tag]
+            prevTags.includes(tag) ? prevTags.filter((t) => t !== tag) : [...prevTags, tag]
         );
     };
 
-    // Navigate to the event details page when clicking on an image or title
-    const handleEventClick = (eventId) => {
-        navigate(`/events/${eventId}`); // Redirect to the event details page
+    const handlePageChange = (event, value) => {
+        const zeroBasedPage = value - 1;
+        setPage(zeroBasedPage);
+        navigate({ search: `?page=${zeroBasedPage}&size=${size}` });
     };
 
-    // Filter events by the selected tags
-    const filteredEvents = selectedTags.length > 0
-        ? events.filter((event) => selectedTags.every((tag) => event.tags.includes(tag) || event.carsAllowed.includes(tag)))
-        : events;
+    const handleEventClick = (eventId) => {
+        navigate(`/events/${eventId}`);
+    };
+
+    if (isLoading) {
+        return <Typography>Loading events...</Typography>;
+    }
+
+    if (isError) {
+        return <Typography color="error">Failed to load events. Please try again later.</Typography>;
+    }
+
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
@@ -189,7 +263,11 @@ const EventList = () => {
                                                 onClick={() => handleEventClick(event.id)}
                                                 sx={{ width: '100%', height: '300px', overflow: 'hidden', borderTopLeftRadius: '15px', borderTopRightRadius: '15px', cursor: 'pointer' }}
                                             >
-                                                <img src={event.imageUrl} alt={event.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <img
+                                                    src={event.imageUrl || 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'}
+                                                    alt={event.name}
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                />
                                             </Box>
                                             <CardContent>
                                                 {/* Wrap the title with a click handler and make it bold */}
@@ -202,7 +280,7 @@ const EventList = () => {
                                                     {event.name}
                                                 </Typography>
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    <EventIcon fontSize="small" /> {event.date}
+                                                    <EventIcon fontSize="small" /> {format(new Date(event.date), 'MMMM d, yyyy, h:mm a')}
                                                 </Typography>
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
                                                     <AccessTime fontSize="small" /> {event.hour}
@@ -212,49 +290,55 @@ const EventList = () => {
                                                 </Typography>
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
                                                     <CarTag fontSize="small" />
-                                                    {event.carsAllowed.map((tag, index) => (
-                                                        <Chip key={index} color="primary" label={tag} size="small" onClick={() => handleTagClick(tag)} className={
-                                                            selectedTags.includes(tag)
-                                                                ? 'Mui-selected'
-                                                                : 'Mui-unselected'
-                                                        }
-                                                              sx={{
-                                                                  cursor: 'pointer',
-                                                                  '&:hover': {
-                                                                      opacity: 0.8, // Adds a hover effect
-                                                                  },
-                                                              }} />
+                                                    {(event.carsAllowed || []).map((tag, index) => (
+                                                        <Chip
+                                                            key={index}
+                                                            color="primary"
+                                                            label={tag.name || tag} // Adjust this based on the format of `carsAllowed`
+                                                            size="small"
+                                                            onClick={() => handleTagClick(tag.name || tag)}
+                                                            className={selectedTags.includes(tag.name || tag) ? 'Mui-selected' : 'Mui-unselected'}
+                                                            sx={{
+                                                                cursor: 'pointer',
+                                                                '&:hover': {
+                                                                    opacity: 0.8, // Adds a hover effect
+                                                                },
+                                                            }}
+                                                        />
                                                     ))}
                                                 </Typography>
+
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
                                                     <Tag fontSize="small" />
                                                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1, mb: 2 }}>
-                                                        {event.tags.map((tag, index) => (
-                                                            <Chip key={index} label={tag} size="small" onClick={() => handleTagClick(tag)}
-                                                                  className={
-                                                                      selectedTags.includes(tag)
-                                                                          ? 'Mui-selected'
-                                                                          : 'Mui-unselected'
-                                                                  }
-                                                                  sx={{
-                                                                      cursor: 'pointer',
-                                                                      '&:hover': {
-                                                                          opacity: 0.8, // Adds a hover effect
-                                                                      },
-                                                                  }} />
+                                                        {(event.tags || []).map((tag, index) => (
+                                                            <Chip
+                                                                key={index}
+                                                                label={tag.name  } // Adjust this based on the format of `tags`
+                                                                size="small"
+                                                                onClick={() => handleTagClick(tag.name || tag)}
+                                                                className={selectedTags.includes(tag.name || tag) ? 'Mui-selected' : 'Mui-unselected'}
+                                                                sx={{
+                                                                    cursor: 'pointer',
+                                                                    '&:hover': {
+                                                                        opacity: 0.8, // Adds a hover effect
+                                                                    },
+                                                                }}
+                                                            />
                                                         ))}
                                                     </Box>
                                                 </Typography>
+
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: theme.palette.background.default, padding: '10px', borderRadius: '10px', mt: 2 }}>
                                                     <ConfirmationNumber color="primary" fontSize="small" />
                                                     <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                        Tickets Left: {event.ticketsLeft}
+                                                        Tickets Left: {event.ticketsLeft|| "No tickts"}
                                                     </Typography>
                                                 </Box>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: theme.palette.background.default, padding: '10px', borderRadius: '10px', mt: 1 }}>
                                                     <AttachMoney color="primary" fontSize="small" />
                                                     <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                        Price: {event.price}
+                                                        Price: {event.price || "No price"}
                                                     </Typography>
                                                 </Box>
                                                 <Button size="small" variant="contained" sx={{ mt: 2 }} onClick={() => handleEventClick(event.id)} disabled={event.ticketsLeft === 0}>
@@ -265,6 +349,16 @@ const EventList = () => {
                                     </Card>
                                 </Grid>
                             ))}
+
+
+                            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px', margin:'auto' }}>
+                                <Pagination
+                                    count={events.totalPages} // Total pages from API response
+                                    page={page+1} // Material-UI Pagination uses 1-indexed pages
+                                    onChange={handlePageChange}
+                                    color="primary"
+                                />
+                            </Box>
                         </Grid>
                     </Grid>
                 </Grid>

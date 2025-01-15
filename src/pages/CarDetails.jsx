@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Box, Typography, List, ListItem, ListItemText, Divider, Card, CardContent, TextField, Button, IconButton, Tooltip, Grid } from '@mui/material';
 import { FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, Settings } from '@mui/icons-material';
 import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown, Done } from '@mui/icons-material';
+import ShowcaseService from '../components/configuration/Services/ShowcaseService';
+import { useQuery } from '@tanstack/react-query';
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { Carousel } from 'react-responsive-carousel';
+import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import { useTheme } from '@mui/material';
 import PostForm  from "../components/forum/PostForm";
 
@@ -38,29 +43,50 @@ const carShowcases = [
 const CarDetails = () => {
     const theme = useTheme();
     const { id } = useParams();
-    const car = carShowcases.find(car => car.id === parseInt(id));
 
     // State to manage comments and editor content
     const [comment, setComment] = useState('');
-    const [comments, setComments] = useState(car.comments);
     const [isPreview, setIsPreview] = useState(false);
     const [selectionStart, setSelectionStart] = useState(0);
     const [selectionEnd, setSelectionEnd] = useState(0);
     const [answers, setAnswers] = useState([]);
 
-    if (!car) {
-        return <Typography variant="h6">Car not found</Typography>;
-    }
+     // Fetch showcase data using ShowcaseService and React Query
+     const { data: showcase, isLoading, isError } = useQuery({
+        queryKey: ['showcase', id],
+        queryFn: async() => {
+            const response = await ShowcaseService.getShowcaseByID(id);
+            console.log("Fetched car details:", response)
+            return response;
+        },
+    });
 
-    // Function to handle comment submission
+    // Comments state (initialized empty, updated after fetching data)
+    const [comments, setComments] = useState([]);
+
+    // Update comments when showcase data is loaded
+    useEffect(() => {
+        if (showcase && showcase.comments?.content) {
+            setComments(showcase.comments.content);
+        }
+    }, [showcase]);
+
+
+    
+
+    // Handle new comment submission
     const handleCommentSubmit = (newCommentText) => {
         const newComment = {
-            user: { username: 'New User', profileLink: '/profile/new-user' }, // Placeholder for user info
+            user: { username: 'New User' }, // Placeholder user
             text: newCommentText,
-            votes: 0
+            votes: 0,
         };
-        setComments([...comments, newComment]);  // Add new comment to the list
+        setComments([...comments, newComment]); // Add the new comment to the list
     };
+
+    if (isLoading) return <Typography>Loading...</Typography>;
+    if (isError) return <Typography>Error loading showcase data.</Typography>;
+    if (!showcase) return <Typography>No data found.</Typography>;
 
     // Apply formatting to the selected text
     const applyFormatting = (tag) => {
@@ -113,10 +139,23 @@ const CarDetails = () => {
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.default, minHeight: '100vh' }}>
-            <Typography variant="h4" color="primary" gutterBottom>{car.year} {car.make} {car.model}</Typography>
-
+            <Typography variant="h4" color="primary" gutterBottom>{showcase.year} {showcase.make} {showcase.model?.name || 'Unknown Model'}</Typography>
+            <Typography variant="subtitle1">
+                {showcase.brand?.name || 'Unknown Brand'}
+            </Typography>
+            <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
+    <CardContent>
+        <Typography variant="h5" color="primary" gutterBottom>Car Details</Typography>
+        <Typography variant="body1">
+            Brand: {showcase.brand?.name || 'Unknown'}
+        </Typography>
+        <Typography variant="body1">
+            Model: {showcase.model?.name || 'Unknown'} ({showcase.model?.manufacturingYear || 'Year Unknown'})
+        </Typography>
+    </CardContent>
+</Card>
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-                <img src={car.image} alt={car.make} style={{ width: '100%', maxWidth: '800px', height: 'auto', borderRadius: '8px', boxShadow: theme.shadows[3] }} />
+                <img src={showcase.image} alt={showcase.make} style={{ width: '100%', maxWidth: '800px', height: 'auto', borderRadius: '8px', boxShadow: theme.shadows[3] }} />
             </Box>
 
             {/* General Information Section */}
@@ -127,7 +166,7 @@ const CarDetails = () => {
                         <ListItem sx={{ marginBottom: 2 }}>
                             <ListItemText
                                 primary="Owner"
-                                secondary={<Link to={car.user.profileLink} style={{ color: theme.palette.primary.main }}>{car.user.username}</Link>}
+                                secondary={<Link to={`/profile/${showcase.userId || 'unknown'}`} style={{ color: theme.palette.primary.main }}>{showcase.user?.username || 'Unknown'}</Link>}
                                 primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
                                 secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
                             />
@@ -135,7 +174,7 @@ const CarDetails = () => {
                         <ListItem sx={{ marginBottom: 2 }}>
                             <ListItemText
                                 primary="Color"
-                                secondary={car.color}
+                                secondary={showcase.color}
                                 primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
                                 secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
                             />
@@ -143,7 +182,7 @@ const CarDetails = () => {
                         <ListItem sx={{ marginBottom: 2 }}>
                             <ListItemText
                                 primary="Packages"
-                                secondary={car.packages}
+                                secondary={showcase.packages}
                                 primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
                                 secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
                             />
@@ -151,7 +190,7 @@ const CarDetails = () => {
                         <ListItem sx={{ marginBottom: 2 }}>
                             <ListItemText
                                 primary="History"
-                                secondary={car.history}
+                                secondary={showcase.history}
                                 primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
                                 secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
                             />
@@ -165,16 +204,26 @@ const CarDetails = () => {
                 <CardContent>
                     <Typography variant="h5" color="primary" gutterBottom>Modifications</Typography>
                     <Grid container spacing={2}>
-                        {car.modifications.map((mod, index) => (
-                            <Grid item xs={12} sm={6} key={index}>
-                                <Card sx={{ backgroundColor: theme.palette.background.paper, boxShadow: theme.shadows[1] }}>
-                                    <CardContent>
-                                        <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 'bold' }}>{mod.category}</Typography>
-                                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>{mod.description}</Typography>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                        ))}
+                    {Array.isArray(showcase.modifications) && showcase.modifications.length > 0 ? (
+                            showcase.modifications.map((mod, index) => (
+                                <Grid item xs={12} sm={6} key={index}>
+                                    <Card sx={{ backgroundColor: theme.palette.background.paper, boxShadow: theme.shadows[1] }}>
+                                        <CardContent>
+                                            <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                {mod.category || 'Unknown Category'}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
+                                                {mod.description || 'No description provided'}
+                                            </Typography>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            ))
+                        ) : (
+                            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+                                No modifications available for this showcase.
+                            </Typography>
+                        )}
                     </Grid>
                 </CardContent>
             </Card>
@@ -202,8 +251,8 @@ const CarDetails = () => {
                                 <Grid item xs={3} sx={{ textAlign: 'right' }}>
                                     <Typography variant="caption" color="textSecondary">
                                         Commented by{' '}
-                                        <Link to={comment.user.profileLink} style={{ color: theme.palette.primary.main }}>
-                                            {comment.user.username}
+                                        <Link to={`/profile/${comment.user?.userId || 'unknown'}`} style={{ color: theme.palette.primary.main }}>
+                                            {comment.user?.username || 'Anonymous'}
                                         </Link>
                                     </Typography>
                                 </Grid>
