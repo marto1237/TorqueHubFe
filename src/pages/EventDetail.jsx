@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, Chip, Card, CardMedia, CardContent, Grid, MenuItem, FormControl, Select,
-    InputLabel, Divider, Paper, Avatar, List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions
+    InputLabel, Divider, Paper, Avatar, List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
 } from '@mui/material';
-import { LocationOn, Event as EventIcon, AccessTime, AttachMoney, Map, ContactMail, ShoppingCart, DirectionsCar, Star } from '@mui/icons-material';
+import { LocationOn, Event as EventIcon, AccessTime, AttachMoney, Map, ContactMail, ShoppingCart, DirectionsCar, Star,Sell as Tag, ExpandMore } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
+import { storage } from '../firebase';
 import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import EventService from '../components/configuration/Services/EventService';
+import TicketTypeService from '../components/configuration/Services/TicketTypeService';
+import { format } from 'date-fns';
+
 
 const carDetails = {
     'JDM Only': {
@@ -57,6 +64,10 @@ const EventDetail = () => {
     const navigate = useNavigate();
     const [selectedCar, setSelectedCar] = useState(null);
     const [eventImages, setEventImages] = useState([]);
+    const [selectedTicket, setSelectedTicket] = useState(null);
+
+
+    const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
 
     const { data: event, isLoading, isError } = useQuery({
         queryKey: ['event', id],
@@ -65,6 +76,16 @@ const EventDetail = () => {
             console.log(response);
             return response
         },
+    });
+
+    const { data: ticketTypes, isLoading: isTicketTypesLoading, isError: isTicketTypesError } = useQuery({
+        queryKey: ['ticketTypes', id],
+        queryFn: async () => {
+            const response = await TicketTypeService.getAllByEventId(id);
+            console.log(response);
+            return response.content; // Assuming the API returns a paginated response
+        },
+        enabled: !!id, // Fetch only when `id` is available
     });
 
     useEffect(() => {
@@ -93,7 +114,51 @@ const EventDetail = () => {
         fetchEventImages();
     }, [id]);
     
-    
+    const { 
+        data: avatarURL, 
+        isLoading: isAvatarLoading 
+    } = useQuery({
+        queryKey: ['profileAvatar', event?.creatorUserId],
+        queryFn: async () => {
+            if (!event?.creatorUserId) return null;
+            const imageRef = ref(storage, `profileImages/${event.creatorUserId}/profile.jpg`);
+            return await getDownloadURL(imageRef);
+        },
+        enabled: !!event, // Fetch only when the event is available
+        staleTime: 24 * 60 * 60 * 1000, // 24 hours
+        cacheTime: 7 * 24 * 60 * 60 * 1000, // 7 days
+        retry: 1
+    });
+
+    function stringToColor(string) {
+        let hash = 0;
+        let i;
+
+        /* eslint-disable no-bitwise */
+        for (i = 0; i < string.length; i += 1) {
+            hash = string.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        let color = '#';
+
+        for (i = 0; i < 3; i += 1) {
+            const value = (hash >> (i * 8)) & 0xff;
+            color += `00${value.toString(16)}`.slice(-2);
+        }
+        /* eslint-enable no-bitwise */
+
+        return color;
+    }
+
+    const stringAvatar = (name) => {
+        if (!name) {
+            return { sx: { bgcolor: '#ccc' }, children: '?' };
+        }
+        return {
+            sx: { bgcolor: stringToColor(name), width: 50, height: 50 },
+            children: `${name[0].toUpperCase()}`,
+        };
+    };
 
     if (!event) {
         return <Typography variant="h6">Event not found</Typography>;
@@ -115,6 +180,30 @@ const EventDetail = () => {
         setSelectedCar(null); // Close modal
     };
 
+    const handleSelectTicket = (ticketType) => {
+        setSelectedTicket(ticketType);
+        setTicketCount(1); // Reset ticket quantity
+    };
+
+    const formatDateRange = (startTime, endTime) => {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+    
+        if (start.toDateString() === end.toDateString()) {
+            // Same day: Show only the time
+            return `${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`;
+        } else {
+            // Different days: Show date and time
+            return `${format(start, 'MMM d, h:mm a')} - ${format(end, 'MMM d, h:mm a')}`;
+        }
+    };
+
+    
+    
+
+    
+    
+
     if (isLoading) {
         return <Typography>Loading event details...</Typography>;
     }
@@ -126,6 +215,13 @@ const EventDetail = () => {
     if (!event) {
         return <Typography variant="h6">Event not found</Typography>;
     }
+
+    
+    const handleTagClick = (tag) => {
+        setSelectedTags((prevTags) =>
+            prevTags.includes(tag) ? prevTags.filter((t) => t !== tag) : [...prevTags, tag]
+        );
+    };
 
     const getEmbedUrl = (mapUrl) => {
         if (!mapUrl) {
@@ -181,7 +277,7 @@ const EventDetail = () => {
                                 <EventIcon fontSize="small" /> {new Date(event.date).toLocaleDateString()}
                             </Typography>
                             <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 1, marginTop: '10px' }}>
-                                <AccessTime fontSize="small" /> {event.startTime || 'N/A'} - {event.endTime || 'N/A'}
+                                <AccessTime fontSize="small" /> {formatDateRange(event.startTime, event.endTime)}
                             </Typography>
                             <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 1, marginTop: '10px' }}>
                                 <LocationOn fontSize="small" /> {event.location}
@@ -217,7 +313,7 @@ const EventDetail = () => {
                                     event.allowedCars.map((car, index) => (
                                         <Chip
                                             key={index}
-                                            label={car}
+                                            label={car.name}
                                             icon={<DirectionsCar />}
                                             color="secondary"
                                             variant="outlined"
@@ -234,6 +330,27 @@ const EventDetail = () => {
                                     </Typography>
                                 )}
                             </Box>
+
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1, mb: 2 }}>
+                                {(event.tags || []).map((tag, index) => (
+                                    <Chip
+                                        key={index}
+                                        label={tag.name  } // Adjust this based on the format of `tags`
+                                        icon={<Tag />}
+                                        color="secondary"
+                                        variant="outlined"
+                                        onClick={() => handleTagClick(tag.name || tag)}
+                                        className={selectedTags.includes(tag.name || tag) ? 'Mui-selected' : 'Mui-unselected'}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                                opacity: 0.8, // Adds a hover effect
+                                            },
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+
                         </CardContent>
                     </Card>
                 </Grid>
@@ -244,46 +361,74 @@ const EventDetail = () => {
                         <Typography variant="h6" color="primary" gutterBottom>
                             Ticket Information
                         </Typography>
+                        
+                        {ticketTypes.map((ticketType) => (
+                                <Accordion key={ticketType.id}>
+                                    <AccordionSummary
+                                        expandIcon={<ExpandMore />}
+                                        aria-controls={`panel-${ticketType.id}-content`}
+                                        id={`panel-${ticketType.id}-header`}
+                                    >
+                                        <Typography sx={{ fontWeight: 'bold' }}>{ticketType.name}</Typography>
+                                    </AccordionSummary>
+                                    <AccordionDetails>
+                                        <Typography variant="body2" color="textSecondary">
+                                            Price: ${ticketType.price.toFixed(2)}
+                                        </Typography>
+                                        <Typography variant="body2" color="textSecondary">
+                                            Tickets Left: {ticketType.availableTickets}
+                                        </Typography>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={() => handleSelectTicket(ticketType)}
+                                            disabled={ticketType.availableTickets === 0}
+                                            sx={{ marginTop: '10px' }}
+                                        >
+                                            {ticketType.availableTickets === 0 ? 'Sold Out' : 'Select Ticket'}
+                                        </Button>
+                                    </AccordionDetails>
+                                </Accordion>
+                            ))}
+                            {selectedTicket ? (
+                                <Box sx={{ marginTop: '20px', padding: '10px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                        Selected Ticket: {selectedTicket.name}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        Price: ${selectedTicket.price.toFixed(2)}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        Tickets Left: {selectedTicket.availableTickets}
+                                    </Typography>
+                                    <FormControl sx={{ marginTop: '10px', minWidth: 120 }}>
+                                        <InputLabel>Quantity</InputLabel>
+                                        <Select
+                                            value={ticketCount}
+                                            onChange={handleTicketCountChange}
+                                            label="Quantity"
+                                        >
+                                            {[...Array(selectedTicket.availableTickets).keys()].map((_, index) => (
+                                                <MenuItem key={index + 1} value={index + 1}>
+                                                    {index + 1}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<ShoppingCart />}
+                                        onClick={handleBuyTicket}
+                                        disabled={ticketCount > selectedTicket.availableTickets}
+                                        sx={{ marginTop: '10px' }}
+                                    >
+                                        Buy {ticketCount} Ticket(s)
+                                    </Button>
+                                </Box>
+                            ) : (
+                                <Typography>Select a ticket to start the buying process.</Typography>
+                            )}
 
-                        {/* Price */}
-                        <Typography variant="h5" color="primary" sx={{ marginTop: '10px' }}>
-                            Price: {event.price}
-                        </Typography>
-
-                        {/* Tickets Left */}
-                        <Typography variant="body1" color="textSecondary" sx={{ marginTop: '10px' }}>
-                            Tickets Left: {event.ticketsLeft}
-                        </Typography>
-
-                        {/* Ticket Quantity Selector */}
-                        <FormControl sx={{ marginTop: '20px', minWidth: 120 }}>
-                            <InputLabel>Quantity</InputLabel>
-                            <Select
-                                value={ticketCount}
-                                onChange={handleTicketCountChange}
-                                label="Quantity"
-                            >
-                                {[...Array(event.ticketsLeft).keys()].map((_, index) => (
-                                    <MenuItem key={index + 1} value={index + 1}>
-                                        {index + 1}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-
-                        {/* Buy Ticket Button */}
-                        <Grid container spacing={2} sx={{ marginTop: '20px' }}>
-                            <Grid item>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<ShoppingCart />}
-                                    onClick={handleBuyTicket}
-                                    disabled={event.ticketsLeft === 0}
-                                >
-                                    {event.ticketsLeft === 0 ? 'Sold Out' : `Buy ${ticketCount} Ticket(s)`}
-                                </Button>
-                            </Grid>
-                        </Grid>
 
                         <Divider sx={{ marginTop: '30px', marginBottom: '30px' }} />
 
@@ -292,7 +437,11 @@ const EventDetail = () => {
                             Organizer Information
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-                            <Avatar src={event.creatorUserId} sx={{ width: 50, height: 50, marginRight: '10px' }} />
+                            {avatarURL ? (
+                                    <Avatar src={avatarURL} sx={{ width: 50, height: 50, marginRight: '10px' }} />
+                                ) : (
+                                    <Avatar {...stringAvatar(event.creatorName)} />
+                                )}
                             <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                                     {event.creatorName}

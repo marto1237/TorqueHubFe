@@ -109,6 +109,7 @@ const EventList = () => {
         queryFn: async ({ queryKey }) => {
             const [, { page, size }] = queryKey;
             const response = await EventService.findAllEvents(page, size);
+            console.log(response);
             return response;
         },
     });
@@ -148,6 +149,19 @@ const EventList = () => {
         } catch (err) {
             console.error(`Error fetching image for event ID ${eventId}:`, err);
             return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; // Placeholder for errors
+        }
+    };
+
+    const formatDateRange = (startTime, endTime) => {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+    
+        if (start.toDateString() === end.toDateString()) {
+            // Same day: Show only the time
+            return `${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`;
+        } else {
+            // Different days: Show date and time
+            return `${format(start, 'MMM d, h:mm a')} - ${format(end, 'MMM d, h:mm a')}`;
         }
     };
 
@@ -283,29 +297,31 @@ const EventList = () => {
                                                     <EventIcon fontSize="small" /> {format(new Date(event.date), 'MMMM d, yyyy, h:mm a')}
                                                 </Typography>
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
-                                                    <AccessTime fontSize="small" /> {event.hour}
+                                                    <AccessTime fontSize="small" /> {formatDateRange(event.startTime, event.endTime)}
                                                 </Typography>
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
                                                     <LocationOn fontSize="small" /> {event.location}
                                                 </Typography>
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
                                                     <CarTag fontSize="small" />
-                                                    {(event.carsAllowed || []).map((tag, index) => (
-                                                        <Chip
-                                                            key={index}
-                                                            color="primary"
-                                                            label={tag.name || tag} // Adjust this based on the format of `carsAllowed`
-                                                            size="small"
-                                                            onClick={() => handleTagClick(tag.name || tag)}
-                                                            className={selectedTags.includes(tag.name || tag) ? 'Mui-selected' : 'Mui-unselected'}
-                                                            sx={{
-                                                                cursor: 'pointer',
-                                                                '&:hover': {
-                                                                    opacity: 0.8, // Adds a hover effect
-                                                                },
-                                                            }}
-                                                        />
-                                                    ))}
+                                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                        {(event.allowedCars || []).map((car, index) => (
+                                                            <Chip
+                                                                key={index}
+                                                                color="primary"
+                                                                label={car.name || car} 
+                                                                size="small"
+                                                                onClick={() => handleTagClick(car.name || car)}
+                                                                className={selectedTags.includes(car.name || car) ? 'Mui-selected' : 'Mui-unselected'}
+                                                                sx={{
+                                                                    cursor: 'pointer',
+                                                                    '&:hover': {
+                                                                        opacity: 0.8, 
+                                                                    },
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </Box>
                                                 </Typography>
 
                                                 <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '5px' }}>
@@ -332,13 +348,13 @@ const EventList = () => {
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: theme.palette.background.default, padding: '10px', borderRadius: '10px', mt: 2 }}>
                                                     <ConfirmationNumber color="primary" fontSize="small" />
                                                     <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                        Tickets Left: {event.ticketsLeft|| "No tickts"}
+                                                        Tickets Left: {event.totalTicketsLeft}
                                                     </Typography>
                                                 </Box>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: theme.palette.background.default, padding: '10px', borderRadius: '10px', mt: 1 }}>
                                                     <AttachMoney color="primary" fontSize="small" />
                                                     <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                        Price: {event.price || "No price"}
+                                                        Price: {event.cheapestTicketPrice}
                                                     </Typography>
                                                 </Box>
                                                 <Button size="small" variant="contained" sx={{ mt: 2 }} onClick={() => handleEventClick(event.id)} disabled={event.ticketsLeft === 0}>

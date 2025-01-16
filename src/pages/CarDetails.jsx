@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Box, Typography, List, ListItem, ListItemText, Divider, Card, CardContent, TextField, Button, IconButton, Tooltip, Grid } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Divider, Card, CardContent, TextField, Button, IconButton, Tooltip, Grid, CardMedia } from '@mui/material';
 import { FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, Settings } from '@mui/icons-material';
 import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown, Done } from '@mui/icons-material';
 import ShowcaseService from '../components/configuration/Services/ShowcaseService';
 import { useQuery } from '@tanstack/react-query';
-import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { getStorage, ref,listAll, getDownloadURL } from "firebase/storage";
 import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import { useTheme } from '@mui/material';
@@ -50,6 +50,7 @@ const CarDetails = () => {
     const [selectionStart, setSelectionStart] = useState(0);
     const [selectionEnd, setSelectionEnd] = useState(0);
     const [answers, setAnswers] = useState([]);
+    const [carImages, setCarImages] = useState([]);
 
      // Fetch showcase data using ShowcaseService and React Query
      const { data: showcase, isLoading, isError } = useQuery({
@@ -72,7 +73,34 @@ const CarDetails = () => {
     }, [showcase]);
 
 
-    
+    const [showcaseImageUrl, setShowcaseImageUrl] = useState('');
+
+    useEffect(() => {
+        const fetchShowcaseImage = async () => {
+            try {
+                const storage = getStorage();
+                const folderRef = ref(storage, `showcaseImages/${id}/`); // Adjust path as per your storage setup
+                const folderContents = await listAll(folderRef);
+
+                if (folderContents.items.length > 0) {
+                    const imageUrls = await Promise.all(
+                        folderContents.items.map(item => getDownloadURL(item))
+                    );
+                    console.log("Fetched Image URLs: ", imageUrls); // Log the fetched URLs
+                    setCarImages(imageUrls);
+                } else {
+                    console.warn(`No images found for showcase ID ${id}`);
+                    setCarImages([]); // Fallback to empty array
+                }
+            } catch (error) {
+                console.error('Error fetching showcase image:', error);
+                setShowcaseImageUrl(''); // Fallback to default or placeholder image
+            }
+        };
+
+        fetchShowcaseImage();
+    }, [id]);
+
 
     // Handle new comment submission
     const handleCommentSubmit = (newCommentText) => {
@@ -140,23 +168,40 @@ const CarDetails = () => {
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.default, minHeight: '100vh' }}>
             <Typography variant="h4" color="primary" gutterBottom>{showcase.year} {showcase.make} {showcase.model?.name || 'Unknown Model'}</Typography>
-            <Typography variant="subtitle1">
-                {showcase.brand?.name || 'Unknown Brand'}
-            </Typography>
             <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
-    <CardContent>
-        <Typography variant="h5" color="primary" gutterBottom>Car Details</Typography>
-        <Typography variant="body1">
-            Brand: {showcase.brand?.name || 'Unknown'}
-        </Typography>
-        <Typography variant="body1">
-            Model: {showcase.model?.name || 'Unknown'} ({showcase.model?.manufacturingYear || 'Year Unknown'})
-        </Typography>
-    </CardContent>
-</Card>
+            
+        </Card>
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-                <img src={showcase.image} alt={showcase.make} style={{ width: '100%', maxWidth: '800px', height: 'auto', borderRadius: '8px', boxShadow: theme.shadows[3] }} />
+                <Carousel showThumbs={false} showArrows infiniteLoop emulateTouch>
+                            {carImages && carImages.length > 0 ? (
+                                carImages.map((img, index) => (
+                                    <Box key={index}>
+                                        <CardMedia
+                                            component="img"
+                                            image={img}
+                                            alt={`Event Image ${index + 1}`}
+                                            sx={{ maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
+                                        />
+                                    </Box>
+                                ))
+                            ) : (
+                                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', padding: 2 }}>
+                                    No images available for this event.
+                                </Typography>
+                            )}
+                        </Carousel>
             </Box>
+            <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
+                <CardContent >
+                    <Typography variant="h5" color="primary" gutterBottom>Car Details</Typography>
+                    <Typography variant="body1">
+                        Brand: {showcase.brand?.name || 'Unknown'}
+                    </Typography>
+                    <Typography variant="body1">
+                        Model: {showcase.model?.name || 'Unknown'} ({showcase.model?.manufacturingYear || 'Year Unknown'})
+                    </Typography>
+                </CardContent>
+            </Card>
 
             {/* General Information Section */}
             <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
