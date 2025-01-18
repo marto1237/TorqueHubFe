@@ -25,8 +25,8 @@ const BrandService = {
             .catch(error => Promise.reject(error));
     },
 
-    updateBrands: (brandId, brandData) => {
-        return showcaseAPI.put(`/brand/${brandId}`, brandData, { requiresAuth: true })
+    updateBrands: (brandData) => {
+        return showcaseAPI.put(`/brand`, brandData, { requiresAuth: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },

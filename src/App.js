@@ -48,6 +48,7 @@ const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
 const CreateShowcase = lazy(() => import('./components/forum/CreateShowcase'))
 const CreateEvent = lazy(() => import('./components/forum/CreateEventForm'))
 const CreateCarCategory = lazy(() => import('./components/forum/CreateCarCategoryForm'))
+const CreateBrand = lazy(() => import('./components/forum/CreateBrand'))
 const EventManagement = lazy(() => import('./components/forum/EventManagement'))
 
 const App = () => {
@@ -181,6 +182,14 @@ const App = () => {
                                     element={
                                         <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
                                             <CreateCarCategory />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/create-brand"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
+                                            <CreateBrand />
                                         </RoleProtectedRoute>
                                     }
                                 />

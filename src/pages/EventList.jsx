@@ -367,7 +367,10 @@ const EventList = () => {
                             ))}
 
 
-                            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px', margin:'auto' }}>
+                            
+                        </Grid>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px', margin:'auto' }}>
                                 <Pagination
                                     count={events.totalPages} // Total pages from API response
                                     page={page+1} // Material-UI Pagination uses 1-indexed pages
@@ -375,7 +378,6 @@ const EventList = () => {
                                     color="primary"
                                 />
                             </Box>
-                        </Grid>
                     </Grid>
                 </Grid>
             </Box>

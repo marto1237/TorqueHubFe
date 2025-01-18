@@ -226,9 +226,11 @@ const EventManagement = () => {
                     id: selectedEvent.id,
                     name: selectedEvent.name,
                     location: selectedEvent.location,
-                    creatorUserId: userId, // Assuming `userId` is the creator's ID
-                    newTime: formattedDate, // Assuming `date` is the new start time
-                    ticketTypes: ticketTypes, // Ensure `ticketTypes` is populated correctly
+                    creatorUserId: userId, 
+                    newTime: formattedDate, 
+                    ticketTypes: ticketTypes, 
+                    description: selectedEvent.description, 
+                    highlights: selectedEvent.highlights || [],
                     tags: selectedEvent.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)), // Map tag names
                     allowedCars: selectedEvent.allowedCars.map((car) => (typeof car === 'string' ? car : car.name)), // Map car category names
                 };
@@ -510,6 +512,29 @@ const EventManagement = () => {
         await fetchTicketTypes(event.id);
     };
     
+    const handleHighlightChange = (index, value) => {
+        setSelectedEvent((prevEvent) => {
+            const updatedHighlights = [...prevEvent.highlights];
+            updatedHighlights[index] = value;
+            return { ...prevEvent, highlights: updatedHighlights };
+        });
+    };
+    
+    const handleAddHighlight = () => {
+        setSelectedEvent((prevEvent) => ({
+            ...prevEvent,
+            highlights: [...(prevEvent.highlights || []), ''],
+        }));
+    };
+    
+    const handleRemoveHighlight = (index) => {
+        setSelectedEvent((prevEvent) => {
+            const updatedHighlights = [...prevEvent.highlights];
+            updatedHighlights.splice(index, 1);
+            return { ...prevEvent, highlights: updatedHighlights };
+        });
+    };
+    
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper ,
@@ -535,7 +560,7 @@ const EventManagement = () => {
                                     Location: {event.location}
                                 </Typography>
                                 <Typography variant="body2" color="textSecondary">
-                                    Tickets Left: {event.ticketsAvailable || 'N/A'}
+                                    Tickets Left: {event.totalTicketsLeft || 'N/A'}
                                 </Typography>
                                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', marginTop: '10px' }}>
                                     <CarTag fontSize="small" />
@@ -824,6 +849,48 @@ const EventManagement = () => {
                             </Box>
                         ))}
                     </Box>
+
+                    {/* Highlights Section */}
+                <Typography variant="h6" sx={{ marginTop: '20px' }}>
+                    Highlights
+                </Typography>
+                <Box>
+                    {selectedEvent.highlights?.map((highlight, index) => (
+                        <Box
+                            key={index}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                marginBottom: 1,
+                                gap: 1,
+                            }}
+                        >
+                            <TextField
+                                fullWidth
+                                variant="filled"
+                                value={highlight}
+                                onChange={(e) => handleHighlightChange(index, e.target.value)}
+                            />
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                onClick={() => handleRemoveHighlight(index)}
+                            >
+                                Remove
+                            </Button>
+                        </Box>
+                    ))}
+                    <Button
+                        size="small"
+                        variant="contained"
+                        color="primary"
+                        onClick={handleAddHighlight}
+                        sx={{ marginTop: 1 }}
+                    >
+                        Add Highlight
+                    </Button>
+                </Box>
 
                     <Button variant="contained" component="label" sx={{ marginBottom: '1rem' }}>
                         Add New Images

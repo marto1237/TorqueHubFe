@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Box, Typography, List, ListItem, ListItemText, Divider, Card, CardContent, TextField, Button, IconButton, Tooltip, Grid, CardMedia } from '@mui/material';
-import { FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, Settings } from '@mui/icons-material';
-import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown, Done } from '@mui/icons-material';
+import { DriveEta, ColorLens, Build, History, Speed, AccessTime, Bolt, LocalGasStation,
+    CalendarToday, SettingsBookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown, Done, Settings } from '@mui/icons-material';
+
+
 import ShowcaseService from '../components/configuration/Services/ShowcaseService';
 import { useQuery } from '@tanstack/react-query';
 import { getStorage, ref,listAll, getDownloadURL } from "firebase/storage";
@@ -10,6 +12,8 @@ import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import { useTheme } from '@mui/material';
 import PostForm  from "../components/forum/PostForm";
+import WorldFlag from 'react-world-flags';
+import { format } from 'date-fns';
 
 const carShowcases = [
     {
@@ -112,6 +116,14 @@ const CarDetails = () => {
         setComments([...comments, newComment]); // Add the new comment to the list
     };
 
+    const formatDate = (dateString) => {
+        try {
+            return format(new Date(dateString), 'MMMM dd, yyyy hh:mm a');
+        } catch {
+            return 'Unknown Date';
+        }
+    };
+
     if (isLoading) return <Typography>Loading...</Typography>;
     if (isError) return <Typography>Error loading showcase data.</Typography>;
     if (!showcase) return <Typography>No data found.</Typography>;
@@ -168,6 +180,10 @@ const CarDetails = () => {
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.default, minHeight: '100vh' }}>
             <Typography variant="h4" color="primary" gutterBottom>{showcase.year} {showcase.make} {showcase.model?.name || 'Unknown Model'}</Typography>
+
+            <Typography variant="h6" color="textSecondary" sx={{ fontStyle: 'italic', marginBottom: 2 }}>
+                Category: {showcase.category?.name || 'N/A'}
+            </Typography>
             <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
             
         </Card>
@@ -206,69 +222,149 @@ const CarDetails = () => {
             {/* General Information Section */}
             <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
                 <CardContent>
-                    <Typography variant="h5" color="primary" gutterBottom>General Information</Typography>
-                    <List>
-                        <ListItem sx={{ marginBottom: 2 }}>
-                            <ListItemText
-                                primary="Owner"
-                                secondary={<Link to={`/profile/${showcase.userId || 'unknown'}`} style={{ color: theme.palette.primary.main }}>{showcase.user?.username || 'Unknown'}</Link>}
-                                primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
-                                secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
-                            />
-                        </ListItem>
-                        <ListItem sx={{ marginBottom: 2 }}>
-                            <ListItemText
-                                primary="Color"
-                                secondary={showcase.color}
-                                primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
-                                secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
-                            />
-                        </ListItem>
-                        <ListItem sx={{ marginBottom: 2 }}>
-                            <ListItemText
-                                primary="Packages"
-                                secondary={showcase.packages}
-                                primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
-                                secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
-                            />
-                        </ListItem>
-                        <ListItem sx={{ marginBottom: 2 }}>
-                            <ListItemText
-                                primary="History"
-                                secondary={showcase.history}
-                                primaryTypographyProps={{ color: 'primary', sx: { fontWeight: 'bold' } }}
-                                secondaryTypographyProps={{ sx: { color: theme.palette.text.secondary, mt: 1 } }}
-                            />
-                        </ListItem>
-                    </List>
+                    <Typography variant="h5" color="primary" gutterBottom>
+                        General Information
+                    </Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <DriveEta fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Owner:
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                <Link to={`/profile/${showcase.userId || 'unknown'}`} style={{ color: theme.palette.primary.main }}>
+                                    {showcase.username || 'Unknown'}
+                                </Link>
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <ColorLens fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Color:
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                {showcase.color || 'Unknown'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Build fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Packages:
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                {showcase.packages || 'None'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" fontWeight="bold">
+                                Country:
+                            </Typography>
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <WorldFlag code={showcase.country?.name} style={{ width: '20px', height: '15px' }} />
+                                {showcase.country?.name || 'N/A'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <History fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                History:
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                {showcase.history || 'No history provided'}
+                            </Typography>
+                        </Grid>
+                    </Grid>
+                </CardContent>
+            </Card>
+
+            {/* Performance Stats */}
+            <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
+                <CardContent>
+                    <Typography variant="h5" color="primary" gutterBottom>
+                        Performance Stats
+                    </Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Speed fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Horsepower:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.horsepower} HP</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Bolt fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Torque:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.torque} Nm</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Speed fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Top Speed:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.topSpeed} km/h</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <AccessTime fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Acceleration (0-100):
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.acceleration} sec</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Build fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Drivetrain:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.drivetrain}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Settings fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Transmission:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.transmission}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <LocalGasStation fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Fuel Type:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.fuelType}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <CalendarToday fontSize="small" sx={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                                Engine Displacement:
+                            </Typography>
+                            <Typography variant="body2">{showcase.carPerformance.engineDisplacement} L</Typography>
+                        </Grid>
+                    </Grid>
                 </CardContent>
             </Card>
 
             {/* Modifications Section */}
             <Card sx={{ my: 4, boxShadow: theme.shadows[3] }}>
                 <CardContent>
-                    <Typography variant="h5" color="primary" gutterBottom>Modifications</Typography>
+                    <Typography variant="h5" color="primary" gutterBottom>
+                        Modifications
+                    </Typography>
                     <Grid container spacing={2}>
-                    {Array.isArray(showcase.modifications) && showcase.modifications.length > 0 ? (
-                            showcase.modifications.map((mod, index) => (
-                                <Grid item xs={12} sm={6} key={index}>
-                                    <Card sx={{ backgroundColor: theme.palette.background.paper, boxShadow: theme.shadows[1] }}>
-                                        <CardContent>
-                                            <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 'bold' }}>
-                                                {mod.category || 'Unknown Category'}
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
-                                                {mod.description || 'No description provided'}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            ))
-                        ) : (
-                            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-                                No modifications available for this showcase.
-                            </Typography>
-                        )}
+                        {showcase.modifications.content.map((modification) => (
+                            <Grid item xs={12} sm={6} key={modification.id}>
+                                <Card sx={{ backgroundColor: theme.palette.background.paper, boxShadow: theme.shadows[1] }}>
+                                    <CardContent>
+                                        <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 'bold' }}>
+                                            {modification.description || 'No description provided'}
+                                        </Typography>
+                                        <Typography variant="caption" color="textSecondary">
+                                            Modified At: {formatDate(modification.modifiedAt)}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))}
                     </Grid>
                 </CardContent>
             </Card>
