@@ -4,7 +4,7 @@ const ModelService = {
     getAllModels: async (page = 0, size = 10) => {
         try {
             const response = await showcaseAPI.get('/models', { params: { page, size } });
-            return response.data.content || []; // Extract and return content
+            return response.data || []; // Extract and return content
         } catch (error) {
             return Promise.reject(error);
         }
