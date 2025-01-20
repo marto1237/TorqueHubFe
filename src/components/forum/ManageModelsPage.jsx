@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -13,10 +13,13 @@ import {
     DialogContent,
     DialogTitle,
     Pagination,
+    Autocomplete,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ModelService from '../configuration/Services/ModelService';
+import debounce from 'lodash/debounce';
+import BrandService from '../configuration/Services/BrandService';
 import { useAppNotifications } from '../common/NotificationProvider';
 
 const ManageModelsPage = () => {
@@ -28,6 +31,8 @@ const ManageModelsPage = () => {
     const [selectedModel, setSelectedModel] = useState(null);
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [newModel, setNewModel] = useState({ name: '', brandId: '', manufacturingYear: '' });
+    const [brands, setBrands] = useState([]);
+    const [loadingBrands, setLoadingBrands] = useState(false);
     const [errors, setErrors] = useState({});
 
     const size = 10;
@@ -37,6 +42,16 @@ const ManageModelsPage = () => {
         queryFn: async () => {
             const response = await ModelService.getAllModels(page, size);
             console.log('API Response:', response); // Log the response here
+            return response;
+        },
+    });
+
+    const { isLoading: isBrandsLoading } = useQuery({
+        queryKey: ['brands'],
+        queryFn: async () => {
+            const response = await BrandService.getAllBrands();
+            console.log('Brands API Response:', response);
+            setBrands(response);
             return response;
         },
     });
@@ -51,12 +66,12 @@ const ManageModelsPage = () => {
 
     const handleInputChange = (field, value) => {
         setNewModel((prev) => ({ ...prev, [field]: value }));
-    };
+    };    
 
     const validateForm = () => {
         const newErrors = {};
         if (!newModel.name.trim()) newErrors.name = 'Model name is required';
-        if (!newModel.brandId.trim()) newErrors.brandId = 'Brand ID is required';
+        if (!newModel.brandId) newErrors.brandId = 'Brand is required';
         if (!newModel.manufacturingYear || isNaN(newModel.manufacturingYear) || newModel.manufacturingYear <= 0) {
             newErrors.manufacturingYear = 'Manufacturing year must be a positive number';
         }
@@ -68,11 +83,13 @@ const ManageModelsPage = () => {
         if (!validateForm()) return;
 
         try {
+            const modelData = { ...newModel };
             if (selectedModel) {
-                await ModelService.updateModel({ ...newModel, id: selectedModel.id });
+                modelData.id = selectedModel.id;
+                await ModelService.updateModel(modelData);
                 notifications.show('Model updated successfully!', { autoHideDuration: 3000, severity: 'success' });
             } else {
-                await ModelService.createModel(newModel);
+                await ModelService.createModel(modelData);
                 notifications.show('Model created successfully!', { autoHideDuration: 3000, severity: 'success' });
             }
             queryClient.invalidateQueries(['models']);
@@ -103,6 +120,26 @@ const ManageModelsPage = () => {
         setSelectedModel(null);
         setOpenEditDialog(false);
         setNewModel({ name: '', brandId: '', manufacturingYear: '' });
+    };
+
+    const searchBrands = async (query) => {
+        const searchQuery = typeof query === 'string' ? query.trim() : '';
+        if (!searchQuery) return;
+        setLoadingBrands(true);
+        try {
+            const response = await BrandService.searchBrands(query);
+            setBrands(response);
+        } catch (error) {
+            console.error('Error fetching brands:', error);
+        } finally {
+            setLoadingBrands(false);
+        }
+    };
+
+    const debouncedSearchBrands = useCallback(debounce(searchBrands, 300), []);
+
+    const handleBrandSearch = (event, value) => {
+        debouncedSearchBrands(value || ''); // Pass the value or an empty string
     };
 
     return (
@@ -154,15 +191,23 @@ const ManageModelsPage = () => {
                         error={!!errors.name}
                         helperText={errors.name}
                     />
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Brand ID"
-                        variant="filled"
-                        value={newModel.brandId}
-                        onChange={(e) => handleInputChange('brandId', e.target.value)}
-                        error={!!errors.brandId}
-                        helperText={errors.brandId}
+                    <Autocomplete
+                        options={brands}
+                        getOptionLabel={(option) => option.name}
+                        value={brands.find((brand) => brand.id === newModel.brandId) || null}
+                        onInputChange={handleBrandSearch}
+                        onChange={(event, value) => handleInputChange('brandId', value ? value.id : '')}
+                        loading={loadingBrands}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                margin="normal"
+                                label="Brand"
+                                variant="filled"
+                                error={!!errors.brandId}
+                                helperText={errors.brandId}
+                            />
+                        )}
                     />
                     <TextField
                         fullWidth

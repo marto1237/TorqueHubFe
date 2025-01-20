@@ -210,7 +210,7 @@ const EventList = () => {
 
 
     return (
-        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px',minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
             <Box>
                 <Grid container spacing={3}>
                     <Grid item xs={12}>

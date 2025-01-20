@@ -63,9 +63,10 @@ const ShowcaseListPage = () => {
             sx={{
                 padding: '20px',
                 paddingTop: '100px',
+                minHeight: '100vh',
                 backgroundColor: theme.palette.background.paper,
                 color: theme.palette.text.primary,
-                minHeight: '100vh',
+                
             }}
         >
             <Typography variant="h4" gutterBottom>

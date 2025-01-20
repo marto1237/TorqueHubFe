@@ -7,6 +7,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import {
     AppBar, Box, Badge, Toolbar, IconButton, Typography, Menu, MenuItem,
     Avatar, Button, Tooltip, Container, Divider, ListItemText, ListItemIcon
@@ -44,6 +45,12 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
 
     const storedUserDetails = userDetails || JSON.parse(sessionStorage.getItem('userDetails'));
     const userId = storedUserDetails?.id;
+
+    const handleAdminPanelClick = () => {
+        navigate('/adminPanel');
+    };
+
+    const userRole = userDetails?.role;
 
     useEffect(() => {
         if (loggedIn && userDetails?.username) {
@@ -580,6 +587,9 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                     </MenuItem>
                                     <MenuItem onClick={() => {handleCloseUserMenu(); handleAccountSettingClick() }}>
                                         <ManageAccountsIcon sx={{ mr: 2 }} /> Account Settings
+                                    </MenuItem>
+                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleAdminPanelClick() }}>
+                                        <AdminPanelSettingsIcon sx={{ mr: 2 }} /> Admin Panel
                                     </MenuItem>
                                     <MenuItem sx={{ justifyContent: 'center' }} onClick={() => { handleLogout(); handleCloseUserMenu(); }}>
                                         <Button variant="contained" color="error">Logout</Button>
