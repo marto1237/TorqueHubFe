@@ -230,15 +230,16 @@ const EventCreateForm = () => {
     
     useEffect(() => {
         const searchTags = async () => {
-            if (categorySearch.trim() === '') {
+            if (tagSearch.trim() === '') {
                 setFilteredTags(allTags);
                 return;
             }
     
             try {
                 const response = await TicketTags.searchTags(tagSearch);
+                console.log(response);
                 const searchResults = response?.content || []; // Extract the `content` array
-                setFilteredCategories(searchResults);
+                setFilteredTags(searchResults);
             } catch (error) {
                 console.error('Error searching tag:', error);
             }
@@ -489,6 +490,7 @@ const EventCreateForm = () => {
                             getOptionLabel={(option) => option.name}
                             value={tag}
                             onChange={handleTagChange}
+                            onInputChange={(event, newInputValue) => setTagSearch(newInputValue)}
                             renderTags={(tagValue, getTagProps) =>
                                 tagValue.map((option, index) => {
                                     const tagProps = getTagProps({ index });

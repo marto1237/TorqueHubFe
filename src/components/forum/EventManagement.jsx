@@ -43,7 +43,7 @@ const EventManagement = () => {
     const notifications = useAppNotifications();
     const queryClient = useQueryClient();
     const [page, setPage] = useState(0);
-    const size = 10;
+    const size = 12;
     const location = useLocation();
 
     // Extract query parameters from URL

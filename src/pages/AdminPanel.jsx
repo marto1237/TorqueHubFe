@@ -6,6 +6,7 @@ import EventIcon from '@mui/icons-material/Event';
 import CarRepairIcon from '@mui/icons-material/CarRepair';
 import CategoryIcon from '@mui/icons-material/Category';
 import TagIcon from '@mui/icons-material/Tag';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -36,6 +37,11 @@ const AdminPanel = ({ userDetails }) => {
             label: 'Manage Brands',
             icon: <CarRepairIcon fontSize="large" />,
             route: '/create-brand',
+        },
+        {
+            label: 'Manage Event tags',
+            icon: <LocalOfferIcon fontSize="large" />,
+            route: '/eventTicketsTags',
         },
     ];
 

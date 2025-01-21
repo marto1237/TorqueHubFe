@@ -170,7 +170,7 @@ const AccountSettingsPage = ({userDetails, updateAvatar }) => {
     };
 
     return (
-        <Box sx={{ padding: '20px ', paddingTop: '100px', backgroundColor: 'background.default' }}>
+        <Box sx={{ padding: '20px ', paddingTop: '100px',minHeight: '100vh', backgroundColor: 'background.default' }}>
             <Paper sx={{ maxWidth: '800px', margin: 'auto', padding: '40px', borderRadius: '10px' }}>
                 <Typography variant="h5" gutterBottom>
                     Account Settings

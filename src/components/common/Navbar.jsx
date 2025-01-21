@@ -46,11 +46,13 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const storedUserDetails = userDetails || JSON.parse(sessionStorage.getItem('userDetails'));
     const userId = storedUserDetails?.id;
 
+    console.log(storedUserDetails);
     const handleAdminPanelClick = () => {
         navigate('/adminPanel');
     };
 
     const userRole = userDetails?.role;
+    console.log('User role', userRole);
 
     useEffect(() => {
         if (loggedIn && userDetails?.username) {
@@ -588,9 +590,11 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                     <MenuItem onClick={() => {handleCloseUserMenu(); handleAccountSettingClick() }}>
                                         <ManageAccountsIcon sx={{ mr: 2 }} /> Account Settings
                                     </MenuItem>
-                                    <MenuItem onClick={() => {handleCloseUserMenu(); handleAdminPanelClick() }}>
+                                    {loggedIn && (userRole === 'ADMIN' || userRole === 'MODERATOR') && (
+                                        <MenuItem onClick={() => {handleCloseUserMenu(); handleAdminPanelClick() }}>
                                         <AdminPanelSettingsIcon sx={{ mr: 2 }} /> Admin Panel
-                                    </MenuItem>
+                                        </MenuItem>
+                                    )}
                                     <MenuItem sx={{ justifyContent: 'center' }} onClick={() => { handleLogout(); handleCloseUserMenu(); }}>
                                         <Button variant="contained" color="error">Logout</Button>
                                     </MenuItem>
