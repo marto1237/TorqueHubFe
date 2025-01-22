@@ -46,13 +46,11 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const storedUserDetails = userDetails || JSON.parse(sessionStorage.getItem('userDetails'));
     const userId = storedUserDetails?.id;
 
-    console.log(storedUserDetails);
     const handleAdminPanelClick = () => {
         navigate('/adminPanel');
     };
 
     const userRole = userDetails?.role;
-    console.log('User role', userRole);
 
     useEffect(() => {
         if (loggedIn && userDetails?.username) {

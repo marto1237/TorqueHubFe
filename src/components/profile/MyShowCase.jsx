@@ -167,23 +167,48 @@ const MyShowcase = () => {
       };
     // Fetch images from Firebase
     const fetchImagesFromFirebase = async () => {
-        const imageRef = ref(storage, `showcaseImages/${showcaseId}/`);
-        const imageList = await listAll(imageRef);
-        const urls = await Promise.all(
-            imageList.items.map((item) => getDownloadURL(item))
-        );
-        return urls;
+        try {
+            const imageRef = ref(storage, `showcaseImages/${showcaseId}/`);
+            const imageList = await listAll(imageRef);
+    
+            // Fetch all image URLs
+            const imageUrls = await Promise.all(
+                imageList.items.map((item) => getDownloadURL(item))
+            );
+            setCarImages(imageUrls); // Update state with image URLs
+        } catch (error) {
+            console.error('Error fetching images from Firebase:', error);
+            notifications.show('Error fetching images', { autoHideDuration: 3000, severity: 'error' });
+        }
     };
+    
+    // Add an effect to re-fetch images after a successful upload
+    useEffect(() => {
+        fetchImagesFromFirebase();
+    }, [showcaseId]);
 
 
-    const handleImageUpload = async () => {
-        if (!newImageFile) return;
-        const storageRef = ref(storage, `showcaseImages/${showcaseId}/${newImageFile.name}`);
-        await uploadBytes(storageRef, newImageFile);
-        const newImageUrl = await getDownloadURL(storageRef);
-        setCarImages((prevImages) => [...prevImages, newImageUrl]);
-        notifications.show('Image uploaded successfully', { autoHideDuration: 3000, severity: 'success' });
-        setIsAddImageDialogOpen(false);
+    const handleImageUpload = async (event) => {
+        const file = event.target.files[0]; // Get the selected file
+        if (!file) {
+            notifications.show('No file selected', { autoHideDuration: 3000, severity: 'warning' });
+            return;
+        }
+    
+        const storageRef = ref(storage, `showcaseImages/${showcaseId}/${file.name}`); // Firebase storage reference
+    
+        try {
+            // Upload the file to Firebase
+            await uploadBytes(storageRef, file);
+            const newImageUrl = await getDownloadURL(storageRef);
+    
+            // Update the image list
+            setCarImages((prevImages) => [...prevImages, newImageUrl]);
+            notifications.show('Image uploaded successfully', { autoHideDuration: 3000, severity: 'success' });
+        } catch (err) {
+            notifications.show('Error uploading image', { autoHideDuration: 3000, severity: 'error' });
+            console.error('Upload Error:', err);
+        }
     };
     
 

@@ -53,6 +53,7 @@ const EventManagement = lazy(() => import('./components/forum/EventManagement'))
 const ManageModelPage = lazy(() => import('./components/forum/ManageModelsPage'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const TicketTagsManage = lazy(() => import('./components/forum/ManageEventTags'))
+const CarCategoryManage = lazy(() => import('./components/forum/CarCaterogyManagement'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -218,6 +219,15 @@ const App = () => {
                                     element={
                                         <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
                                             <TicketTagsManage />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/carCategory"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
+                                            <CarCategoryManage />
                                         </RoleProtectedRoute>
                                     }
                                 />

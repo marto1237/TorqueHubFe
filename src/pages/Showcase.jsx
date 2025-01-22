@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Card, Typography, Grid, CardMedia, IconButton, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
-    TextField, ListItemAvatar, Avatar, Divider, Fade,Button
+    TextField, ListItemAvatar, Avatar, Divider, Fade,Button,Pagination
 } from '@mui/material';
 import { Comment, Visibility, Add, Close, } from '@mui/icons-material';
 import { useTheme, useMediaQuery } from '@mui/material';
@@ -128,6 +128,10 @@ const Showcase = () => {
     const [error, setError] = useState(null); // To track errors
     const navigate = useNavigate();
 
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const size = 9;
+
     const handleShowcaseClick = (id) => {
         // Navigate to the car detail page with the car id
         navigate(`/car/${id}`);
@@ -156,7 +160,8 @@ const Showcase = () => {
     useEffect(() => {
         const fetchShowcases = async () => {
             try {
-                const response = await ShowcaseService.getAllShowcases(0, 10); // Fetch data
+                const response = await ShowcaseService.getAllShowcases(page, size); // Fetch data
+                console.log('API Response:', response);
                 const showcasesWithImages = await Promise.all(
                     response.content.map(async (showcase) => {
                         const imageUrl = await getFirebaseImage(showcase.id); // Fetch image for each showcase
@@ -164,6 +169,7 @@ const Showcase = () => {
                     })
                 );
                 setShowcases(showcasesWithImages);
+                setTotalPages(response.totalPages);
             } catch (err) {
                 console.error('Error fetching showcases:', err);
                 setError('Failed to load showcases.');
@@ -173,7 +179,7 @@ const Showcase = () => {
         };
     
         fetchShowcases();
-    }, []);
+    }, [page, size]);
     
 
 
@@ -201,6 +207,12 @@ const Showcase = () => {
         }
     };
 
+    const handlePageChange = (event, value) => {
+        const zeroBasedPage = value - 1;
+        setPage(zeroBasedPage);
+        navigate({ search: `?page=${zeroBasedPage}&size=${size}` });
+    };
+
     if (loading) {
         return <Typography>Loading...</Typography>;
     }
@@ -210,7 +222,7 @@ const Showcase = () => {
     }
 
     return (
-        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px',minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
 
                 <Button variant="outlined" onClick={() => setIsFiltering(!isFiltering)} sx={{ fontWeight: 'bold' }}>
                         {isFiltering ? 'Clear Filters' : 'Show Filters'}
@@ -283,6 +295,14 @@ const Showcase = () => {
                     </Grid>
                 ))}
             </Grid>
+            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '40px', margin:'auto' }}>
+                <Pagination
+                    count={totalPages} // Use the totalPages state
+                    page={page + 1} // Adjust for one-based indexing in the Pagination component
+                    onChange={handlePageChange}
+                    color="primary"
+                />
+            </Box>
 
         </Box>
     );

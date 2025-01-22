@@ -43,6 +43,12 @@ const AdminPanel = ({ userDetails }) => {
             icon: <LocalOfferIcon fontSize="large" />,
             route: '/eventTicketsTags',
         },
+        {
+            label: 'Manage Cars category',
+            icon: <LocalOfferIcon fontSize="large" />,
+            route: '/carCategory',
+        },
+
     ];
 
     return (

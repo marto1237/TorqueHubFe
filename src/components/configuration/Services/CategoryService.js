@@ -26,7 +26,7 @@ const CategoryService = {
     },
 
     updateCategory: (categoryId, categoryData) => {
-        return showcaseAPI.put(`/categories/${categoryId}`, categoryData, { requiresAuth: true })
+        return showcaseAPI.put(`/categories`, categoryData, { requiresAuth: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },
