@@ -7,6 +7,7 @@ import CarRepairIcon from '@mui/icons-material/CarRepair';
 import CategoryIcon from '@mui/icons-material/Category';
 import TagIcon from '@mui/icons-material/Tag';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import LanguageIcon from '@mui/icons-material/Language';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -47,6 +48,11 @@ const AdminPanel = ({ userDetails }) => {
             label: 'Manage Cars category',
             icon: <LocalOfferIcon fontSize="large" />,
             route: '/carCategory',
+        },
+        {
+            label: 'Manage Countries',
+            icon: <LanguageIcon fontSize="large" />,
+            route: '/countries',
         },
 
     ];

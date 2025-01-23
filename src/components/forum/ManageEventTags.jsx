@@ -9,6 +9,10 @@ import {
     Divider,
     IconButton,
     Pagination,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '@mui/material/styles';
@@ -31,6 +35,9 @@ const TagManagementPage = () => {
     const [search, setSearch] = useState('');
     const [loadingTags, setLoadingTags] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete dialog
+    const [tagToDelete, setTagToDelete] = useState(null); // State for selected tag to delete
 
     // Fetch all tags
 
@@ -128,17 +135,30 @@ const TagManagementPage = () => {
         setTagName(tag.name);
     };
 
-    const handleDelete = async id => {
-        if (window.confirm('Are you sure you want to delete this tag?')) {
-            try {
-                await TicketTags.deleteTag(id);
-                setTags(tags.filter(tag => tag.id !== id));
-                notifications.show('Tag deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
-            } catch (error) {
-                notifications.show('Failed to delete tag', { autoHideDuration: 3000, severity: 'error' });
-            }
+    const openDeleteDialog = (tag) => {
+        setTagToDelete(tag);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const closeDeleteDialog = () => {
+        setIsDeleteDialogOpen(false);
+        setTagToDelete(null);
+    };
+
+    const handleDeleteTag = async () => {
+        if (!tagToDelete) return;
+
+        try {
+            await TicketTags.deleteTag(tagToDelete.id);
+            setTags((prev) => prev.filter((tag) => tag.id !== tagToDelete.id));
+            notifications.show('Tag deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            notifications.show('Failed to delete tag', { autoHideDuration: 3000, severity: 'error' });
+        } finally {
+            closeDeleteDialog();
         }
     };
+
 
     return (
         <Box
@@ -243,7 +263,7 @@ const TagManagementPage = () => {
                                         justifyContent: 'space-between',
                                     }}
                                     onClick={() => handleEdit(tag)}
-                                    onDelete={() => handleDelete(tag.id)}
+                                    onDelete={() => openDeleteDialog(tag)}
                                     deleteIcon={<DeleteIcon />}
                                 />
                             ))}
@@ -267,6 +287,23 @@ const TagManagementPage = () => {
                     </Box>
                 </Paper>
             </Box>
+
+            <Dialog open={isDeleteDialogOpen} onClose={closeDeleteDialog}>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete the tag <b>{tagToDelete?.name}</b>? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteTag} color="error">
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

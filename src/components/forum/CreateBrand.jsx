@@ -9,6 +9,10 @@ import {
     Divider,
     IconButton,
     Pagination,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '@mui/material/styles';
@@ -30,6 +34,9 @@ const BrandManagementPage = () => {
     const [search, setSearch] = useState('');
     const [loadingBrands, setLoadingBrands] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); 
+    const [brandToDelete, setBrandToDelete] = useState(null);
 
     // Fetch all brands
 
@@ -124,6 +131,30 @@ const BrandManagementPage = () => {
     const handleEdit = brand => {
         setSelectedBrand(brand);
         setBrandName(brand.name);
+    };
+
+    const openDeleteDialog = (tag) => {
+        setBrandToDelete(tag);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const closeDeleteDialog = () => {
+        setIsDeleteDialogOpen(false);
+        setBrandToDelete(null);
+    };
+
+    const handleDeleteBrand = async () => {
+        if (!brandToDelete) return;
+
+        try {
+            await BrandService.deleteBrands(brandToDelete.id);
+            setBrands((prev) => prev.filter((brand) => brand.id !== brandToDelete.id));
+            notifications.show('Brand deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            notifications.show('Failed to delete tag', { autoHideDuration: 3000, severity: 'error' });
+        } finally {
+            closeDeleteDialog();
+        }
     };
 
     const handleDelete = async id => {
@@ -241,7 +272,7 @@ const BrandManagementPage = () => {
                                         justifyContent: 'space-between',
                                     }}
                                     onClick={() => handleEdit(brand)}
-                                    onDelete={() => handleDelete(brand.id)}
+                                    onDelete={() => openDeleteDialog(brand)}
                                     deleteIcon={<DeleteIcon />}
                                 />
                             ))}
@@ -265,6 +296,24 @@ const BrandManagementPage = () => {
                     </Box>
                 </Paper>
             </Box>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onClose={closeDeleteDialog}>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete the tag <b>{brandToDelete?.name}</b>? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteBrand} color="error">
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

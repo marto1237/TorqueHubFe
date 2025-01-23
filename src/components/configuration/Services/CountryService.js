@@ -25,8 +25,8 @@ const CountryService = {
             .catch(error => Promise.reject(error));
     },
 
-    updateCountry: (categoryId, categoryData) => {
-        return showcaseAPI.put(`/countries/${categoryId}`, categoryData, { requiresAuth: true })
+    updateCountry: (categoryData) => {
+        return showcaseAPI.put(`/countries`, categoryData, { requiresAuth: true })
             .then(response => response.data)
             .catch(error => Promise.reject(error));
     },

@@ -35,6 +35,9 @@ const ManageModelsPage = () => {
     const [loadingBrands, setLoadingBrands] = useState(false);
     const [errors, setErrors] = useState({});
 
+    const [openDeleteDialog, setOpenDeleteDialog] = useState(false); 
+    const [modelToDelete, setModelToDelete] = useState(null); 
+
     const size = 10;
 
     const { data: modelsData = {}, isLoading } = useQuery({
@@ -106,16 +109,6 @@ const ManageModelsPage = () => {
         setOpenEditDialog(true);
     };
 
-    const handleDeleteClick = async (id) => {
-        try {
-            await ModelService.deleteModel(id);
-            notifications.show('Model deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
-            queryClient.invalidateQueries(['models']);
-        } catch (error) {
-            notifications.show('Error deleting model.', { autoHideDuration: 3000, severity: 'error' });
-        }
-    };
-
     const handleCloseDialog = () => {
         setSelectedModel(null);
         setOpenEditDialog(false);
@@ -142,6 +135,31 @@ const ManageModelsPage = () => {
         debouncedSearchBrands(value || ''); // Pass the value or an empty string
     };
 
+    const openDeleteConfirmation = (model) => {
+        setModelToDelete(model);
+        setOpenDeleteDialog(true);
+    };
+
+    const closeDeleteDialog = () => {
+        setOpenDeleteDialog(false);
+        setModelToDelete(null);
+    };
+    
+
+    const handleDeleteModel = async () => {
+        if (!modelToDelete) return;
+
+        try {
+            await ModelService.deleteModel(modelToDelete.id);
+            notifications.show('Model deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
+            queryClient.invalidateQueries(['models']);
+        } catch (error) {
+            notifications.show('Error deleting model.', { autoHideDuration: 3000, severity: 'error' });
+        } finally {
+            closeDeleteDialog();
+        }
+    };
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h4" color="textSecondary" sx={{ marginBottom: '20px', fontWeight: 'bold' }}>
@@ -166,7 +184,7 @@ const ManageModelsPage = () => {
                                 </CardContent>
                                 <CardActions>
                                     <Button size="small" variant="outlined" onClick={() => handleEditClick(model)}>Edit</Button>
-                                    <Button size="small" variant="contained" color="error" onClick={() => handleDeleteClick(model.id)}>Delete</Button>
+                                    <Button size="small" variant="contained" color="error" onClick={() => openDeleteConfirmation(model)}>Delete</Button>
                                 </CardActions>
                             </Card>
                         </Grid>
@@ -224,6 +242,23 @@ const ManageModelsPage = () => {
                 <DialogActions>
                     <Button onClick={handleCloseDialog} color="primary">Cancel</Button>
                     <Button onClick={handleSaveModel} color="primary" variant="contained">Save</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={openDeleteDialog} onClose={closeDeleteDialog}>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete the model <b>{modelToDelete?.name}</b>? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteModel} color="error">
+                        Delete
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>

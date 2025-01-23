@@ -20,42 +20,40 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAppNotifications } from '../common/NotificationProvider';
-import TagService from '../configuration/Services/TagService';
+import CountryService from '../configuration/Services/CountryService';
 
-const ITEMS_PER_PAGE = 10; // Number of tags to show per page
+const ITEMS_PER_PAGE = 10; // Number of countries to show per page
 
-const TagManagementPage = () => {
+const CountryManagementPage = () => {
     const theme = useTheme();
     const notifications = useAppNotifications();
 
-    const [tags, setTags] = useState([]);
-    const [topTags, setTopTags] = useState([]);
-    const [tagName, setTagName] = useState('');
-    const [selectedTag, setSelectedTag] = useState(null);
+    const [countries, setCountries] = useState([]);
+    const [countryName, setCountryName] = useState('');
+    const [selectedCountry, setSelectedCountry] = useState(null);
     const [search, setSearch] = useState('');
-    const [loadingTags, setLoadingTags] = useState(true);
+    const [loadingCountries, setLoadingCountries] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); 
-    const [tagToDelete, setTagToDelete] = useState(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // New state for delete dialog
+    const [countryToDelete, setCountryToDelete] = useState(null); // Store selected country to delete
 
-    // Fetch all tags
+    // Fetch all countries
 
     useEffect(() => {
-        const fetchTopTags = async () => {
-            setLoadingTags(true);
+        const fetchTopCountries = async () => {
+            setLoadingCountries(true);
             try {
-                const response = await TagService.getTopTags();
-                setTopTags(response);
-                setTags(response); // Default to top tags initially
+                const response = await CountryService.getAllCountries();
+                setCountries(response); // Default to top countries initially
             } catch (error) {
-                notifications.show('Failed to fetch top tags', { autoHideDuration: 3000, severity: 'error' });
+                notifications.show('Failed to fetch top countries', { autoHideDuration: 3000, severity: 'error' });
             } finally {
-                setLoadingTags(false);
+                setLoadingCountries(false);
             }
         };
 
-        fetchTopTags();
+        fetchTopCountries();
     }, []);
 
 
@@ -65,86 +63,86 @@ const TagManagementPage = () => {
             return;
         }
 
-        setLoadingTags(true);
+        setLoadingCountries(true);
         try {
-            const response = await TagService.searchTags(search);
-            setTags(response);
+            const response = await CountryService.searchCountry(search);
+            setCountries(response);
             setCurrentPage(1); // Reset to first page on search
         } catch (error) {
-            notifications.show('Failed to search tags', { autoHideDuration: 3000, severity: 'error' });
+            notifications.show('Failed to search countries', { autoHideDuration: 3000, severity: 'error' });
         } finally {
-            setLoadingTags(false);
+            setLoadingCountries(false);
         }
     };
 
-    // Filtered tags based on search
-    const filteredTags = useMemo(() => {
-        return tags.filter(tag =>
-            tag.name.toLowerCase().includes(search.toLowerCase())
+    // Filtered countries based on search
+    const filteredCountries = useMemo(() => {
+        return countries.filter(country =>
+            country.name.toLowerCase().includes(search.toLowerCase())
         );
-    }, [tags, search]);
+    }, [countries, search]);
 
-    // Paginate filtered tags
-    const paginatedTags = useMemo(() => {
+    // Paginate filtered countries
+    const paginatedCountries = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return filteredTags.slice(start, start + ITEMS_PER_PAGE);
-    }, [filteredTags, currentPage]);
+        return filteredCountries.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredCountries, currentPage]);
 
     const handleCreateOrUpdate = async () => {
-        if (!tagName.trim()) {
-            notifications.show('Tag name is required', { autoHideDuration: 3000, severity: 'warning' });
+        if (!countryName.trim()) {
+            notifications.show('Country name is required', { autoHideDuration: 3000, severity: 'warning' });
             return;
         }
 
         try {
-            if (selectedTag) {
-                console.log(selectedTag);
-                console.log(tagName);
-                await TagService.updateTag(selectedTag.id, { id: selectedTag.id, name: tagName });
-                setTags(tags.map(tag =>
-                    tag.id === selectedTag.id ? { ...tag, name: tagName } : tag
+            if (selectedCountry) {
+                console.log(selectedCountry);
+                console.log(countryName);
+                await CountryService.updateCountry({ id: selectedCountry.id, name: countryName });
+                setCountries(countries.map(country =>
+                    country.id === selectedCountry.id ? { ...country, name: countryName } : country
                 ));
-                notifications.show('Tag updated successfully!', { autoHideDuration: 3000, severity: 'success' });
+                notifications.show('Country updated successfully!', { autoHideDuration: 3000, severity: 'success' });
             } else {
-                const newTag = await TagService.createTag({ name: tagName });
-                setTags([...tags, newTag]);
-                notifications.show('Tag created successfully!', { autoHideDuration: 3000, severity: 'success' });
+                const newCountry = await CountryService.createCountry({ name: countryName });
+                setCountries([...countries, newCountry]);
+                notifications.show('Country created successfully!', { autoHideDuration: 3000, severity: 'success' });
             }
         } catch (error) {
             notifications.show(
-                selectedTag ? 'Failed to update tag' : 'Failed to create tag',
+                selectedCountry ? 'Failed to update country' : 'Failed to create country',
                 {autoHideDuration: 3000, severity: 'error' }
             );
         } finally {
-            setTagName('');
-            setSelectedTag(null);
+            setCountryName('');
+            setSelectedCountry(null);
         }
     };
 
-    const handleEdit = tag => {
-        setSelectedTag(tag);
-        setTagName(tag.name);
+    const handleEdit = country => {
+        setSelectedCountry(country);
+        setCountryName(country.name);
     };
 
-    const openDeleteDialog = (tag) => {
-        setTagToDelete(tag);
+    const openDeleteDialog = (country) => {
+        setCountryToDelete(country);
         setIsDeleteDialogOpen(true);
     };
 
     const closeDeleteDialog = () => {
         setIsDeleteDialogOpen(false);
-        setTagToDelete(null);
+        setCountryToDelete(null);
     };
 
-    const handleDeleteTag = async () => {
-        if (!tagToDelete) return;
+    const handleDeleteCountry = async () => {
+        if (!countryToDelete) return;
 
         try {
-            await TagService.deleteTag(tagToDelete.id);
-            setTags((prev) => prev.filter((tag) => tag.id !== tagToDelete.id));
-            notifications.show('Tag deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
+            await CountryService.deleteCountry(countryToDelete.id);
+            setCountries((prev) => prev.filter((c) => c.id !== countryToDelete.id));
+            notifications.show('Country deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
         } catch (error) {
-            notifications.show('Failed to delete tag', { autoHideDuration: 3000, severity: 'error' });
+            notifications.show('Failed to delete country', { autoHideDuration: 3000, severity: 'error' });
         } finally {
             closeDeleteDialog();
         }
@@ -177,17 +175,17 @@ const TagManagementPage = () => {
                             textAlign: 'center',
                         }}
                     >
-                        Tag Management
+                        Country Management
                     </Typography>
                     <Divider sx={{ mb: '1.5rem' }} />
 
                     {/* Search Box */}
                     <Box sx={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                         <TextField
-                            label="Search Tags"
+                            label="Search Countries"
                             fullWidth
                             variant="filled"
-                            placeholder="Search by tag name"
+                            placeholder="Search by country name"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
@@ -201,7 +199,7 @@ const TagManagementPage = () => {
                         </Button>
                     </Box>
 
-                    {/* Tag Input */}
+                    {/* Country Input */}
                     <Box
                         sx={{
                             display: 'flex',
@@ -210,25 +208,25 @@ const TagManagementPage = () => {
                         }}
                     >
                         <TextField
-                            label="Tag Name"
+                            label="Country Name"
                             fullWidth
                             variant="filled"
-                            placeholder="Enter a tag name"
-                            value={tagName}
-                            onChange={e => setTagName(e.target.value)}
+                            placeholder="Enter a country name"
+                            value={countryName}
+                            onChange={e => setCountryName(e.target.value)}
                         />
                         <IconButton
                             color="primary"
                             onClick={handleCreateOrUpdate}
                             sx={{ marginLeft: '0.5rem' }}
                         >
-                            {selectedTag ? <EditIcon /> : <AddCircleOutlineIcon />}
+                            {selectedCountry ? <EditIcon /> : <AddCircleOutlineIcon />}
                         </IconButton>
                     </Box>
 
-                    {/* Tags List */}
-                    {loadingTags ? (
-                        <Typography>Loading tags...</Typography>
+                    {/* Countries List */}
+                    {loadingCountries ? (
+                        <Typography>Loading countries...</Typography>
                     ) : (
                         <Box
                             sx={{
@@ -243,17 +241,17 @@ const TagManagementPage = () => {
                                 gap: '0.5rem',
                             }}
                         >
-                            {paginatedTags.map(tag => (
+                            {paginatedCountries.map((country) => (
                                 <Chip
-                                    key={tag.id}
-                                    label={tag.name}
+                                    key={country.id}
+                                    label={country.name}
                                     sx={{
                                         padding: '0.5rem',
                                         fontSize: { xs: '0.8rem', sm: '1rem' },
                                         justifyContent: 'space-between',
                                     }}
-                                    onClick={() => handleEdit(tag)}
-                                    onDelete={() => openDeleteDialog(tag)}
+                                    onClick={() => handleEdit(country)}
+                                    onDelete={() => openDeleteDialog(country)}
                                     deleteIcon={<DeleteIcon />}
                                 />
                             ))}
@@ -269,7 +267,7 @@ const TagManagementPage = () => {
                         }}
                     >
                         <Pagination
-                            count={Math.ceil(filteredTags.length / ITEMS_PER_PAGE)}
+                            count={Math.ceil(filteredCountries.length / ITEMS_PER_PAGE)}
                             page={currentPage}
                             onChange={(event, page) => setCurrentPage(page)}
                             color="primary"
@@ -283,14 +281,15 @@ const TagManagementPage = () => {
                 <DialogTitle>Confirm Deletion</DialogTitle>
                 <DialogContent>
                     <Typography>
-                        Are you sure you want to delete the tag <b>{tagToDelete?.name}</b>? This action cannot be undone.
+                        Are you sure you want to delete the country <b>{countryToDelete?.name}</b>? This action cannot
+                        be undone.
                     </Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={closeDeleteDialog} color="secondary">
                         Cancel
                     </Button>
-                    <Button onClick={handleDeleteTag} color="error">
+                    <Button onClick={handleDeleteCountry} color="error">
                         Delete
                     </Button>
                 </DialogActions>
@@ -299,4 +298,4 @@ const TagManagementPage = () => {
     );
 };
 
-export default TagManagementPage;
+export default CountryManagementPage;

@@ -9,6 +9,10 @@ import {
     Divider,
     IconButton,
     Pagination,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '@mui/material/styles';
@@ -31,6 +35,9 @@ const TagManagementPage = () => {
     const [search, setSearch] = useState('');
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); 
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
 
 
     const userDetails = sessionStorage.getItem('userDetails');
@@ -124,6 +131,32 @@ const TagManagementPage = () => {
     const handleEdit = tag => {
         setSelectedCategory(tag);
         setCategoryName(tag.name);
+    };
+
+    const openDeleteDialog = (category) => {
+        setCategoryToDelete(category);
+        setIsDeleteDialogOpen(true);
+    };
+
+    // Close delete dialog
+    const closeDeleteDialog = () => {
+        setIsDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+    };
+
+    // Handle deleting a category
+    const handleDeleteCategory = async () => {
+        if (!categoryToDelete) return;
+
+        try {
+            await CarCategory.deleteCategory(categoryToDelete.id);
+            setCategories((prev) => prev.filter((category) => category.id !== categoryToDelete.id));
+            notifications.show('Category deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            notifications.show('Failed to delete category', { autoHideDuration: 3000, severity: 'error' });
+        } finally {
+            closeDeleteDialog();
+        }
     };
 
     const handleDelete = async id => {
@@ -230,17 +263,17 @@ const TagManagementPage = () => {
                                 gap: '0.5rem',
                             }}
                         >
-                            {paginatedCategories.map(tag => (
+                            {paginatedCategories.map((category) => (
                                 <Chip
-                                    key={tag.id}
-                                    label={tag.name}
+                                    key={category.id}
+                                    label={category.name}
                                     sx={{
                                         padding: '0.5rem',
                                         fontSize: { xs: '0.8rem', sm: '1rem' },
                                         justifyContent: 'space-between',
                                     }}
-                                    onClick={() => handleEdit(tag)}
-                                    onDelete={() => handleDelete(tag.id)}
+                                    onClick={() => handleEdit(category)}
+                                    onDelete={() => openDeleteDialog(category)}
                                     deleteIcon={<DeleteIcon />}
                                 />
                             ))}
@@ -264,6 +297,24 @@ const TagManagementPage = () => {
                     </Box>
                 </Paper>
             </Box>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onClose={closeDeleteDialog}>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete the category <b>{categoryToDelete?.name}</b>? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteCategory} color="error">
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
