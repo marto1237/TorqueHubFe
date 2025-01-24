@@ -1,13 +1,8 @@
-import React, { useState, useMemo, useCallback  } from "react";
+import React, { useState, useCallback } from "react";
 import {
     Box,
     Typography,
     FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Checkbox,
-    FormControlLabel,
     TextField,
     Button,
     CircularProgress,
@@ -16,24 +11,20 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useQuery } from "@tanstack/react-query";
 import BrandService from "../configuration/Services/BrandService";
+import ModelService from "../configuration/Services/ModelService";
+import CategoryService from "../configuration/Services/CarCategoryService";
+import CountryService from "../configuration/Services/CountryService";
 
-const ShowcaseFilterPanel = ({
-    selectedFilters,
-    setSelectedFilters,
-    onApplyFilters,
-}) => {
+const ShowcaseFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters }) => {
     const theme = useTheme();
-    const [brandSearch, setBrandSearch] = useState("");
-
-    // Debounced brand search with caching
-    const { data: brandOptions = [], isLoading: isBrandLoading } = useQuery({
-        queryKey: ["brands", brandSearch],
-        queryFn: () => BrandService.searchBrands(brandSearch),
-        enabled: !!brandSearch, // Trigger only when there's input
-        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    const [searchInputs, setSearchInputs] = useState({
+        brand: "",
+        model: "",
+        category: "",
+        country: "",
     });
 
-    // Debounce function to reduce API calls
+    // Debounce input changes for better performance
     const debounce = (func, delay) => {
         let timeout;
         return (...args) => {
@@ -42,21 +33,78 @@ const ShowcaseFilterPanel = ({
         };
     };
 
-    const handleBrandSearch = useCallback(
-        debounce((value) => setBrandSearch(value), 300),
-        [] // Empty dependencies ensure the debounce function doesn't recreate
+    const handleSearchInputChange = useCallback(
+        debounce((key, value) => {
+            setSearchInputs((prev) => ({ ...prev, [key]: value }));
+        }, 300),
+        []
     );
 
-    // Handle filter changes
-    const handleChange = (key, value) => {
+    // Fetch options for each filter
+    const { data: brands = [], isLoading: isBrandLoading } = useQuery({
+        queryKey: ["brands", searchInputs.brand],
+        queryFn: () =>
+            searchInputs.brand
+                ? BrandService.searchBrands(searchInputs.brand)
+                : BrandService.getAllBrands(),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const { data: modelsData = [], isLoading: isModelLoading } = useQuery({
+        queryKey: ["models", selectedFilters?.brandId],
+        queryFn: () =>
+            selectedFilters?.brandId
+                ? ModelService.getModelsByBrandName(selectedFilters.brandName)
+                : [],
+        enabled: !!selectedFilters?.brandId,
+        staleTime: 5 * 60 * 1000,
+    });
+    const models = modelsData || [];
+
+    const { data: categoriesData = [], isLoading: isCategoryLoading } = useQuery({
+        queryKey: ["categories", searchInputs.category],
+        queryFn: () =>
+            searchInputs.category
+                ? CategoryService.searchCategories(searchInputs.category)
+                : CategoryService.getAllCategories(),
+        staleTime: 5 * 60 * 1000,
+    });
+    const categories = categoriesData.content || [];
+
+    const { data: countries = [], isLoading: isCountryLoading } = useQuery({
+        queryKey: ["countries", searchInputs.country],
+        queryFn: () =>
+            searchInputs.country
+                ? CountryService.searchCountry(searchInputs.country)
+                : CountryService.getAllCountries(),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const handleTitleChange = (event) => {
         setSelectedFilters((prev) => ({
             ...prev,
-            [key]: value,
+            title: event.target.value, // Update title filter
         }));
     };
 
-    // Apply filters
+
+    // Handle filter changes and log updates
+    const handleChange = (key, value) => {
+        const id = value ? value.id : null;
+        const name = value ? value.name : "";
+
+        console.log(`Updated ${key}:`, { id, name }); // Log updates for debugging
+
+        setSelectedFilters((prev) => ({
+            ...prev,
+            [`${key}Id`]: id, // Store the ID
+            [`${key}Name`]: name, // Optionally store name for debugging
+        }));
+    };
+
+    // Apply filters and log final filters
     const handleApplyFilters = () => {
+        console.log("Final Selected Filters:", selectedFilters); // Log final filters
         onApplyFilters(selectedFilters);
     };
 
@@ -74,122 +122,137 @@ const ShowcaseFilterPanel = ({
             }}
         >
             <Box sx={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-                {/* Dynamic Brand Filter */}
-                {/* Brand Search Dropdown */}
-            <FormControl fullWidth>
-            <Autocomplete
-                options={brandOptions}
-                getOptionLabel={(option) => option.name || ""}
-                onInputChange={(e, value) => handleBrandSearch(value)} // Trigger brand search
-                value={selectedFilters.brand || null}
-                onChange={(event, newValue) =>
-                    handleChange("brand", newValue ? newValue.id : null)
-                }
-                loading={isBrandLoading}
-                renderInput={(params) => (
+
+                <FormControl fullWidth>
                     <TextField
-                        {...params}
-                        label="Search Brand"
-                        placeholder="Type to search brands"
+                        label="Search by Title"
                         variant="filled"
-                        InputProps={{
-                            ...params.InputProps,
-                            endAdornment: (
-                                <>
-                                    {isBrandLoading ? (
-                                        <CircularProgress color="inherit" size={20} />
-                                    ) : null}
-                                    {params.InputProps.endAdornment}
-                                </>
-                            ),
-                        }}
+                        value={selectedFilters.title || ""}
+                        onChange={handleTitleChange}
                     />
-                )}
-            />
-            </FormControl>
+                </FormControl>
+                {/* Brand Filter */}
+                <FormControl fullWidth>
+                    <Autocomplete
+                        options={brands}
+                        getOptionLabel={(option) => option.name || ""}
+                        onInputChange={(e, value) => handleSearchInputChange("brand", value)}
+                        value={brands.find((b) => b.id === selectedFilters?.brandId) || null}
+                        onChange={(event, newValue) => handleChange("brand", newValue)}
+                        loading={isBrandLoading}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Search Brand"
+                                variant="filled"
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {isBrandLoading ? (
+                                                <CircularProgress color="inherit" size={20} />
+                                            ) : null}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
+                </FormControl>
 
                 {/* Model Filter */}
                 <FormControl fullWidth>
-                    <InputLabel>Model</InputLabel>
-                    <Select
-                        value={selectedFilters.model || ""}
-                        onChange={(e) => handleChange("model", e.target.value)}
-                    >
-                        <MenuItem value="" disabled>
-                            Select a Model
-                        </MenuItem>
-                        {/* Example: Replace with API data */}
-                        <MenuItem value="model1">Model 1</MenuItem>
-                        <MenuItem value="model2">Model 2</MenuItem>
-                    </Select>
+                    <Autocomplete
+                        options={models}
+                        getOptionLabel={(option) => option.name || ""}
+                        onInputChange={(e, value) => handleSearchInputChange("model", value)}
+                        value={models.find((m) => m.id === selectedFilters?.modelId) || null}
+                        onChange={(event, newValue) => handleChange("model", newValue)}
+                        loading={isModelLoading}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Search Model"
+                                variant="filled"
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {isModelLoading ? (
+                                                <CircularProgress color="inherit" size={20} />
+                                            ) : null}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
                 </FormControl>
 
                 {/* Country Filter */}
                 <FormControl fullWidth>
-                    <InputLabel>Country</InputLabel>
-                    <Select
-                        value={selectedFilters.country || ""}
-                        onChange={(e) => handleChange("country", e.target.value)}
-                    >
-                        <MenuItem value="" disabled>
-                            Select a Country
-                        </MenuItem>
-                        {/* Example: Replace with API data */}
-                        <MenuItem value="US">United States</MenuItem>
-                        <MenuItem value="JP">Japan</MenuItem>
-                    </Select>
+                    <Autocomplete
+                        options={countries}
+                        getOptionLabel={(option) => option.name || ""}
+                        onInputChange={(e, value) => handleSearchInputChange("country", value)}
+                        value={countries.find((c) => c.id === selectedFilters?.countryId) || null}
+                        onChange={(event, newValue) => handleChange("country", newValue)}
+                        loading={isCountryLoading}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Search Country"
+                                variant="filled"
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {isCountryLoading ? (
+                                                <CircularProgress color="inherit" size={20} />
+                                            ) : null}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
                 </FormControl>
 
                 {/* Category Filter */}
                 <FormControl fullWidth>
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                        value={selectedFilters.category || ""}
-                        onChange={(e) => handleChange("category", e.target.value)}
-                    >
-                        <MenuItem value="" disabled>
-                            Select a Category
-                        </MenuItem>
-                        {/* Example: Replace with API data */}
-                        <MenuItem value="SUV">SUV</MenuItem>
-                        <MenuItem value="Sedan">Sedan</MenuItem>
-                    </Select>
+                    <Autocomplete
+                        options={categories}
+                        getOptionLabel={(option) => option.name || ""}
+                        onInputChange={(e, value) => handleSearchInputChange("category", value)}
+                        value={categories.find((cat) => cat.id === selectedFilters?.categoryId) || null}
+                        onChange={(event, newValue) => handleChange("category", newValue)}
+                        loading={isCategoryLoading}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Search Category"
+                                variant="filled"
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {isCategoryLoading ? (
+                                                <CircularProgress color="inherit" size={20} />
+                                            ) : null}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
+                    />
                 </FormControl>
             </Box>
 
-            {/* Year Filters */}
-            <Box sx={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-                <TextField
-                    label="Manufacturing Year"
-                    type="number"
-                    variant="filled"
-                    value={selectedFilters.manufacturingYear || ""}
-                    onChange={(e) =>
-                        handleChange("manufacturingYear", e.target.value)
-                    }
-                    fullWidth
-                />
-
-                <FormControlLabel
-                    control={
-                        <Checkbox
-                            checked={selectedFilters.noModifications || false}
-                            onChange={(e) =>
-                                handleChange("noModifications", e.target.checked)
-                            }
-                        />
-                    }
-                    label="No Modifications"
-                />
-            </Box>
-
-            {/* Apply Filters Button */}
-            <Button
-                variant="contained"
-                color="primary"
-                onClick={handleApplyFilters}
-                fullWidth
-            >
+            <Button variant="contained" color="primary" onClick={handleApplyFilters} fullWidth>
                 Apply Filters
             </Button>
         </Box>

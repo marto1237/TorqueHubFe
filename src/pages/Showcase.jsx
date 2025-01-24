@@ -1,216 +1,150 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-    Box, Card, Typography, Grid, CardMedia, IconButton, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
-    TextField, ListItemAvatar, Avatar, Divider, Fade,Button,Pagination
-} from '@mui/material';
-import { Comment, Visibility, Add, Close, } from '@mui/icons-material';
-import { useTheme, useMediaQuery } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import { getStorage, ref, getDownloadURL,listAll } from "firebase/storage";
-import ShowcaseFilterPanel from '../components/common/ShowcaseFilterPanel';
-import ShowcaseService from '../components/configuration/Services/ShowcaseService';
-
-const carShowcases = [
-    {
-        id: 1,
-        user: 'Chris Murphy',
-        year: '1985',
-        make: 'Volkswagen',
-        model: 'Cabriolet',
-        color: 'Blue',
-        packages: 'Karman',
-        image: 'https://i.kinja-img.com/image/upload/c_fill,h_675,pg_1,q_80,w_1200/ob8mmpmrcoysw55nhpc1.png',
-        modifications: [
-            { category: 'Drivetrain', description: 'Cam oil baffle, Upgraded valve cover gasket' },
-            { category: 'Interior', description: 'Recaro trophy w/power ba, Custom steering wheel' },
-            { category: 'Exterior', description: 'Custom painted Krylon ocean glass blue, Canvas Black Top' },
-            { category: 'Audio', description: '5” sony speakers, 10”Rockford 300w sub' },
-            { category: 'Suspension', description: 'Airlift 3H management, CK2W double bellow Front Bags' },
-            { category: 'Exhaust', description: 'Stainless 4-2-1 Header, Borla Pro exhaust' },
-        ],
-        history: 'Barn find $500, three years and $12k later…',
-        comments: [
-            { user: 'John Doe', text: 'Love the custom mods!' },
-            { user: 'Jane Smith', text: 'Such a clean build, well done!' }
-        ],
-        views: 520,
-        postDate: 'May 13, 2024'
-    },
-
-    {
-        id: 2,
-        user: 'Chris Murphy',
-        year: '1985',
-        make: 'Volkswagen',
-        model: 'Cabriolet',
-        color: 'Blue',
-        packages: 'Karman',
-        image: 'https://i.kinja-img.com/image/upload/c_fill,h_675,pg_1,q_80,w_1200/ob8mmpmrcoysw55nhpc1.png',
-        modifications: [
-            { category: 'Drivetrain', description: 'Cam oil baffle, Upgraded valve cover gasket' },
-            { category: 'Interior', description: 'Recaro trophy w/power ba, Custom steering wheel' },
-            { category: 'Exterior', description: 'Custom painted Krylon ocean glass blue, Canvas Black Top' },
-            { category: 'Audio', description: '5” sony speakers, 10”Rockford 300w sub' },
-            { category: 'Suspension', description: 'Airlift 3H management, CK2W double bellow Front Bags' },
-            { category: 'Exhaust', description: 'Stainless 4-2-1 Header, Borla Pro exhaust' },
-        ],
-        history: 'Barn find $500, three years and $12k later…',
-        comments: [
-            { user: 'John Doe', text: 'Love the custom mods!' },
-            { user: 'Jane Smith', text: 'Such a clean build, well done!' }
-        ],
-        views: 520,
-        postDate: 'May 13, 2024'
-    },
-
-    {
-        id: 3,
-        user: 'Chris Murphy',
-        year: '1985',
-        make: 'Volkswagen',
-        model: 'Cabriolet',
-        color: 'Blue',
-        packages: 'Karman',
-        image: 'https://i.kinja-img.com/image/upload/c_fill,h_675,pg_1,q_80,w_1200/ob8mmpmrcoysw55nhpc1.png',
-        modifications: [
-            { category: 'Drivetrain', description: 'Cam oil baffle, Upgraded valve cover gasket' },
-            { category: 'Interior', description: 'Recaro trophy w/power ba, Custom steering wheel' },
-            { category: 'Exterior', description: 'Custom painted Krylon ocean glass blue, Canvas Black Top' },
-            { category: 'Audio', description: '5” sony speakers, 10”Rockford 300w sub' },
-            { category: 'Suspension', description: 'Airlift 3H management, CK2W double bellow Front Bags' },
-            { category: 'Exhaust', description: 'Stainless 4-2-1 Header, Borla Pro exhaust' },
-        ],
-        history: 'Barn find $500, three years and $12k later…',
-        comments: [
-            { user: 'John Doe', text: 'Love the custom mods!' },
-            { user: 'Jane Smith', text: 'Such a clean build, well done!' }
-        ],
-        views: 520,
-        postDate: 'May 13, 2024'
-    },
-
-    {
-        id: 4,
-        user: 'Chris Murphy',
-        year: '1985',
-        make: 'Volkswagen',
-        model: 'Cabriolet',
-        color: 'Blue',
-        packages: 'Karman',
-        image: 'https://i.kinja-img.com/image/upload/c_fill,h_675,pg_1,q_80,w_1200/ob8mmpmrcoysw55nhpc1.png',
-        modifications: [
-            { category: 'Drivetrain', description: 'Cam oil baffle, Upgraded valve cover gasket' },
-            { category: 'Interior', description: 'Recaro trophy w/power ba, Custom steering wheel' },
-            { category: 'Exterior', description: 'Custom painted Krylon ocean glass blue, Canvas Black Top' },
-            { category: 'Audio', description: '5” sony speakers, 10”Rockford 300w sub' },
-            { category: 'Suspension', description: 'Airlift 3H management, CK2W double bellow Front Bags' },
-            { category: 'Exhaust', description: 'Stainless 4-2-1 Header, Borla Pro exhaust' },
-        ],
-        history: 'Barn find $500, three years and $12k later…',
-        comments: [
-            { user: 'John Doe', text: 'Love the custom mods!' },
-            { user: 'Jane Smith', text: 'Such a clean build, well done!' }
-        ],
-        views: 520,
-        postDate: 'May 13, 2024'
-    }
-    // Add more car data here
-];
+    Box,
+    Card,
+    Typography,
+    Grid,
+    CardMedia,
+    Button,
+    Pagination,
+    Fade,
+    Divider,
+    IconButton,
+} from "@mui/material";
+import { Visibility, Comment, FilterList, FilterListOff } from "@mui/icons-material";
+import { useTheme, useMediaQuery } from "@mui/material";
+import { getStorage, ref, getDownloadURL, listAll } from "firebase/storage";
+import ShowcaseFilterPanel from "../components/common/ShowcaseFilterPanel";
+import ShowcaseService from "../components/configuration/Services/ShowcaseService";
+import ShowcaseFilterService from "../components/configuration/Services/ShowcaseFilterService";
 
 const Showcase = () => {
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [showcases, setShowcases] = useState([]);
-    const [newComment, setNewComment] = useState('');
-    const [hoveredCard, setHoveredCard] = useState(null); // To track hover state
-    const [loading, setLoading] = useState(true); // To track loading state
-    const [error, setError] = useState(null); // To track errors
-    const navigate = useNavigate();
-
-    const [page, setPage] = useState(0);
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const [showcases, setShowcases] = useState([]); // Showcase data (filtered or all)
+    const [hoveredCard, setHoveredCard] = useState(null); // Track hover state
+    const [loading, setLoading] = useState(true); // Loading state
+    const [error, setError] = useState(null); // Error state
+    const [isFiltering, setIsFiltering] = useState(false); // Filter toggle
+    const [showFilters, setShowFilters] = useState(true); // Toggle filter panel visibility
+    const [filters, setFilters] = useState({
+        title: "",
+        brandId: null,
+        modelId: null,
+        categoryId: null,
+        countryId: null,
+        sortOption: "newest",
+    });
+    const [page, setPage] = useState(0); // Pagination
     const [totalPages, setTotalPages] = useState(1);
     const size = 9;
+    const navigate = useNavigate();
 
     const handleShowcaseClick = (id) => {
-        // Navigate to the car detail page with the car id
-        navigate(`/car/${id}`);
+        navigate(`/car/${id}`); // Navigate to car detail page
     };
 
-
-    const [isFiltering, setIsFiltering] = useState(false);
-
-    const [filters, setFilters] = useState({
-        tags: [],
-        noModifications: false,
-        sortOption: 'newest',
-    });
-
-    const { data: filtershowcases, isLoading } = useQuery({
-        queryKey: ['showcases', filters],
-        queryFn: () => ShowcaseService.getFilteredShowcases(filters), // Create this service function
-        keepPreviousData: true,
-    });
-
-    const handleApplyFilters = (newFilters) => {
-        setFilters(newFilters);
-    };
-
-
+    // Fetch all showcases (default view)
     useEffect(() => {
         const fetchShowcases = async () => {
+            if (isFiltering) return; // Skip fetching all if filtering
+            setLoading(true);
             try {
-                const response = await ShowcaseService.getAllShowcases(page, size); // Fetch data
-                console.log('API Response:', response);
+                const response = await ShowcaseService.getAllShowcases(page, size);
                 const showcasesWithImages = await Promise.all(
                     response.content.map(async (showcase) => {
-                        const imageUrl = await getFirebaseImage(showcase.id); // Fetch image for each showcase
-                        return { ...showcase, image: imageUrl }; // Add image to showcase object
+                        const imageUrl = await getFirebaseImage(showcase.id);
+                        return { ...showcase, image: imageUrl };
                     })
                 );
                 setShowcases(showcasesWithImages);
                 setTotalPages(response.totalPages);
             } catch (err) {
-                console.error('Error fetching showcases:', err);
-                setError('Failed to load showcases.');
+                console.error("Error fetching showcases:", err);
+                setError("Failed to load showcases.");
             } finally {
                 setLoading(false);
             }
         };
-    
+
         fetchShowcases();
-    }, [page, size]);
-    
+    }, [page, size, isFiltering]);
 
+    // Fetch filtered showcases
+    const handleApplyFilters = async () => {
+        setLoading(true);
+        try {
+            // Remove null or empty filters from the request
+            const validFilters = Object.fromEntries(
+                Object.entries(filters).filter(
+                    ([_, value]) => value !== null && value !== ""
+                )
+            );
 
+            const params = new URLSearchParams({
+                ...validFilters,
+                page,
+                size,
+            });
+
+            const apiUrl = `http://localhost:8082/showcases/filter?${params.toString()}`;
+            console.log("Generated Filter API URL:", apiUrl);
+
+            const response = await ShowcaseFilterService.filterShowcases(validFilters, page, size);
+            const filteredWithImages = await Promise.all(
+                response.content.map(async (showcase) => {
+                    const imageUrl = await getFirebaseImage(showcase.id);
+                    return { ...showcase, image: imageUrl };
+                })
+            );
+
+            // Update the showcase data with the filtered results
+            setShowcases(filteredWithImages);
+            setTotalPages(response.totalPages);
+            setIsFiltering(true);
+        } catch (err) {
+            console.error("Error fetching filtered showcases:", err);
+            setError("Failed to load filtered showcases.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch Firebase image
     const getFirebaseImage = async (showcaseId) => {
         try {
             const storage = getStorage();
             const folderRef = ref(storage, `showcaseImages/${showcaseId}/`);
-    
-            // List all items in the folder
             const folderContents = await listAll(folderRef);
-    
-            // Ensure there is at least one item
             if (folderContents.items.length > 0) {
-                // Get the URL for the first image in the folder
                 const firstImageRef = folderContents.items[0];
-                const url = await getDownloadURL(firstImageRef);
-                return url;
-            } else {
-                console.warn(`No images found for showcaseId: ${showcaseId}`);
-                return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; 
+                return await getDownloadURL(firstImageRef);
             }
-        } catch (err) {
-            console.error('Error fetching Firebase image:', err);
-            return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; // Placeholder for error
+            return "https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500";
+        } catch {
+            return "https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500";
         }
     };
 
+    // Handle pagination
     const handlePageChange = (event, value) => {
         const zeroBasedPage = value - 1;
         setPage(zeroBasedPage);
-        navigate({ search: `?page=${zeroBasedPage}&size=${size}` });
+    };
+
+    // Clear filters and reload all showcases
+    const handleClearFilters = () => {
+        setIsFiltering(false);
+        setFilters({
+            title: "",
+            brandId: null,
+            modelId: null,
+            categoryId: null,
+            countryId: null,
+            sortOption: "newest",
+        });
+        setPage(0);
     };
 
     if (loading) {
@@ -222,71 +156,117 @@ const Showcase = () => {
     }
 
     return (
-        <Box sx={{ padding: '20px', paddingTop: '100px',minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
-
-                <Button variant="outlined" onClick={() => setIsFiltering(!isFiltering)} sx={{ fontWeight: 'bold' }}>
-                        {isFiltering ? 'Clear Filters' : 'Show Filters'}
+        <Box
+            sx={{
+                padding: "20px",
+                paddingTop: "100px",
+                minHeight: "100vh",
+                backgroundColor: theme.palette.background.paper,
+            }}
+        >
+            {/* Toggle Show/Hide Filters */}
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 2,
+                }}
+            >
+                <Button
+                    variant="outlined"
+                    onClick={isFiltering ? handleClearFilters : () => setIsFiltering(true)}
+                    sx={{ fontWeight: "bold" }}
+                >
+                    {isFiltering ? "Clear Filters" : "Show Filters"}
                 </Button>
-            {isFiltering && (
+
+                <IconButton
+                    onClick={() => setShowFilters(!showFilters)}
+                    color="primary"
+                    sx={{ fontWeight: "bold" }}
+                >
+                    {showFilters ? <FilterListOff /> : <FilterList />}
+                </IconButton>
+            </Box>
+
+            {/* Filter Panel */}
+            {showFilters && isFiltering && (
                 <ShowcaseFilterPanel
-                selectedFilters={filters}
-                setSelectedFilters={setFilters}
-                onApplyFilters={handleApplyFilters}
+                    selectedFilters={filters}
+                    setSelectedFilters={setFilters}
+                    onApplyFilters={handleApplyFilters}
                 />
             )}
+
+            {/* Showcase Grid */}
             <Grid container spacing={3}>
                 {showcases.map((car) => (
                     <Grid item xs={12} sm={6} md={4} key={car.id}>
                         <Card
                             sx={{
-                                position: 'relative',
-                                overflow: 'hidden',
+                                position: "relative",
+                                overflow: "hidden",
                                 boxShadow: 3,
-                                cursor: 'pointer',
-                                '&:hover': { transform: 'scale(1.02)', transition: '0.3s ease-in-out' },
+                                cursor: "pointer",
+                                "&:hover": {
+                                    transform: "scale(1.02)",
+                                    transition: "0.3s ease-in-out",
+                                },
                             }}
                             onClick={() => handleShowcaseClick(car.id)}
-                            onMouseEnter={() => setHoveredCard(car.id)} // Set hover state
-                            onMouseLeave={() => setHoveredCard(null)}   // Remove hover state
+                            onMouseEnter={() => setHoveredCard(car.id)}
+                            onMouseLeave={() => setHoveredCard(null)}
                         >
                             <CardMedia
                                 component="img"
                                 image={car.image}
                                 alt={car.make}
-                                sx={{ height: '200px', objectFit: 'cover' }}
+                                sx={{ height: "200px", objectFit: "cover" }}
                             />
-                            <Box sx={{ padding: '15px' }}>
-                                <Typography variant="h6" gutterBottom>{car.year} {car.make} {car.model.name}</Typography>
-                            </Box>
+                            <Box sx={{ padding: "15px" }}>
+                    {/* Title */}
+                    <Typography variant="h6" gutterBottom>
+                        {car.title}
+                    </Typography>
 
-                            {/* Hover Overlay */}
+                    {/* Model and Brand */}
+                    <Typography variant="body1" color="textSecondary">
+                        {car.model?.name} ({car.brand?.name})
+                    </Typography>
+
+                    {/* Description */}
+                    <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                        {car.description}
+                    </Typography>
+                </Box>
                             <Fade in={hoveredCard === car.id}>
                                 <Box
                                     sx={{
-                                        position: 'absolute',
+                                        position: "absolute",
                                         bottom: 0,
                                         left: 0,
                                         right: 0,
-                                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                                        color: 'white',
-                                        padding: '10px',
-                                        transition: 'transform 0.3s ease-in-out',
-                                        transform: hoveredCard === car.id ? 'translateY(0)' : 'translateY(100%)',
+                                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                                        color: "white",
+                                        padding: "10px",
                                     }}
                                 >
-                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                    <Box display="flex" justifyContent="space-between">
                                         <Typography variant="body2">{car.user}</Typography>
                                         <Typography variant="body2">{car.postDate}</Typography>
                                     </Box>
                                     <Divider sx={{ my: 1 }} />
-                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                    <Box display="flex" justifyContent="space-between">
                                         <Box display="flex" alignItems="center">
-                                            <Visibility sx={{ marginRight: '5px' }} />
+                                            <Visibility sx={{ marginRight: "5px" }} />
                                             <Typography variant="body2">{car.views}</Typography>
                                         </Box>
                                         <Box display="flex" alignItems="center">
-                                            <Comment sx={{ marginRight: '5px' }} />
-                                            <Typography variant="body2">{car.comments.length}</Typography>
+                                            <Comment sx={{ marginRight: "5px" }} />
+                                            <Typography variant="body2">
+                                                {car.comments.length}
+                                            </Typography>
                                         </Box>
                                     </Box>
                                 </Box>
@@ -295,15 +275,14 @@ const Showcase = () => {
                     </Grid>
                 ))}
             </Grid>
-            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '40px', margin:'auto' }}>
+            <Box sx={{ display: "flex", justifyContent: "center", marginTop: "40px" }}>
                 <Pagination
-                    count={totalPages} // Use the totalPages state
-                    page={page + 1} // Adjust for one-based indexing in the Pagination component
+                    count={totalPages}
+                    page={page + 1}
                     onChange={handlePageChange}
                     color="primary"
                 />
             </Box>
-
         </Box>
     );
 };

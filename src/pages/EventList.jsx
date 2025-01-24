@@ -6,6 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import EventService from '../components/configuration/Services/EventService';
+import EventFilterPanel from '../components/common/EventFilterPanel';
 import { format } from 'date-fns';
 
 // Event data with image URL, tickets left, price, etc.
@@ -94,6 +95,9 @@ const EventList = () => {
     const size = 9;
     const [eventsWithImages, setEventsWithImages] = useState([]);
     const location = useLocation();
+    const [showFilterPanel, setShowFilterPanel] = useState(false);
+    const [selectedFilters, setSelectedFilters] = useState({});
+
 
     useEffect(() => {
         const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
@@ -200,6 +204,14 @@ const EventList = () => {
         navigate(`/events/${eventId}`);
     };
 
+    const handleApplyFilters = (filters) => {
+        setSelectedFilters(filters);
+    };
+
+    const handleClearFilters = () => {
+        setSelectedFilters({});
+    };
+
     if (isLoading) {
         return <Typography>Loading events...</Typography>;
     }
@@ -212,6 +224,31 @@ const EventList = () => {
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px',minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
             <Box>
+
+                <Box>
+                    <Button
+                        variant="outlined"
+                        onClick={() => setShowFilterPanel(!showFilterPanel)}
+                        sx={{ mr: 2 }}
+                    >
+                        {showFilterPanel ? 'Close Filters' : 'Show Filters'}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleClearFilters}
+                        disabled={!Object.keys(selectedFilters).length}
+                    >
+                        Clear Filters
+                    </Button>
+                </Box>
+                {showFilterPanel && (
+                    <EventFilterPanel
+                        selectedFilters={selectedFilters}
+                        setSelectedFilters={setSelectedFilters}
+                        onApplyFilters={handleApplyFilters}
+                    />
+                )}
                 <Grid container spacing={3}>
                     <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>

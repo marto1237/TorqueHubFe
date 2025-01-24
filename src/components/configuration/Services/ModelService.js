@@ -39,9 +39,19 @@ const ModelService = {
 
     getModelsByBrandName: async (brandName, page = 0, size = 10) => {
         try {
-            const response = await showcaseAPI.get('/models/brand', { params: { brandName, page, size } });
+            if (!brandName) {
+                throw new Error("Brand name is required");
+            }
+            console.log("Fetching models by brand name:", brandName); // Debugging log
+    
+            const response = await showcaseAPI.get('/models/brand', {
+                params: { brandName, page, size },
+            });
+    
+            console.log("Models fetched successfully:", response.data.content);
             return response.data.content || [];
         } catch (error) {
+            console.error("Error fetching models by brand:", error);
             return Promise.reject(error);
         }
     },

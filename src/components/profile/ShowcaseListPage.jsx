@@ -8,7 +8,6 @@ const ShowcaseListPage = () => {
     const { userId } = useParams(); // Extract userId from route
     const navigate = useNavigate();
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -80,6 +79,7 @@ const ShowcaseListPage = () => {
             >
                 Create New Showcase
             </Button>
+
             {loading ? (
                 <Grid container spacing={3}>
                     {[...Array(5)].map((_, index) => (
