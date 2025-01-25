@@ -1,73 +1,39 @@
-import React, { useState, useCallback } from "react";
-import {
-    Box,
-    TextField,
-    Autocomplete,
-    Button,
-    CircularProgress,
-    Typography,
-} from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, TextField, Autocomplete, Button, CircularProgress, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useQuery } from "@tanstack/react-query";
-import TagService from "../configuration/Services/TagService"; 
-import CarCategoryService from "../configuration/Services/CarCategoryService"; 
+import TicketTags from "../configuration/Services/TicketTagsService";
+import CarCategoryService from "../configuration/Services/CarCategoryService";
 
-const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters }) => {
+const EventFilterPanel = ({ onApplyFilters }) => {
     const theme = useTheme();
-
     const [searchInputs, setSearchInputs] = useState({
         name: "",
         location: "",
-        tag: "",
-        carCategory: "",
+        startDate: "",
+        endDate: "",
+        tagIds: [],
+        allowedCarCategoryIds: [],
     });
 
-    const debounce = (func, delay) => {
-        let timeout;
-        return (...args) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func(...args), delay);
-        };
-    };
-
-    const handleSearchInputChange = useCallback(
-        debounce((key, value) => {
-            setSearchInputs((prev) => ({ ...prev, [key]: value }));
-        }, 300),
-        []
-    );
-
     const { data: tags = [], isLoading: isTagLoading } = useQuery({
-        queryKey: ["tags", searchInputs.tag],
-        queryFn: () =>
-            searchInputs.tag
-                ? TagService.searchTags(searchInputs.tag)
-                : TagService.getAllTags(),
-        staleTime: 5 * 60 * 1000,
+        queryKey: ["tags"],
+        queryFn: TicketTags.getAllTags,
+        select: (data) => data.content,
     });
 
     const { data: carCategories = [], isLoading: isCarCategoryLoading } = useQuery({
-        queryKey: ["carCategories", searchInputs.carCategory],
-        queryFn: () =>
-            searchInputs.carCategory
-                ? CarCategoryService.searchCarCategories(searchInputs.carCategory)
-                : CarCategoryService.getAllCarCategories(),
-        staleTime: 5 * 60 * 1000,
+        queryKey: ["carCategories"],
+        queryFn: CarCategoryService.getAllCategories,
+        select: (data) => data.content,
     });
 
-    const handleChange = (key, value) => {
-        const id = value ? value.id : null;
-        const name = value ? value.name : "";
-
-        setSelectedFilters((prev) => ({
-            ...prev,
-            [`${key}Id`]: id,
-            [`${key}Name`]: name,
-        }));
+    const handleInputChange = (key, value) => {
+        setSearchInputs((prev) => ({ ...prev, [key]: value }));
     };
 
     const handleApplyFilters = () => {
-        onApplyFilters(selectedFilters);
+        onApplyFilters(searchInputs);
     };
 
     return (
@@ -82,29 +48,23 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                 gap: "20px",
             }}
         >
-            {/* Name Filter */}
             <TextField
                 label="Event Name"
                 variant="filled"
                 fullWidth
-                onChange={(e) => handleSearchInputChange("name", e.target.value)}
+                onChange={(e) => handleInputChange("name", e.target.value)}
             />
-
-            {/* Location Filter */}
             <TextField
                 label="Location"
                 variant="filled"
                 fullWidth
-                onChange={(e) => handleSearchInputChange("location", e.target.value)}
+                onChange={(e) => handleInputChange("location", e.target.value)}
             />
-
-            {/* Tag Filter */}
             <Autocomplete
                 options={tags}
                 getOptionLabel={(option) => option.name || ""}
                 loading={isTagLoading}
-                onInputChange={(e, value) => handleSearchInputChange("tag", value)}
-                onChange={(event, newValue) => handleChange("tag", newValue)}
+                onChange={(e, value) => handleInputChange("tagIds", value ? [value.id] : [])}
                 renderInput={(params) => (
                     <TextField
                         {...params}
@@ -114,9 +74,7 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                             ...params.InputProps,
                             endAdornment: (
                                 <>
-                                    {isTagLoading ? (
-                                        <CircularProgress color="inherit" size={20} />
-                                    ) : null}
+                                    {isTagLoading && <CircularProgress color="inherit" size={20} />}
                                     {params.InputProps.endAdornment}
                                 </>
                             ),
@@ -124,14 +82,13 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                     />
                 )}
             />
-
-            {/* Allowed Cars Filter */}
             <Autocomplete
                 options={carCategories}
                 getOptionLabel={(option) => option.name || ""}
                 loading={isCarCategoryLoading}
-                onInputChange={(e, value) => handleSearchInputChange("carCategory", value)}
-                onChange={(event, newValue) => handleChange("carCategory", newValue)}
+                onChange={(e, value) =>
+                    handleInputChange("allowedCarCategoryIds", value ? [value.id] : [])
+                }
                 renderInput={(params) => (
                     <TextField
                         {...params}
@@ -141,9 +98,9 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                             ...params.InputProps,
                             endAdornment: (
                                 <>
-                                    {isCarCategoryLoading ? (
+                                    {isCarCategoryLoading && (
                                         <CircularProgress color="inherit" size={20} />
-                                    ) : null}
+                                    )}
                                     {params.InputProps.endAdornment}
                                 </>
                             ),
@@ -151,9 +108,9 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                     />
                 )}
             />
-
-            {/* Date Range Filter */}
-            <Typography variant="subtitle1">Date Range:</Typography>
+            <Typography variant="body1" fontWeight="bold">
+                Date Range:
+            </Typography>
             <Box sx={{ display: "flex", gap: "10px" }}>
                 <TextField
                     label="Start Date"
@@ -161,9 +118,7 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                     variant="filled"
                     fullWidth
                     InputLabelProps={{ shrink: true }}
-                    onChange={(e) =>
-                        setSelectedFilters((prev) => ({ ...prev, startDate: e.target.value }))
-                    }
+                    onChange={(e) => handleInputChange("startDate", e.target.value)}
                 />
                 <TextField
                     label="End Date"
@@ -171,13 +126,9 @@ const EventFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilters 
                     variant="filled"
                     fullWidth
                     InputLabelProps={{ shrink: true }}
-                    onChange={(e) =>
-                        setSelectedFilters((prev) => ({ ...prev, endDate: e.target.value }))
-                    }
+                    onChange={(e) => handleInputChange("endDate", e.target.value)}
                 />
             </Box>
-
-            {/* Apply Filters Button */}
             <Button variant="contained" color="primary" onClick={handleApplyFilters} fullWidth>
                 Apply Filters
             </Button>

@@ -7,6 +7,7 @@ import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import EventService from '../components/configuration/Services/EventService';
 import EventFilterPanel from '../components/common/EventFilterPanel';
+import EventFilterService from "../components/configuration/Services/EventFilterService";
 import { format } from 'date-fns';
 
 // Event data with image URL, tickets left, price, etc.
@@ -87,17 +88,54 @@ const events = [
 
 const EventList = () => {
     const theme = useTheme();
-    const [sort, setSort] = useState('High to Low');
+    const [sort, setSort] = useState("date");
     const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
     const navigate = useNavigate(); // For programmatic navigation
     const [userRole, setUserRole] = useState(null);
     const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const size = 9;
     const [eventsWithImages, setEventsWithImages] = useState([]);
     const location = useLocation();
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [selectedFilters, setSelectedFilters] = useState({});
 
+    const fetchFilteredEvents = async () => {
+        try {
+            const validFilters = Object.fromEntries(
+                Object.entries(selectedFilters).filter(
+                    ([_, value]) => value !== null && value !== ""
+                )
+            );
+
+            const filtersWithSort = {
+                ...validFilters,
+                sortOption: sort,
+            };
+            console.log("Filters being sent to API:", filtersWithSort);
+            const response = await EventFilterService.filterEvents(filtersWithSort, page, size);
+            console.log(response);
+
+            const events = response.content;
+
+            // Fetch images for each event
+            const eventsWithImages = await Promise.all(
+                events.map(async (event) => {
+                    const imageUrl = await getFirebaseImage(event.id);
+                    return { ...event, imageUrl };
+                })
+            );
+
+            setEventsWithImages(eventsWithImages);
+            setTotalPages(response.totalPages);
+        } catch (err) {
+            console.error("Error fetching events:", err);
+        } 
+    };
+
+    useEffect(() => {
+        fetchFilteredEvents();
+    }, [selectedFilters, page, sort]);
 
     useEffect(() => {
         const storedUserDetails = JSON.parse(sessionStorage.getItem('userDetails'));
@@ -205,8 +243,10 @@ const EventList = () => {
     };
 
     const handleApplyFilters = (filters) => {
-        setSelectedFilters(filters);
+        console.log("Final Selected Filters:", filters); // Log final filters
+        setSelectedFilters(filters); // Update the filters state in EventList
     };
+    
 
     const handleClearFilters = () => {
         setSelectedFilters({});
@@ -247,6 +287,7 @@ const EventList = () => {
                         selectedFilters={selectedFilters}
                         setSelectedFilters={setSelectedFilters}
                         onApplyFilters={handleApplyFilters}
+                        isFilterPanelOpen={showFilterPanel}
                     />
                 )}
                 <Grid container spacing={3}>
@@ -409,7 +450,7 @@ const EventList = () => {
 
                         <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px', margin:'auto' }}>
                                 <Pagination
-                                    count={events.totalPages} // Total pages from API response
+                                    count={totalPages} // Total pages from API response
                                     page={page+1} // Material-UI Pagination uses 1-indexed pages
                                     onChange={handlePageChange}
                                     color="primary"
