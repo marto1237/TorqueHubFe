@@ -32,8 +32,24 @@ const EventFilterPanel = ({ onApplyFilters }) => {
         setSearchInputs((prev) => ({ ...prev, [key]: value }));
     };
 
+    const formatToDateTimeString = (date) => {
+        const d = new Date(date);
+        const isoString = d.toISOString(); // Gets "YYYY-MM-DDTHH:mm:ss.sssZ"
+        return isoString.split(".")[0]; // Trims milliseconds and timezone to get "YYYY-MM-DDTHH:mm:ss"
+    };
+
+
     const handleApplyFilters = () => {
-        onApplyFilters(searchInputs);
+        const formattedInputs = {
+            ...searchInputs,
+            startDate: searchInputs.startDate
+                ? formatToDateTimeString(searchInputs.startDate)
+                : null,
+            endDate: searchInputs.endDate
+                ? formatToDateTimeString(searchInputs.endDate)
+                : null,
+        };
+        onApplyFilters(formattedInputs);
     };
 
     return (
