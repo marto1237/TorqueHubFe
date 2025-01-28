@@ -27,6 +27,24 @@ const FilterService = {
                 console.error("API Error:", error);
                 return Promise.reject(error);
             });
+    },
+    
+    filterUsers: (username = '', email = '', role = '', page = 0, size = 10) => {
+        const baseURL = '/users/filter';
+        const searchParams = new URLSearchParams();
+
+        if (username) searchParams.append('username', username);
+        if (email) searchParams.append('email', email);
+        if (role) searchParams.append('role', role);
+        searchParams.append('page', page);
+        searchParams.append('size', size);
+
+        const fullURL = `${baseURL}?${searchParams.toString()}`;
+        console.log("Full API Request URL:", fullURL);
+
+        return api.get(fullURL)
+            .then(response => response.data)
+            .catch(error => Promise.reject(error));
     }
 };
 

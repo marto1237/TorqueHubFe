@@ -217,10 +217,6 @@ const EventList = () => {
         )
         : eventsWithImages;
 
-    const handleSortChange = (event) => {
-        setSort(event.target.value);
-    };
-
     const handleCreateEventClick = () => {
         navigate('/create-event');
     };
@@ -295,14 +291,6 @@ const EventList = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                             <Typography variant="h6" color="textSecondary">Upcoming Events</Typography>
                             <Box sx={{ display: 'flex', gap: '10px' }}>
-                                <Typography variant="body2" color="textSecondary">{filteredEvents.length} Results Found</Typography>
-                                <FormControl size="small">
-                                    <InputLabel>Sort By</InputLabel>
-                                    <Select value={sort} onChange={handleSortChange}>
-                                        <MenuItem value="High to Low">Price: High to Low</MenuItem>
-                                        <MenuItem value="Low to High">Price: Low to High</MenuItem>
-                                    </Select>
-                                </FormControl>
                                 {/* Show "Create Event" button only for authorized roles */}
                                 {(userRole === 'ADMIN' || userRole === 'MODERATOR' || userRole === 'EVENT_ORGANISER') && (
                                     <Button

@@ -124,7 +124,7 @@ const EventFilterPanel = ({ onApplyFilters }) => {
                     />
                 )}
             />
-            <Typography variant="body1" fontWeight="bold">
+            <Typography variant="body1" fontWeight="bold" color="textSecondary">
                 Date Range:
             </Typography>
             <Box sx={{ display: "flex", gap: "10px" }}>

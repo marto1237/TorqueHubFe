@@ -8,6 +8,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import TagIcon from '@mui/icons-material/Tag';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import LanguageIcon from '@mui/icons-material/Language';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -53,6 +54,11 @@ const AdminPanel = ({ userDetails }) => {
             label: 'Manage Countries',
             icon: <LanguageIcon fontSize="large" />,
             route: '/countries',
+        },
+        {
+            label: 'Manage Users',
+            icon: <AccountCircleIcon fontSize="large" />,
+            route: '/usersManagement',
         },
 
     ];

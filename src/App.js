@@ -42,7 +42,7 @@ const AccountSettings = lazy(() => import('./components/profile/AccountSettings'
 const QuestionListing = lazy(() => import('./components/cars/QuestionList'));
 const NotFoundPage = lazy(() => import('./components/common/NotFoundPage'));
 const PaymentPage = lazy(() => import('./pages/Payment'));
-const Users = lazy(() => import('./pages/Users'));
+const UsersManagement = lazy(() => import('./pages/UsersManagement'));
 const NotificationsPage = lazy(() => import('./components/common/NotificationPage'))
 const CreateTagPage = lazy(() => import('./components/forum/CreateTagForm'))
 const CreateShowcase = lazy(() => import('./components/forum/CreateShowcase'))
@@ -171,7 +171,6 @@ const App = () => {
                                 <Route path="/questions/:questionId" element={<QuestionPage />} />
                                 <Route path="/payment" element={<PaymentPage />} />
                                 <Route path="*" element={<NotFoundPage />} />
-                                <Route path={"/users"} element={<Users />} />
                                 <Route path="/notifications" element={<NotificationsPage />} />
                                 <Route path="/manage-events" element={<EventManagement />} />
                                 <Route
@@ -238,6 +237,15 @@ const App = () => {
                                     element={
                                         <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
                                             <CountryManage />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/usersManagement"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN']} userDetails={userDetails}>
+                                            <UsersManagement />
                                         </RoleProtectedRoute>
                                     }
                                 />
