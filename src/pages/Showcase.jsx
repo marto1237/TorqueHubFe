@@ -55,7 +55,7 @@ const Showcase = () => {
                 const showcasesWithImages = await Promise.all(
                     response.content.map(async (showcase) => {
                         const imageUrl = await getFirebaseImage(showcase.id);
-                        return { ...showcase, image: imageUrl };
+                        return { ...showcase, image: imageUrl, views: showcase.views };
                     })
                 );
                 setShowcases(showcasesWithImages);
@@ -264,9 +264,7 @@ const Showcase = () => {
                                         </Box>
                                         <Box display="flex" alignItems="center">
                                             <Comment sx={{ marginRight: "5px" }} />
-                                            <Typography variant="body2">
-                                                {car.comments.length}
-                                            </Typography>
+                                            <Typography variant="body2">{car.commentsCount}</Typography>
                                         </Box>
                                     </Box>
                                 </Box>

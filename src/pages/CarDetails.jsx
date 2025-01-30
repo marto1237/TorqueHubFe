@@ -14,6 +14,7 @@ import { useTheme } from '@mui/material';
 import PostForm  from "../components/forum/PostForm";
 import WorldFlag from 'react-world-flags';
 import { format } from 'date-fns';
+import ShowcaseCommentsService from '../components/configuration/Services/ShowcaseCommentsService';
 
 const carShowcases = [
     {
@@ -56,6 +57,14 @@ const CarDetails = () => {
     const [answers, setAnswers] = useState([]);
     const [carImages, setCarImages] = useState([]);
 
+
+    const userDetails = sessionStorage.getItem('userDetails');
+
+    const parsedDetails = JSON.parse(userDetails);
+    const userId = parsedDetails.id;
+    
+
+    
      // Fetch showcase data using ShowcaseService and React Query
      const { data: showcase, isLoading, isError } = useQuery({
         queryKey: ['showcase', id],
@@ -162,20 +171,40 @@ const CarDetails = () => {
 
 
     // Function to handle comment voting
-    const handleCommentVote = (commentIndex, type) => {
-        const updatedComments = comments.map((comment, index) => {
-            if (index === commentIndex) {
-                // Clone the comment object and update its votes
-                return {
-                    ...comment,
-                    votes: comment.votes + (type === 'up' ? 1 : -1)
-                };
-            }
-            return comment; // Return unchanged comment if not the one being voted on
-        });
+    const handleCommentVote = async (commentId, type) => {
+        if (!userId) {
+            console.error("User ID is undefined.");
+            return;
+        }
+    
+        console.log(`Attempting to ${type}vote for comment ${commentId} by user ${userId}`);
 
-        setComments(updatedComments);  // Update the state with the new comments array
-    };
+        try {
+            let response;
+            if (type === 'up') {
+                response = await ShowcaseCommentsService.upvoteComment(commentId, userId);
+            } else {
+                response = await ShowcaseCommentsService.downvoteComment(commentId, userId);
+            }
+
+            console.log("Response from server:", response);
+    
+            if (response) {
+                // Update the votes in the UI state
+                setComments((prevComments) =>
+                    prevComments.map((comment) =>
+                        comment.id === commentId
+                            ? { ...comment, votes: comment.votes + (type === 'up' ? 1 : -1) }
+                            : comment
+                    )
+                );
+            } else {
+                console.error("Voting request failed.");
+            }
+        } catch (error) {
+            console.error("Error voting on comment:", error.response ? error.response.data : error.message);
+        }
+    };  
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.default, minHeight: '100vh' }}>
@@ -401,11 +430,11 @@ const CarDetails = () => {
 
                             {/* Comment Votes */}
                             <Box sx={{ marginTop: '5px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <IconButton onClick={() => handleCommentVote(index, 'up')}>
+                                <IconButton onClick={() => handleCommentVote(comment.id, 'up')}>
                                     <KeyboardArrowUp />
                                 </IconButton>
                                 <Typography>{comment.votes}</Typography>
-                                <IconButton onClick={() => handleCommentVote(index, 'down')}>
+                                <IconButton onClick={() => handleCommentVote(comment.id, 'down')}>
                                     <KeyboardArrowDown />
                                 </IconButton>
                             </Box>
