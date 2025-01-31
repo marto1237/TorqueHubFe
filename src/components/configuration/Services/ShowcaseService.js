@@ -50,9 +50,10 @@ const ShowcaseService = {
             .catch(error => Promise.reject(error));
     },
 
-    getShowcaseByID: (showcaseId) => {
+    getShowcaseByID: (showcaseId, userId = null) => {
         return showcaseAPI
             .get(`/showcase/${showcaseId}`, {
+                params: userId ? { userId } : {}, // Add userId if available
             })
             .then(response => response.data)
             .catch(error => Promise.reject(error));

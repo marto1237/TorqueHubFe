@@ -67,9 +67,9 @@ const CarDetails = () => {
     
      // Fetch showcase data using ShowcaseService and React Query
      const { data: showcase, isLoading, isError } = useQuery({
-        queryKey: ['showcase', id],
-        queryFn: async() => {
-            const response = await ShowcaseService.getShowcaseByID(id);
+        queryKey: ['showcase', id, userId], // Include userId in the queryKey to refetch when it changes
+        queryFn: async () => {
+            const response = await ShowcaseService.getShowcaseByID(id, userId);
             console.log("Fetched car details:", response)
             return response;
         },
@@ -194,7 +194,11 @@ const CarDetails = () => {
                 setComments((prevComments) =>
                     prevComments.map((comment) =>
                         comment.id === commentId
-                            ? { ...comment, votes: comment.votes + (type === 'up' ? 1 : -1) }
+                            ? { 
+                                ...comment, 
+                                votes: comment.votes + (type === 'up' ? 1 : -1),
+                                userVote: type // Update userVote state
+                            }
                             : comment
                     )
                 );
@@ -430,11 +434,15 @@ const CarDetails = () => {
 
                             {/* Comment Votes */}
                             <Box sx={{ marginTop: '5px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <IconButton onClick={() => handleCommentVote(comment.id, 'up')}>
+                                <IconButton 
+                                    onClick={() => handleCommentVote(comment.id, 'up')}
+                                    color={comment.userVote === 'up' ? 'primary' : 'inherit'}>
                                     <KeyboardArrowUp />
                                 </IconButton>
                                 <Typography>{comment.votes}</Typography>
-                                <IconButton onClick={() => handleCommentVote(comment.id, 'down')}>
+                                <IconButton 
+                                    onClick={() => handleCommentVote(comment.id, 'down')}
+                                    color={comment.userVote === 'down' ? 'primary' : 'inherit'}>
                                     <KeyboardArrowDown />
                                 </IconButton>
                             </Box>
