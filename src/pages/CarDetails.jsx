@@ -116,14 +116,24 @@ const CarDetails = () => {
 
 
     // Handle new comment submission
-    const handleCommentSubmit = (newCommentText) => {
-        const newComment = {
-            user: { username: 'New User' }, // Placeholder user
-            text: newCommentText,
-            votes: 0,
-        };
-        setComments([...comments, newComment]); // Add the new comment to the list
+    const handleCommentSubmit = async (submittedComment) => {
+        try {
+    
+            const commentData = {
+                showcaseId: showcase.id,
+                userId: userId,
+                text: submittedComment
+            };
+            const createdComment = await ShowcaseCommentsService.createComment(commentData);
+
+
+            setComments((prevComments) => [...prevComments, createdComment]);
+            setComment(''); // Reset the input field
+        } catch (error) {
+            console.error("Error creating comment:", error);
+        }
     };
+    
 
     const formatDate = (dateString) => {
         try {
@@ -459,6 +469,8 @@ const CarDetails = () => {
                         <PostForm  placeholder="Write your comment here..."
                                    buttonText="Submit comment"
                                    onSubmit={handleCommentSubmit}/>
+
+                        
 
                     </Box>
                 </CardContent>

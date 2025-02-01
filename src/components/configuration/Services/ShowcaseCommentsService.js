@@ -27,6 +27,31 @@ const ShowcaseCommentsService = {
         .then(response => response.data)
         .catch(error => Promise.reject(error));
     },
+
+    createComment: (commentData) => {
+        return showcaseAPI.post(`/comments`, commentData, {   
+            requiresAuth: true,
+        })
+        .then(response => response.data)
+        .catch(error => Promise.reject(error));
+    },
+
+    editComment: (commentId, commentupdateData) => {
+        return showcaseAPI.put(
+        `/comments/${commentId}`, commentupdateData, {
+            requiresAuth: true,
+        })
+        .then(response => response.data)
+        .catch(error => Promise.reject(error));
+    },
+
+    deleteComment: (commentId) => {
+        return showcaseAPI.delete(`/comments/${commentId}`, {
+            requiresAuth: true,
+        })
+        .then(response => response.data)
+        .catch(error => Promise.reject(error));
+    }
 };
 
 export default ShowcaseCommentsService;
