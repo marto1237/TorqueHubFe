@@ -22,6 +22,7 @@ import NotificationWebSocketService from '../configuration/WebSocket/Notificatio
 import NotificationService from "../configuration/Services/NotificationService";
 import { timeAgo } from  "../configuration/utils/TimeFormating"
 import AuthService from '../configuration/Services/AuthService';
+import AnnouncementDropdown from './AnnouncementDropdown';
 
 const logo = "/Logo.webp";
 
@@ -525,18 +526,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                             </Menu>
                             </MenuItem>
                             <MenuItem>
-                                <IconButton
-                                    size="small" // Reduce icon button size for mobile
-                                    aria-label="show mails"
-                                    color={theme.palette.mode === 'light' ? 'default' : 'inherit'}
-                                    sx={{ padding: { xs: '4px', sm: '6px' } }} 
-                                >
-                                    <Badge badgeContent={4} color="error">
-                                        <MailIcon
-                                            sx={{ fontSize: { xs: '1rem', sm: '1.5rem' },color: theme.palette.mode === 'light' ? 'black' : 'white' }}
-                                        />
-                                    </Badge>
-                                </IconButton>
+                                <AnnouncementDropdown userId={userId} />
                             </MenuItem>
 
                         </>
