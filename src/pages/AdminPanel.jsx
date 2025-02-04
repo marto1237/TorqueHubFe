@@ -9,6 +9,7 @@ import TagIcon from '@mui/icons-material/Tag';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import LanguageIcon from '@mui/icons-material/Language';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import AnnouncementIcon from '@mui/icons-material/Announcement';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -60,6 +61,7 @@ const AdminPanel = ({ userDetails }) => {
             icon: <AccountCircleIcon fontSize="large" />,
             route: '/usersManagement',
         },
+        { label: 'Manage General Announcements', icon: <AnnouncementIcon fontSize="large" />, route: '/manage-general-announcements' },
 
     ];
 

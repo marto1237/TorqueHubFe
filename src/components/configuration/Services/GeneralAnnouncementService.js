@@ -2,7 +2,7 @@ import ticktsAPI from '../ticketsAPI';
 
 const GeneralAnnouncementService = {
     
-    createAnnouncement: async (announcementData, token) => {
+    createAnnouncement: async (announcementData) => {
         try {
             const response = await ticktsAPI.post(`/announcements`, announcementData, {
                 requiresAuth: true,
@@ -13,7 +13,7 @@ const GeneralAnnouncementService = {
         }
     },
 
-    updateAnnouncement: async (announcementId, announcementData, token) => {
+    updateAnnouncement: async (announcementId, announcementData) => {
         try {
             const response = await ticktsAPI.put(`/announcements/${announcementId}`, announcementData, {
                 requiresAuth: true,
@@ -24,7 +24,7 @@ const GeneralAnnouncementService = {
         }
     },
 
-    deleteAnnouncement: async (announcementId, token) => {
+    deleteAnnouncement: async (announcementId) => {
         try {
             const response = await ticktsAPI.delete(`/announcements/${announcementId}`, {
                 requiresAuth: true,

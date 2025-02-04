@@ -21,10 +21,10 @@ const AnnouncementDropdown = ({ userId }) => {
 
     const fetchPersonalAnnouncements = async () => {
         try {
-            const personal = await UserAnnouncementService.getLatestAnnouncements(userId);
-            if (Array.isArray(personal)) {
-                setPersonalAnnouncements(personal);
-                const personalUnread = personal.filter(ann => !ann.isRead).length;
+            const response = await UserAnnouncementService.getLatestAnnouncements(userId);
+            if (response?.content && Array.isArray(response.content)) {
+                setPersonalAnnouncements(response.content); // Extract 'content' array
+                const personalUnread = response.content.filter(ann => !ann.isRead).length;
                 setUnreadCount(prev => prev + personalUnread);
             } else {
                 setPersonalAnnouncements([]); // Ensure it's an array
@@ -38,11 +38,11 @@ const AnnouncementDropdown = ({ userId }) => {
     const fetchGeneralAnnouncements = async () => {
         try {
             if (!generalLoaded) {
-                const general = await GeneralAnnouncementService.getGeneralAnnouncements();
-                if (Array.isArray(general)) {
-                    setGeneralAnnouncements(general);
+                const response = await GeneralAnnouncementService.getGeneralAnnouncements();
+                if (response?.content && Array.isArray(response.content)) {
+                    setGeneralAnnouncements(response.content);
                     setGeneralLoaded(true);
-                    const generalUnread = general.filter(ann => !ann.isRead).length;
+                    const generalUnread = response.content.filter(ann => !ann.isRead).length;
                     setUnreadCount(prev => prev + generalUnread);
                 } else {
                     setGeneralAnnouncements([]);
@@ -53,6 +53,7 @@ const AnnouncementDropdown = ({ userId }) => {
             setGeneralAnnouncements([]);
         }
     };
+    
 
     const handleOpenMenu = (event) => {
         setAnchorEl(event.currentTarget);
