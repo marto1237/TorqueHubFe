@@ -55,6 +55,38 @@ const GeneralAnnouncementService = {
         } catch (error) {
             return Promise.reject(error.response?.data || error);
         }
+    },
+    getUserAnnouncements: async (userId, page = 0, size = 10) => {
+        try {
+            const response = await ticktsAPI.get(`/announcements/user/${userId}`, {
+                params: { page, size }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
+    },
+
+    getEventAnnouncementsForUser: async (userId, page = 0, size = 10) => {
+        try {
+            const response = await ticktsAPI.get(`/announcements/user/${userId}/event-announcements`, {
+                params: { page, size }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
+    },
+
+    markAnnouncementAsRead: async (announcementId, userId) => {
+        try {
+            const response = await ticktsAPI.put(`/user-announcements/${announcementId}/mark-read`, null, {
+                params: { userId }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
     }
 };
 
