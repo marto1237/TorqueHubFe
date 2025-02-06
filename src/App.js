@@ -56,6 +56,7 @@ const TicketTagsManage = lazy(() => import('./components/forum/ManageEventTags')
 const CarCategoryManage = lazy(() => import('./components/forum/CarCaterogyManagement'))
 const CountryManage = lazy(() => import('./components/forum/ManageCountries'))
 const GeneralAnnouncements = lazy(() => import('./components/forum/ManageGeneralAnnouncements'))
+const AnnouncementDetails = lazy(() => import('./components/common/AnnouncementDetails')) ;
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -259,6 +260,8 @@ const App = () => {
                                         </RoleProtectedRoute>
                                     }
                                 />
+
+                                <Route path="/announcement/:id" element={<AnnouncementDetails />} />
 
                                 <Route
                                     path="/adminPanel"

@@ -87,6 +87,17 @@ const GeneralAnnouncementService = {
         } catch (error) {
             return Promise.reject(error.response?.data || error);
         }
+    },
+
+    getAnnouncementById: async(announcementId) => {
+        try {
+            const response = await ticktsAPI.get(`/announcements/${announcementId}`, {
+                params: { announcementId }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
     }
 };
 
