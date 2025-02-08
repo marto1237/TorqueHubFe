@@ -89,6 +89,8 @@ const ManageGeneralAnnouncements = () => {
                 setAnnouncements([...announcements, newAnnouncement]);
                 notifications.show('Announcement created successfully.', { autoHideDuration: 3000, severity: 'success' });
             }
+
+            fetchAnnouncements();
         } catch (error) {
             notifications.show('Failed to save announcement.', { autoHideDuration: 3000, severity: 'error' });
         } finally {
@@ -129,6 +131,14 @@ const ManageGeneralAnnouncements = () => {
         } finally {
             closeDeleteDialog();
         }
+    };
+
+    const resetDialog = () => {
+        setAnnouncementText('');
+        setSelectedAnnouncement(null);
+        setSelectedEvent(null);
+        setSelectedTicketType(null);
+        setIsEditDialogOpen(false);
     };
 
     const handlePageChange = (event, value) => {
@@ -181,13 +191,50 @@ const ManageGeneralAnnouncements = () => {
 
                 {/* List of Announcements */}
                 <List>
-                    {paginatedAnnouncements.map((announcement) => (
-                        <ListItem key={announcement.id}>
-                            <ListItemText primary={announcement.message} secondary={`Event: ${announcement.eventId || 'General'}`} />
+                    {announcements.map((announcement) => (
+                        <ListItem key={announcement.id} secondaryAction={
+                            <>
+                                <IconButton edge="end" onClick={() => handleEdit(announcement)}>
+                                    <EditIcon />
+                                </IconButton>
+                                <IconButton edge="end" onClick={() => openDeleteDialog(announcement)}>
+                                    <DeleteIcon />
+                                </IconButton>
+                            </>
+                        }>
+                            <ListItemText
+                                primary={<Typography variant="body1"><b>{announcement.type}</b>: {announcement.message}</Typography>}
+                                secondary={<Typography variant="caption">Event: {announcement.eventId || 'General'}</Typography>}
+                            />
                         </ListItem>
                     ))}
                 </List>
             </Paper>
+
+            {/* Edit Announcement Dialog */}
+            <Dialog open={isEditDialogOpen} onClose={resetDialog} fullWidth maxWidth="sm">
+                <DialogTitle>{selectedAnnouncement ? 'Edit Announcement' : 'Create Announcement'}</DialogTitle>
+                <DialogContent>
+                    <TextField fullWidth margin="normal" label="Message" variant="filled" value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={resetDialog} color="secondary">Cancel</Button>
+                    <Button onClick={handleCreateOrUpdate} color="primary" variant="contained">Save</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onClose={closeDeleteDialog}>
+                <DialogTitle>Confirm Delete</DialogTitle>
+                <DialogContent>
+                    <Typography>Are you sure you want to delete this announcement?</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="secondary">Cancel</Button>
+                    <Button onClick={handleDelete} color="error" variant="contained">Delete</Button>
+                </DialogActions>
+            </Dialog>
+
         </Box>
     );
 };
