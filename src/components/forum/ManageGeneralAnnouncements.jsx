@@ -69,38 +69,40 @@ const ManageGeneralAnnouncements = () => {
             notifications.show('Announcement text cannot be empty.', { autoHideDuration: 3000, severity: 'error' });
             return;
         }
-
+    
+        const announcementData = {
+            message: announcementText,
+            eventId: selectedEvent ? selectedEvent.id : null,
+            targetTicketTypeId: selectedTicketType ? selectedTicketType.id : null,
+            type: selectedEvent ? 'EVENT' : 'GENERAL'
+        };
+    
+        console.log("Sending update request:", announcementData); 
+    
         try {
-            const announcementData = {
-                message: announcementText,
-                eventId: selectedEvent ? selectedEvent.id : null,
-                targetTicketTypeId: selectedTicketType ? selectedTicketType.id : null,
-                type: selectedEvent ? 'EVENT' : 'GENERAL'
-            };
-
             if (selectedAnnouncement) {
+                console.log("Updating announcement with ID:", selectedAnnouncement.id); // 🔍 Debug log
                 await GeneralAnnouncementService.updateAnnouncement(selectedAnnouncement.id, announcementData);
                 setAnnouncements(announcements.map(ann =>
                     ann.id === selectedAnnouncement.id ? { ...ann, ...announcementData } : ann
                 ));
                 notifications.show('Announcement updated successfully.', { autoHideDuration: 3000, severity: 'success' });
             } else {
+                console.log("Creating new announcement"); // 🔍 Debug log
                 const newAnnouncement = await GeneralAnnouncementService.createAnnouncement(announcementData);
                 setAnnouncements([...announcements, newAnnouncement]);
                 notifications.show('Announcement created successfully.', { autoHideDuration: 3000, severity: 'success' });
             }
-
-            fetchAnnouncements();
+    
+            fetchAnnouncements(); 
+    
         } catch (error) {
+            console.error("Failed to save announcement:", error); // 🔍 Debug error log
             notifications.show('Failed to save announcement.', { autoHideDuration: 3000, severity: 'error' });
         } finally {
-            setAnnouncementText('');
-            setSelectedAnnouncement(null);
-            setSelectedEvent(null);
-            setSelectedTicketType(null);
-            setIsEditDialogOpen(false);
+            resetDialog();
         }
-    };
+    };    
 
     const handleEdit = (announcement) => {
         setSelectedAnnouncement(announcement);

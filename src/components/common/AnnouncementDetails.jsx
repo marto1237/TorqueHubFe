@@ -38,6 +38,11 @@ const AnnouncementDetails = ({ userId }) => {
     };
 
     const markAsRead = async () => {
+        if (!userId) {
+            console.error("User ID is missing. Cannot mark announcement as read.");
+            return;
+        }
+        
         try {
             await GeneralAnnouncementService.markAnnouncementAsRead(id, userId);
             navigate(-1); // Go back after marking as read

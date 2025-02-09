@@ -261,7 +261,8 @@ const App = () => {
                                     }
                                 />
 
-                                <Route path="/announcement/:id" element={<AnnouncementDetails />} />
+                                <Route path="/announcement/:id" element={<AnnouncementDetails userId={userDetails?.id} />} />
+
 
                                 <Route
                                     path="/adminPanel"
