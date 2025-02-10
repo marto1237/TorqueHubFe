@@ -57,6 +57,7 @@ const CarCategoryManage = lazy(() => import('./components/forum/CarCaterogyManag
 const CountryManage = lazy(() => import('./components/forum/ManageCountries'))
 const GeneralAnnouncements = lazy(() => import('./components/forum/ManageGeneralAnnouncements'))
 const AnnouncementDetails = lazy(() => import('./components/common/AnnouncementDetails')) ;
+const EventAnnouncements = lazy(() => import('./components/forum/ManageEventAnnouncements'))
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -257,6 +258,15 @@ const App = () => {
                                     element={
                                         <RoleProtectedRoute roles={['ADMIN']} userDetails={userDetails}>
                                             <GeneralAnnouncements />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/manage-event-announcements"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR', 'EVENT_ORGANISER']} userDetails={userDetails}>
+                                            <EventAnnouncements />
                                         </RoleProtectedRoute>
                                     }
                                 />

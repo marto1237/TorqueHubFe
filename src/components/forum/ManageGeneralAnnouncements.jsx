@@ -19,6 +19,7 @@ const ManageGeneralAnnouncements = () => {
     const notifications = useAppNotifications();
 
     const [announcements, setAnnouncements] = useState([]);
+    const [totalPages, setTotalPages] = useState(1);
     const [announcementText, setAnnouncementText] = useState('');
     const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -30,25 +31,45 @@ const ManageGeneralAnnouncements = () => {
     const [ticketTypes, setTicketTypes] = useState([]);
     const [selectedTicketType, setSelectedTicketType] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
         fetchAnnouncements();
         fetchEvents();
-    }, []);
+    }, [page]);
 
     const fetchAnnouncements = async () => {
         try {
-            const response = await GeneralAnnouncementService.getGeneralAnnouncements(page - 1, ITEMS_PER_PAGE);
-            setAnnouncements(response.content || []);  
+            let response;
+            if (searchTerm.trim()) {
+                response = await GeneralAnnouncementService.searchGeneralAnnouncements(searchTerm, page - 1, ITEMS_PER_PAGE);
+            } else {
+                response = await GeneralAnnouncementService.getGeneralAnnouncements(page - 1, ITEMS_PER_PAGE);
+            }
+            setAnnouncements(response.content || []);
+            setTotalPages(response.totalPages || 1);
         } catch (error) {
             notifications.show('Failed to fetch announcements', { autoHideDuration: 3000, severity: 'error' });
             console.error('Failed to fetch announcements:', error);
         }
     };
 
+    const handleSearch = async () => {
+        setIsSearching(true);
+        setPage(1); // Reset to first page when searching
+        fetchAnnouncements();
+    };
+
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        setIsSearching(false);
+        setPage(1);
+        fetchAnnouncements();
+    };
+
     const fetchEvents = async () => {
         try {
-            const response = await EventService.findAllEvents(0, 50); // Fetch all events initially
+            const response = await EventService.findAllEvents(0, 10); // Fetch all events initially
             setEventOptions(response.content || []);
         } catch (error) {
             console.error('Error fetching events:', error);
@@ -77,19 +98,19 @@ const ManageGeneralAnnouncements = () => {
             type: selectedEvent ? 'EVENT' : 'GENERAL'
         };
     
-        console.log("Sending update request:", announcementData); 
     
         try {
             if (selectedAnnouncement) {
-                console.log("Updating announcement with ID:", selectedAnnouncement.id); // 🔍 Debug log
-                await GeneralAnnouncementService.updateAnnouncement(selectedAnnouncement.id, announcementData);
+                const response = await GeneralAnnouncementService.updateAnnouncement(selectedAnnouncement.id, announcementData);
+                console.log("🟢 API Response:", response);
+    
                 setAnnouncements(announcements.map(ann =>
                     ann.id === selectedAnnouncement.id ? { ...ann, ...announcementData } : ann
                 ));
                 notifications.show('Announcement updated successfully.', { autoHideDuration: 3000, severity: 'success' });
             } else {
-                console.log("Creating new announcement"); // 🔍 Debug log
                 const newAnnouncement = await GeneralAnnouncementService.createAnnouncement(announcementData);
+    
                 setAnnouncements([...announcements, newAnnouncement]);
                 notifications.show('Announcement created successfully.', { autoHideDuration: 3000, severity: 'success' });
             }
@@ -97,12 +118,13 @@ const ManageGeneralAnnouncements = () => {
             fetchAnnouncements(); 
     
         } catch (error) {
-            console.error("Failed to save announcement:", error); // 🔍 Debug error log
+            console.error("🔴 API Error:", error.response?.data || error);
             notifications.show('Failed to save announcement.', { autoHideDuration: 3000, severity: 'error' });
         } finally {
             resetDialog();
         }
-    };    
+    };
+        
 
     const handleEdit = (announcement) => {
         setSelectedAnnouncement(announcement);
@@ -187,9 +209,30 @@ const ManageGeneralAnnouncements = () => {
                     onChange={e => setAnnouncementText(e.target.value)}
                     sx={{ marginBottom: '1rem' }}
                 />
-                <Button variant="contained" color="primary" onClick={handleCreateOrUpdate} startIcon={<AddCircleOutlineIcon />}>
+                <Button variant="contained" color="primary" onClick={handleCreateOrUpdate} startIcon={<AddCircleOutlineIcon />} sx={{ marginBottom: '1rem' }}>
                     {selectedAnnouncement ? 'Edit' : 'Create'}
                 </Button>
+
+                <TextField
+                    label="Search Announcements"
+                    fullWidth
+                    variant="filled"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    sx={{ marginBottom: '1rem' }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, marginBottom: '1rem' }}>
+                    <Button variant="contained" color="primary" onClick={handleSearch}>
+                        Search
+                    </Button>
+                    {isSearching && (
+                        <Button variant="outlined" color="secondary" onClick={handleClearSearch}>
+                            Clear Search
+                        </Button>
+                    )}
+                </Box>
+
 
                 {/* List of Announcements */}
                 <List>
@@ -211,6 +254,16 @@ const ManageGeneralAnnouncements = () => {
                         </ListItem>
                     ))}
                 </List>
+
+                {totalPages > 1 && (
+                    <Pagination
+                        count={totalPages}
+                        page={page}
+                        onChange={handlePageChange}
+                        sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
+                    />
+                )}
+
             </Paper>
 
             {/* Edit Announcement Dialog */}

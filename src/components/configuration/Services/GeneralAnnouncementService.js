@@ -98,7 +98,18 @@ const GeneralAnnouncementService = {
         } catch (error) {
             return Promise.reject(error.response?.data || error);
         }
-    }
+    },
+    searchGeneralAnnouncements: async (keyword, page = 0, size = 10) => {
+        try {
+            const response = await ticktsAPI.get(`/announcements/general/search`, {
+                params: { keyword, page, size }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
+    },
+    
 };
 
 export default GeneralAnnouncementService;
