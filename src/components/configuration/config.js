@@ -8,6 +8,11 @@ const WEBSOCKET_URL =
         ? "ws://localhost:8080/ws"
         : "ws://localhost/ws";
 
+const ANNOUNCEMENT_WEBSOCKET_URL =
+    process.env.NODE_ENV === "development"
+            ? "ws://localhost:8081/ws"
+            : "ws://localhost/ws";
+
 const API_BASE_URL_SHOWCASE =
 process.env.NODE_ENV === "development"
     ? "http://localhost:8082" // Showcase API
@@ -20,5 +25,6 @@ process.env.NODE_ENV === "development"
 
 export { API_BASE_URL, WEBSOCKET_URL,
          API_BASE_URL_SHOWCASE,
-         API_BASE_URL_TICKETS
+         API_BASE_URL_TICKETS,
+         ANNOUNCEMENT_WEBSOCKET_URL
  };

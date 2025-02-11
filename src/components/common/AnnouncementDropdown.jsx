@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import UserAnnouncementService from '../configuration/Services/UserAnnouncementService';
 import GeneralAnnouncementService from '../configuration/Services/GeneralAnnouncementService';
 import { timeAgo } from '../configuration/utils/TimeFormating';
+import AnnouncementWebSocketClient from '../configuration/WebSocket/AnnouncementWebSocketClient'; 
+
 
 const AnnouncementDropdown = ({ userId }) => {
     const [anchorEl, setAnchorEl] = useState(null);
@@ -20,6 +22,21 @@ const AnnouncementDropdown = ({ userId }) => {
         if (userId) {
             fetchPersonalAnnouncements();
         }
+
+        // Initialize WebSocket Client
+        const announcementService = AnnouncementWebSocketClient();
+        announcementService.connect(() => {
+            // Subscribe to different announcement topics
+            announcementService.subscribe('/topic/announcements/general', handleNewGeneralAnnouncement);
+            announcementService.subscribe('/topic/announcements/event', handleNewEventAnnouncement);
+            announcementService.subscribe(`/topic/announcements/user/${userId}`, handleNewPersonalAnnouncement);
+        });
+
+        // Cleanup function to unsubscribe & disconnect WebSocket on unmount
+        return () => {
+            announcementService.disconnect();
+        };
+
     }, [userId]);
 
     const fetchPersonalAnnouncements = async () => {
@@ -33,7 +50,6 @@ const AnnouncementDropdown = ({ userId }) => {
                 setPersonalAnnouncements([]); // Ensure it's an array
             }
         } catch (error) {
-            console.error('Error fetching personal announcements:', error);
             setPersonalAnnouncements([]); // Prevent crashing
         }
     };
@@ -52,7 +68,6 @@ const AnnouncementDropdown = ({ userId }) => {
                 }
             }
         } catch (error) {
-            console.error('Error fetching general announcements:', error);
             setGeneralAnnouncements([]);
         }
     };
@@ -69,6 +84,21 @@ const AnnouncementDropdown = ({ userId }) => {
             console.error('Error fetching event announcements:', error);
             setEventAnnouncements([]);
         }
+    };
+
+    const handleNewGeneralAnnouncement = (announcement) => {
+        setGeneralAnnouncements(prev => [announcement, ...prev]);
+        setUnreadCount(prev => prev + 1);
+    };
+
+    const handleNewEventAnnouncement = (announcement) => {
+        setEventAnnouncements(prev => [announcement, ...prev]);
+        setUnreadCount(prev => prev + 1);
+    };
+
+    const handleNewPersonalAnnouncement = (announcement) => {
+        setPersonalAnnouncements(prev => [announcement, ...prev]);
+        setUnreadCount(prev => prev + 1);
     };
 
 
