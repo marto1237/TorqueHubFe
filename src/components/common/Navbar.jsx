@@ -72,7 +72,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                 try {
                     const unreadNotifications = await NotificationService.getUnreadNotifications(userId);
                     setNotifications(unreadNotifications);
-                    setUnreadCount(unreadNotifications[0].count );
+                    setUnreadCount(unreadNotifications[0]?.count || 0)
                 } catch (error) {
                     console.error('Error fetching notifications:', error);
                 }
