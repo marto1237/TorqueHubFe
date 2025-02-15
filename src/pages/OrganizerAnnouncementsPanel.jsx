@@ -214,19 +214,6 @@ const OrganizerDashboardPanel = ({ userId }) => {
         setSelectedEvent(null);
     };
 
-    const handleSaveEventChanges = async () => {
-        const confirmSave = window.confirm("Are you sure you want to save changes?");
-        if (!confirmSave) return;
-
-        try {
-            await EventService.updateEvent(selectedEvent);
-            notifications.show('Event updated successfully', { severity: 'success' });
-            fetchOrganizerEvents();
-        } catch (error) {
-            notifications.show('Failed to update event', { severity: 'error' });
-        }
-        handleCloseEventDialog();
-    };
 
     const handleEditSave = async () => {
         try {
@@ -246,8 +233,13 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 allowedCars: selectedEvent.allowedCars.map((car) => (typeof car === 'string' ? car : car.name)), // Map car names
             };
 
+            console.log("Update Event Request Payload:", updatePayload);
+
             await EventService.updateEvent(updatePayload);
-            notifications.show('Event updated successfully!', { severity: 'success' });
+            notifications.show('Event was been update successfully!', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
 
             queryClient.invalidateQueries(['events']);
             fetchOrganizerEvents();
@@ -539,7 +531,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseEventDialog}>Cancel</Button>
-                    <Button onClick={handleSaveEventChanges} variant="contained">Save</Button>
+                    <Button onClick={handleEditSave} variant="contained">Save</Button>
                 </DialogActions>
             </Dialog>
 
