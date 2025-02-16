@@ -14,6 +14,8 @@ import AnnouncementService from '../components/configuration/Services/GeneralAnn
 import { useAppNotifications } from '../components/common/NotificationProvider';
 import { format } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import EventFilterPanel from '../components/common/EventFilterPanel';
+import EventFilterService from '../components/configuration/Services/EventFilterService';
 
 const OrganizerDashboardPanel = ({ userId }) => {
     const theme = useTheme();
@@ -22,6 +24,10 @@ const OrganizerDashboardPanel = ({ userId }) => {
 
     // Tabs State
     const [activeTab, setActiveTab] = useState(0);
+    const [filteredEvents, setFilteredEvents] = useState([]);
+    const [isFiltered, setIsFiltered] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
 
     const [openEditDialog, setOpenEditDialog] = useState(false);
 
@@ -191,7 +197,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 setTicketTypes([]);
             }
         } catch (error) {
-            notifications.show('Failed to fetch ticket types', { severity: 'error' });
+            notifications.show('Failed to fetch ticket types', {autoHideDuration: 3000, severity: 'error' });
         }
     };
 
@@ -199,6 +205,30 @@ const OrganizerDashboardPanel = ({ userId }) => {
         setSelectedEvent(null);
         setOpenEditDialog(false);
     };
+
+    const handleFilter = async (filters) => {
+    
+        setIsLoading(true);
+        setIsFiltered(true);
+    
+        try {
+            const response = await EventFilterService.filterEvents(filters);
+            console.log("API Response:", response); // ✅ Log API response
+    
+            setFilteredEvents(response.content);
+        } catch (error) {
+            console.error("Error filtering events:", error);
+            notifications.show("Failed to filter events", { autoHideDuration: 3000, severity: "error" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleClearFilters = () => {
+        setFilteredEvents([]);
+        setIsFiltered(false); // ✅ Reset to default state
+    };
+    
 
     // --------------------------- EVENT ACTIONS ---------------------------
     const handleOpenEventDialog = (event) => {
@@ -233,7 +263,6 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 allowedCars: selectedEvent.allowedCars.map((car) => (typeof car === 'string' ? car : car.name)), // Map car names
             };
 
-            console.log("Update Event Request Payload:", updatePayload);
 
             await EventService.updateEvent(updatePayload);
             notifications.show('Event was been update successfully!', {
@@ -243,7 +272,15 @@ const OrganizerDashboardPanel = ({ userId }) => {
 
             queryClient.invalidateQueries(['events']);
             fetchOrganizerEvents();
-            handleCloseEditDialog();
+
+            setEvents((prevEvents) =>
+                prevEvents.map((event) =>
+                    event.id === selectedEvent.id ? { ...event, ...updatePayload } : event
+                )
+            );
+
+            setSelectedEvent(prev => ({ ...prev, ...updatePayload }));
+            setOpenEventDialog(false); 
         } catch (error) {
             console.error('Error updating event:', error);
             notifications.show('Error updating event.', { severity: 'error' });
@@ -251,11 +288,9 @@ const OrganizerDashboardPanel = ({ userId }) => {
     };
 
     const handleDeleteClick = async (eventId) => {
-        if (!window.confirm("Are you sure you want to delete this event?")) return;
-    
         try {
             await EventService.deleteEvent(eventId);
-            notifications.show('Event deleted successfully!', {
+            notifications.show('The event was been deleted successfully!', {
                 autoHideDuration: 3000,
                 severity: 'success',
             });
@@ -313,6 +348,8 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 </Typography>
                 <Divider sx={{ mb: '1rem' }} />
 
+                <EventFilterPanel onFilter={handleFilter} />
+
                 <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)} centered>
                     <Tab label="Events" />
                     <Tab label="Ticket Types" disabled={!selectedEvent} />
@@ -322,26 +359,26 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 {/* Events Tab */}
                 {activeTab === 0 && (
                     <List>
-                        {events.map((event) => (
-                            <ListItem key={event.id} secondaryAction={
-                                <>
-                                    <IconButton onClick={() => handleOpenEventDialog(event)}>
-                                        <EditIcon />
-                                    </IconButton>
-                                    <IconButton onClick={() => handleOpenEventDialog(event)}>
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </>
-                                
-                            }>
-                                <ListItemText
-                                    primary={event.name}
-                                    secondary={`Date: ${event.date}`}
-                                    onClick={() => { setSelectedEvent(event); fetchTicketTypes(event.id); setActiveTab(1); }}
-                                    sx={{ cursor: 'pointer' }}
-                                />
-                            </ListItem>
-                        ))}
+                        {isLoading ? (
+                            <Typography sx={{ textAlign: "center", padding: "10px" }}>Loading events...</Typography>
+                        ) : isFiltered && filteredEvents.length === 0 ? (
+                            <Typography sx={{ textAlign: "center", padding: "10px" }}>No events found. Try adjusting filters.</Typography>
+                        ) : (
+                            (isFiltered ? filteredEvents : events).map((event) => (
+                                <ListItem key={event.id} secondaryAction={
+                                    <>
+                                        <IconButton onClick={() => handleOpenEventDialog(event)}>
+                                            <EditIcon />
+                                        </IconButton>
+                                        <IconButton onClick={() => handleDeleteClick(event.id)}>
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </>
+                                }>
+                                    <ListItemText primary={event.name} secondary={`Date: ${event.date}`} />
+                                </ListItem>
+                            ))
+                        )}
                     </List>
                 )}
 
