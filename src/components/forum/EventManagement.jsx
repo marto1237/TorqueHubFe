@@ -71,6 +71,9 @@ const EventManagement = () => {
     const [existingImages, setExistingImages] = useState([]); // Images from the server
     const [newImages, setNewImages] = useState([]); // Newly uploaded images
 
+    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState(null);
+
 
     
     const fetchEventImages = async (eventId) => {
@@ -275,6 +278,40 @@ const EventManagement = () => {
             });
         }
     };
+
+    const confirmDeleteEvent = (eventId) => {
+        setEventToDelete(eventId);
+        setOpenDeleteDialog(true);
+    };
+
+
+    const handleDeleteConfirm = async () => {
+        if (!eventToDelete) {
+            console.error('No event ID to delete.');
+            return;
+        }
+    
+        try {
+            await EventService.deleteEvent(eventToDelete);
+            notifications.show('Event deleted successfully!', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
+    
+            queryClient.invalidateQueries(['events']); // Refresh event list
+        } catch (error) {
+            console.error('Error deleting event:', error);
+            notifications.show('Error deleting event', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
+        }
+    
+        setOpenDeleteDialog(false); // Close dialog after deletion
+        setEventToDelete(null); // Reset state
+    };
+    
+    
 
     const handleInputChange = (field, value) => {
         setSelectedEvent((prevEvent) => ({
@@ -588,7 +625,7 @@ const EventManagement = () => {
                                     size="small"
                                     variant="contained"
                                     color="error"
-                                    onClick={() => handleDeleteClick(event.id)}
+                                    onClick={() => confirmDeleteEvent(event.id)}
                                 >
                                     Delete
                                 </Button>
@@ -947,6 +984,33 @@ const EventManagement = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Delete Event Confirmation Dialog */}
+            <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                    Confirm Deletion
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" sx={{ marginBottom: 1 }}>
+                        Are you sure you want to permanently delete this event?
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                        {events.content.find((e) => e.id === eventToDelete)?.name || "Unknown Event"}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ marginTop: 1 }}>
+                        This action <strong>cannot</strong> be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDeleteDialog(false)} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+                        Delete Event
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
         </Box>
     );
 };

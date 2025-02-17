@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Button, Typography, Paper, Divider, List, ListItem, ListItemText, IconButton, Tabs, Tab,
-    Dialog, DialogTitle, DialogContent, TextField, DialogActions, Autocomplete
+    Dialog, DialogTitle, DialogContent, TextField, DialogActions, Autocomplete,
+    Pagination
 } from '@mui/material';
 import { storage } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL, listAll } from 'firebase/storage';
@@ -16,11 +17,16 @@ import { format } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import EventFilterPanel from '../components/common/EventFilterPanel';
 import EventFilterService from '../components/configuration/Services/EventFilterService';
+import GeneralAnnouncementService from '../components/configuration/Services/GeneralAnnouncementService';
 
 const OrganizerDashboardPanel = ({ userId }) => {
     const theme = useTheme();
     const notifications = useAppNotifications();
     const queryClient = useQueryClient();
+
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [size] = useState(12);
 
     // Tabs State
     const [activeTab, setActiveTab] = useState(0);
@@ -30,6 +36,9 @@ const OrganizerDashboardPanel = ({ userId }) => {
 
 
     const [openEditDialog, setOpenEditDialog] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState(null);
+
 
     // Events State
     const [events, setEvents] = useState([]);
@@ -48,25 +57,66 @@ const OrganizerDashboardPanel = ({ userId }) => {
     const [openTicketDialog, setOpenTicketDialog] = useState(false);
 
     // Announcement State
+    const [announcementType, setAnnouncementType] = useState("general");
     const [announcementText, setAnnouncementText] = useState("");
     const [openAnnouncementDialog, setOpenAnnouncementDialog] = useState(false);
+    const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+    const [announcements, setAnnouncements] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
+    
+    const [totalPages, setTotalPages] = useState(0);
 
     useEffect(() => {
         if (userId) {
             fetchOrganizerEvents();
         }
-    }, [userId]);
+    }, [userId, page]);
+
+    const openDeleteDialog = (event) => {
+        setEventToDelete(event);
+        setIsDeleteDialogOpen(true);
+    };
+    
+    const closeDeleteDialog = () => {
+        setIsDeleteDialogOpen(false);
+        setEventToDelete(null);
+    };
+    
+    const handleDeleteConfirm = async () => {
+        if (!eventToDelete) return;
+    
+        try {
+            await EventService.deleteEvent(eventToDelete.id);
+            notifications.show('Event deleted successfully!', { autoHideDuration: 3000, severity: 'success' });
+    
+            queryClient.invalidateQueries(['events']); // Refresh event list
+            setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventToDelete.id));
+    
+        } catch (error) {
+            notifications.show('Failed to delete event', { autoHideDuration: 3000, severity: 'error' });
+        } finally {
+            closeDeleteDialog(); // Close dialog regardless of success/failure
+        }
+    };
+    
+    
 
     const fetchOrganizerEvents = async () => {
         try {
-            const response = await EventService.findAllEventsByUserId(userId);
+            const response = await EventService.findAllEventsByUserId(userId, page, size);
             if (response?.content) {
                 setEvents(response.content);
+                setTotalPages(response.totalPages);
             }
         } catch (error) {
             notifications.show('Failed to fetch events', { severity: 'error' });
         }
     };
+
+    const handlePageChange = (event, value) => {
+        setPage(value - 1);
+    };
+
 
     const fetchEventImages = async (eventId) => {
         try {
@@ -331,6 +381,73 @@ const OrganizerDashboardPanel = ({ userId }) => {
     };
 
     // --------------------------- ANNOUNCEMENT ACTIONS ---------------------------
+
+    useEffect(() => {
+        fetchGeneralAnnouncements();
+    }, []);
+    
+    const fetchGeneralAnnouncements = async () => {
+        try {
+            const response = await GeneralAnnouncementService.getGeneralAnnouncements();
+            setAnnouncements(response.content || []);
+        } catch (error) {
+            notifications.show("Failed to fetch announcements", { severity: "error" });
+        }
+    };
+
+    const handleSaveAnnouncement = async () => {
+        if (!announcementText) {
+            notifications.show("Please enter an announcement message", { severity: "warning" });
+            return;
+        }
+    
+        const announcementData = {
+            eventId: selectedEvent?.id,
+            message: announcementText,
+            type: announcementType,
+            ticketTypeId: announcementType === "ticket" ? selectedTicketType?.id : null,
+            recipientUserId: announcementType === "personal" ? selectedUser?.id : null,
+        };
+    
+        try {
+            if (editingAnnouncement) {
+                await GeneralAnnouncementService.updateAnnouncement(editingAnnouncement.id, announcementData);
+                notifications.show("Announcement updated successfully!", { severity: "success" });
+            } else {
+                await GeneralAnnouncementService.createAnnouncement(announcementData);
+                notifications.show("Announcement created successfully!", { severity: "success" });
+            }
+    
+            fetchGeneralAnnouncements(); // Refresh announcements
+            setOpenAnnouncementDialog(false);
+            setAnnouncementText("");
+            setEditingAnnouncement(null);
+        } catch (error) {
+            notifications.show("Failed to save announcement", { severity: "error" });
+        }
+    };
+
+    const handleEditAnnouncement = (announcement) => {
+        setEditingAnnouncement(announcement);
+        setAnnouncementText(announcement.message);
+        setAnnouncementType(announcement.type);
+        setOpenAnnouncementDialog(true);
+    };
+    
+    const handleDeleteAnnouncement = async (announcementId) => {
+        if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+    
+        try {
+            await GeneralAnnouncementService.deleteAnnouncement(announcementId);
+            notifications.show("Announcement deleted successfully!", { severity: "success" });
+            fetchGeneralAnnouncements();
+        } catch (error) {
+            notifications.show("Failed to delete announcement", { severity: "error" });
+        }
+    };
+    
+    
+    
     const handleOpenAnnouncementDialog = () => {
         setOpenAnnouncementDialog(true);
     };
@@ -370,9 +487,10 @@ const OrganizerDashboardPanel = ({ userId }) => {
                                         <IconButton onClick={() => handleOpenEventDialog(event)}>
                                             <EditIcon />
                                         </IconButton>
-                                        <IconButton onClick={() => handleDeleteClick(event.id)}>
+                                        <IconButton onClick={() => openDeleteDialog(event)}>
                                             <DeleteIcon />
                                         </IconButton>
+
                                     </>
                                 }>
                                     <ListItemText primary={event.name} secondary={`Date: ${event.date}`} />
@@ -403,9 +521,34 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 {/* Announcements Tab */}
                 {activeTab === 2 && (
                     <Box sx={{ textAlign: 'center', mt: 2 }}>
-                        <Button variant="contained" onClick={handleOpenAnnouncementDialog}>
+                        <Button variant="contained" onClick={() => setOpenAnnouncementDialog(true)}>
                             Create Announcement
                         </Button>
+                        <List sx={{ mt: 2 }}>
+                            {announcements.length === 0 ? (
+                                <Typography sx={{ textAlign: "center", padding: "10px" }}>
+                                    No announcements yet.
+                                </Typography>
+                            ) : (
+                                announcements.map((announcement) => (
+                                    <ListItem key={announcement.id} secondaryAction={
+                                        <>
+                                            <IconButton onClick={() => handleEditAnnouncement(announcement)}>
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton onClick={() => handleDeleteAnnouncement(announcement.id)}>
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </>
+                                    }>
+                                        <ListItemText
+                                            primary={announcement.message}
+                                            secondary={`Type: ${announcement.type}`}
+                                        />
+                                    </ListItem>
+                                ))
+                            )}
+                        </List>
                     </Box>
                 )}
             </Paper>
@@ -597,6 +740,95 @@ const OrganizerDashboardPanel = ({ userId }) => {
                     <Button onClick={handleEditSave} variant="contained">Save</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onClose={closeDeleteDialog}>
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                    Confirm Deletion
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to permanently delete this event?
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                        {eventToDelete?.name || "Unknown Event"}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ marginTop: 1 }}>
+                        This action <strong>cannot</strong> be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeDeleteDialog} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+                        Delete Event
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                <Pagination
+                    count={totalPages} // Total pages from API response
+                    page={page + 1} // Material-UI Pagination uses 1-indexed pages
+                    onChange={handlePageChange}
+                    color="primary"
+                />
+            </Box>
+
+            <Dialog open={openAnnouncementDialog} onClose={() => setOpenAnnouncementDialog(false)}>
+                <DialogTitle>{editingAnnouncement ? "Edit Announcement" : "Create Announcement"}</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Announcement Message"
+                        variant="filled"
+                        value={announcementText}
+                        onChange={(e) => setAnnouncementText(e.target.value)}
+                        sx={{ mb: 2 }}
+                    />
+
+                    <Autocomplete
+                        options={["general", "ticket", "personal"]}
+                        getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
+                        value={announcementType}
+                        onChange={(event, newValue) => setAnnouncementType(newValue)}
+                        renderInput={(params) => <TextField {...params} label="Announcement Type" variant="filled" />}
+                        sx={{ mb: 2 }}
+                    />
+
+                    {announcementType === "ticket" && (
+                        <Autocomplete
+                            options={ticketTypes}
+                            getOptionLabel={(option) => option.name}
+                            value={selectedTicketType}
+                            onChange={(event, newValue) => setSelectedTicketType(newValue)}
+                            renderInput={(params) => <TextField {...params} label="Ticket Type" variant="filled" />}
+                        />
+                    )}
+
+                    {announcementType === "personal" && (
+                        <Autocomplete
+                            /*options={users}*/ 
+                            getOptionLabel={(option) => option.name}
+                            value={selectedUser}
+                            onChange={(event, newValue) => setSelectedUser(newValue)}
+                            renderInput={(params) => <TextField {...params} label="Select User" variant="filled" />}
+                        />
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenAnnouncementDialog(false)} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSaveAnnouncement} color="primary" variant="contained">
+                        {editingAnnouncement ? "Update" : "Create"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
         </Box>
     );
 };
