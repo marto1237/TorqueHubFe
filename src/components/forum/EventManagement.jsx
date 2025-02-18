@@ -504,7 +504,6 @@ const EventManagement = () => {
                 price: ticketToUpdate.price,
                 eventId: selectedEvent.id,
                 availableTickets: ticketToUpdate.availableTickets,
-                totalTickets: ticketToUpdate.totalTickets,
                 
             });
     

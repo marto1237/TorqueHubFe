@@ -18,6 +18,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import EventFilterPanel from '../components/common/EventFilterPanel';
 import EventFilterService from '../components/configuration/Services/EventFilterService';
 import GeneralAnnouncementService from '../components/configuration/Services/GeneralAnnouncementService';
+import DOMPurify from 'dompurify';
 
 const OrganizerDashboardPanel = ({ userId }) => {
     const theme = useTheme();
@@ -55,6 +56,22 @@ const OrganizerDashboardPanel = ({ userId }) => {
     const [ticketTypes, setTicketTypes] = useState([]);
     const [selectedTicketType, setSelectedTicketType] = useState(null);
     const [openTicketDialog, setOpenTicketDialog] = useState(false);
+    const [openDeleteTicketDialog, setOpenDeleteTicketDialog] = useState(false);
+    const [ticketToDelete, setTicketToDelete] = useState(null);
+    const [openTicketCreateDialog, setOpenTicketCreateDialog] = useState(false);
+    const [newTicketType, setNewTicketType] = useState({
+        name: '',
+        price: '',
+        totalTickets: '',
+        availableTickets: '',
+    });
+    
+    const [errors, setErrors] = useState({
+        name: '',
+        price: '',
+        totalTickets: '',
+    });
+    
 
     // Announcement State
     const [announcementType, setAnnouncementType] = useState("general");
@@ -109,7 +126,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 setTotalPages(response.totalPages);
             }
         } catch (error) {
-            notifications.show('Failed to fetch events', { severity: 'error' });
+            notifications.show('Failed to fetch events', {autoHideDuration: 3000, severity: 'error' });
         }
     };
 
@@ -263,7 +280,6 @@ const OrganizerDashboardPanel = ({ userId }) => {
     
         try {
             const response = await EventFilterService.filterEvents(filters);
-            console.log("API Response:", response); // ✅ Log API response
     
             setFilteredEvents(response.content);
         } catch (error) {
@@ -276,7 +292,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
 
     const handleClearFilters = () => {
         setFilteredEvents([]);
-        setIsFiltered(false); // ✅ Reset to default state
+        setIsFiltered(false); 
     };
     
 
@@ -333,7 +349,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
             setOpenEventDialog(false); 
         } catch (error) {
             console.error('Error updating event:', error);
-            notifications.show('Error updating event.', { severity: 'error' });
+            notifications.show('Error updating event.', {autoHideDuration: 3000, severity: 'error' });
         }
     };
 
@@ -358,6 +374,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
     // --------------------------- TICKET TYPE ACTIONS ---------------------------
     const handleOpenTicketDialog = (ticketType) => {
         setSelectedTicketType({ ...ticketType });
+        console.log("Selected Ticket Type:", ticketType);
         setOpenTicketDialog(true);
     };
 
@@ -367,19 +384,106 @@ const OrganizerDashboardPanel = ({ userId }) => {
     };
 
     const handleSaveTicketChanges = async () => {
-        const confirmSave = window.confirm("Are you sure you want to update this ticket?");
-        if (!confirmSave) return;
-
+        if (!selectedTicketType) return;
+        
+    
         try {
-            await TicketTypeService.updateTicketType(selectedTicketType);
-            notifications.show('Ticket updated successfully', { severity: 'success' });
+    
+            const updatePayload = {
+                userId: userId,
+                name: selectedTicketType.name,
+                price: selectedTicketType.price,
+                eventId: selectedEvent.id,
+                availableTickets: selectedTicketType.availableTickets
+            };
+    
+            await TicketTypeService.updateTicketType(updatePayload);
+            notifications.show("Ticket updated successfully!", { severity: "success" });
+    
+            queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
             fetchTicketTypes(selectedEvent.id);
+    
+            handleCloseTicketDialog();
         } catch (error) {
-            notifications.show('Failed to update ticket type', { severity: 'error' });
+            console.error("Error updating ticket type:", error);
+            notifications.show("Failed to update ticket type.", {autoHideDuration: 3000, severity: "error" });
         }
-        handleCloseTicketDialog();
     };
 
+    const openDeleteTicketDialogHandler = (ticket) => {
+        setTicketToDelete(ticket);
+        setOpenDeleteTicketDialog(true);
+    };
+
+    const handleDeleteTicketConfirm = async () => {
+        if (!ticketToDelete) return;
+    
+        try {
+            await TicketTypeService.deleteTicketType(ticketToDelete.id);
+            notifications.show("Ticket type deleted successfully!", {autoHideDuration: 3000, severity: "success" });
+    
+            // Refresh ticket list after deletion
+            queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
+            setTicketTypes(prevTickets => prevTickets.filter(ticket => ticket.id !== ticketToDelete.id));
+            
+        } catch (error) {
+            notifications.show("Failed to delete ticket type.", {autoHideDuration: 3000, severity: "error" });
+        }
+    
+        // Close dialog
+        setOpenDeleteTicketDialog(false);
+        setTicketToDelete(null);
+    };
+
+    const handleCreateTicketType = async () => {
+        let hasError = false;
+        const newErrors = { name: '', price: '', totalTickets: '' };
+    
+        if (!newTicketType.name.trim()) {
+            newErrors.name = 'Ticket Name is required';
+            hasError = true;
+        }
+        if (!newTicketType.price || isNaN(newTicketType.price) || newTicketType.price <= 0) {
+            newErrors.price = 'Price must be a positive number';
+            hasError = true;
+        }
+        if (!newTicketType.totalTickets || isNaN(newTicketType.totalTickets) || newTicketType.totalTickets <= 0) {
+            newErrors.totalTickets = 'Total Tickets must be a positive number';
+            hasError = true;
+        }
+    
+        setErrors(newErrors);
+    
+        if (hasError) return;
+    
+        try {
+            if (!selectedEvent) {
+                notifications.show("Please select an event before creating a ticket type.", { severity: "warning" });
+                return;
+            }
+    
+            const sanitizedTicketType = {
+                userId: userId,
+                name: DOMPurify.sanitize(newTicketType.name),
+                price: newTicketType.price,
+                totalTickets: newTicketType.totalTickets,
+                eventId: selectedEvent.id,
+                availableTickets: newTicketType.availableTickets,
+            };
+    
+            await TicketTypeService.createTicketType(sanitizedTicketType);
+            queryClient.invalidateQueries(['ticketTypes', selectedEvent.id]);
+            setNewTicketType({ name: '', price: '', totalTickets: '', availableTickets: '' });
+            await fetchTicketTypes(selectedEvent.id);
+            setErrors({ name: '', price: '', totalTickets: '' });
+    
+            notifications.show('Ticket type created successfully!', { autoHideDuration: 3000, severity: 'success' });
+        } catch (error) {
+            console.error('Error creating ticket type:', error);
+            notifications.show('Error creating ticket type', { autoHideDuration: 3000, severity: 'error' });
+        }
+    };
+    
     // --------------------------- ANNOUNCEMENT ACTIONS ---------------------------
 
     useEffect(() => {
@@ -391,13 +495,13 @@ const OrganizerDashboardPanel = ({ userId }) => {
             const response = await GeneralAnnouncementService.getGeneralAnnouncements();
             setAnnouncements(response.content || []);
         } catch (error) {
-            notifications.show("Failed to fetch announcements", { severity: "error" });
+            notifications.show("Failed to fetch announcements", {autoHideDuration: 3000, severity: "error" });
         }
     };
 
     const handleSaveAnnouncement = async () => {
         if (!announcementText) {
-            notifications.show("Please enter an announcement message", { severity: "warning" });
+            notifications.show("Please enter an announcement message", {autoHideDuration: 3000, severity: "warning" });
             return;
         }
     
@@ -412,10 +516,10 @@ const OrganizerDashboardPanel = ({ userId }) => {
         try {
             if (editingAnnouncement) {
                 await GeneralAnnouncementService.updateAnnouncement(editingAnnouncement.id, announcementData);
-                notifications.show("Announcement updated successfully!", { severity: "success" });
+                notifications.show("Announcement updated successfully!", {autoHideDuration: 3000, severity: "success" });
             } else {
                 await GeneralAnnouncementService.createAnnouncement(announcementData);
-                notifications.show("Announcement created successfully!", { severity: "success" });
+                notifications.show("Announcement created successfully!", {autoHideDuration: 3000, severity: "success" });
             }
     
             fetchGeneralAnnouncements(); // Refresh announcements
@@ -423,7 +527,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
             setAnnouncementText("");
             setEditingAnnouncement(null);
         } catch (error) {
-            notifications.show("Failed to save announcement", { severity: "error" });
+            notifications.show("Failed to save announcement", {autoHideDuration: 3000, severity: "error" });
         }
     };
 
@@ -439,10 +543,10 @@ const OrganizerDashboardPanel = ({ userId }) => {
     
         try {
             await GeneralAnnouncementService.deleteAnnouncement(announcementId);
-            notifications.show("Announcement deleted successfully!", { severity: "success" });
+            notifications.show("Announcement deleted successfully!", {autoHideDuration: 3000, severity: "success" });
             fetchGeneralAnnouncements();
         } catch (error) {
-            notifications.show("Failed to delete announcement", { severity: "error" });
+            notifications.show("Failed to delete announcement", {autoHideDuration: 3000, severity: "error" });
         }
     };
     
@@ -476,47 +580,80 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 {/* Events Tab */}
                 {activeTab === 0 && (
                     <List>
-                        {isLoading ? (
-                            <Typography sx={{ textAlign: "center", padding: "10px" }}>Loading events...</Typography>
-                        ) : isFiltered && filteredEvents.length === 0 ? (
-                            <Typography sx={{ textAlign: "center", padding: "10px" }}>No events found. Try adjusting filters.</Typography>
-                        ) : (
-                            (isFiltered ? filteredEvents : events).map((event) => (
-                                <ListItem key={event.id} secondaryAction={
-                                    <>
-                                        <IconButton onClick={() => handleOpenEventDialog(event)}>
-                                            <EditIcon />
-                                        </IconButton>
-                                        <IconButton onClick={() => openDeleteDialog(event)}>
-                                            <DeleteIcon />
-                                        </IconButton>
-
-                                    </>
-                                }>
-                                    <ListItemText primary={event.name} secondary={`Date: ${event.date}`} />
-                                </ListItem>
-                            ))
-                        )}
-                    </List>
+                    {isLoading ? (
+                        <Typography sx={{ textAlign: "center", padding: "10px" }}>Loading events...</Typography>
+                    ) : isFiltered && filteredEvents.length === 0 ? (
+                        <Typography sx={{ textAlign: "center", padding: "10px" }}>No events found. Try adjusting filters.</Typography>
+                    ) : (
+                        (isFiltered ? filteredEvents : events).map((event) => (
+                            <ListItem
+                                key={event.id}
+                                onClick={() => {
+                                    setSelectedEvent(event); 
+                                    fetchTicketTypes(event.id); 
+                                }}
+                            >
+                                <ListItemText primary={event.name} secondary={`Date: ${event.date}`} />
+                                
+                                {/* Edit Button */}
+                                <IconButton
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenEventDialog(event);
+                                    }}
+                                >
+                                    <EditIcon />
+                                </IconButton>
+                
+                                {/* Delete Button */}
+                                <IconButton
+                                    onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        openDeleteDialog(event);
+                                    }}
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </ListItem>
+                        ))
+                    )}
+                </List>
+                
                 )}
 
                 {/* Ticket Types Tab */}
                 {activeTab === 1 && (
+                    <Box sx={{ textAlign: 'center', mt: 2 }}>
                     <List>
                         {ticketTypes.map((ticket) => (
                             <ListItem key={ticket.id} secondaryAction={
-                                <IconButton onClick={() => handleOpenTicketDialog(ticket)}>
-                                    <EditIcon />
-                                </IconButton>
-                                
-
-                                
+                                <>
+                                    <IconButton onClick={() => handleOpenTicketDialog(ticket)}>
+                                        <EditIcon />
+                                    </IconButton>
+                                    <IconButton onClick={() => openDeleteTicketDialogHandler(ticket)}>
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </>
                             }>
                                 <ListItemText primary={`${ticket.name} - $${ticket.price} (${ticket.availableTickets} left)`} />
                             </ListItem>
+                            
                         ))}
                     </List>
+                    
+
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => setOpenTicketCreateDialog(true)}
+                        sx={{ mt: 2 }}
+                    >
+                        Create Ticket Type
+                    </Button>
+                </Box>
                 )}
+                
 
                 {/* Announcements Tab */}
                 {activeTab === 2 && (
@@ -722,6 +859,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
                     <TextField
                         label="Ticket Name"
                         fullWidth
+                        variant="filled"
                         margin="dense"
                         value={selectedTicketType?.name || ''}
                         onChange={(e) => setSelectedTicketType({ ...selectedTicketType, name: e.target.value })}
@@ -729,15 +867,25 @@ const OrganizerDashboardPanel = ({ userId }) => {
                     <TextField
                         label="Price"
                         type="number"
+                        variant="filled"
                         fullWidth
                         margin="dense"
                         value={selectedTicketType?.price || ''}
                         onChange={(e) => setSelectedTicketType({ ...selectedTicketType, price: e.target.value })}
                     />
+                    <TextField
+                        label="Avaible tickets"
+                        type="number"
+                        variant="filled"
+                        fullWidth
+                        margin="dense"
+                        value={selectedTicketType?.availableTickets || ''}
+                        onChange={(e) => setSelectedTicketType({ ...selectedTicketType, availableTickets: e.target.value })}
+                    />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseEditDialog}>Cancel</Button>
-                    <Button onClick={handleEditSave} variant="contained">Save</Button>
+                    <Button onClick={handleSaveTicketChanges} variant="contained">Save</Button>
                 </DialogActions>
             </Dialog>
 
@@ -828,6 +976,78 @@ const OrganizerDashboardPanel = ({ userId }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Dialog open={openDeleteTicketDialog} onClose={() => setOpenDeleteTicketDialog(false)}>
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                    Confirm Ticket Deletion
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to delete this ticket type?
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                        {ticketToDelete?.name || "Unknown Ticket"}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ marginTop: 1 }}>
+                        This action <strong>cannot</strong> be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDeleteTicketDialog(false)} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteTicketConfirm} color="error" variant="contained">
+                        Delete Ticket
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            {/* Create Ticket Type Dialog */}
+            <Dialog open={openTicketCreateDialog} onClose={() => setOpenTicketCreateDialog(false)}>
+                <DialogTitle>Create Ticket Type</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Ticket Name"
+                        variant="filled"
+                        value={newTicketType.name}
+                        error={!!errors.name}
+                        helperText={errors.name}
+                        onChange={(e) => setNewTicketType({ ...newTicketType, name: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Price"
+                        variant="filled"
+                        type="number"
+                        value={newTicketType.price}
+                        error={!!errors.price}
+                        helperText={errors.price}
+                        onChange={(e) => setNewTicketType({ ...newTicketType, price: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Total Tickets"
+                        variant="filled"
+                        type="number"
+                        value={newTicketType.totalTickets}
+                        error={!!errors.totalTickets}
+                        helperText={errors.totalTickets}
+                        onChange={(e) => setNewTicketType({ ...newTicketType, totalTickets: e.target.value })}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenTicketCreateDialog(false)} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleCreateTicketType} color="primary" variant="contained">
+                        Create
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
 
         </Box>
     );
