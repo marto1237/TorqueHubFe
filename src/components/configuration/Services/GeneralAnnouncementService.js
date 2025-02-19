@@ -109,6 +109,48 @@ const GeneralAnnouncementService = {
             return Promise.reject(error.response?.data || error);
         }
     },
+
+    getAnnouncementsByEventId: async (eventId,  page = 0, size = 10) => {
+        try {
+            const response = await ticktsAPI.get(`/announcements/event/${eventId}`, {
+                params: { eventId, page, size }
+            });
+            console.log("Fetched Announcements:", response.data);
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
+    },
+
+    getAnnouncementsByTicketType: async (eventId = null, ticketTypeId = null, page = 0, size = 10) => {
+        if (!eventId && !ticketTypeId) {
+            throw new Error("Either eventId or ticketTypeId must be provided.");
+        }
+        
+        try {
+            const response = await ticktsAPI.get(`/announcements/ticket`, {
+                params: { eventId, ticketTypeId, page, size }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
+    },
+
+    getDelayAnnouncements: async (eventId = null, ticketTypeId = null, page = 0, size = 10) => {
+        if (!eventId && !ticketTypeId) {
+            throw new Error("Either eventId or ticketTypeId must be provided.");
+        }
+        
+        try {
+            const response = await ticktsAPI.get(`/announcements/delay`, {
+                params: { eventId, ticketTypeId, page, size }
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error.response?.data || error);
+        }
+    },
     
 };
 

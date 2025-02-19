@@ -11,7 +11,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EventService from '../components/configuration/Services/EventService';
 import TicketTypeService from '../components/configuration/Services/TicketTypeService';
-import AnnouncementService from '../components/configuration/Services/GeneralAnnouncementService';
 import { useAppNotifications } from '../components/common/NotificationProvider';
 import { format } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -74,12 +73,22 @@ const OrganizerDashboardPanel = ({ userId }) => {
     
 
     // Announcement State
-    const [announcementType, setAnnouncementType] = useState("general");
+    const [announcementType, setAnnouncementType] = useState("GENERAL");
     const [announcementText, setAnnouncementText] = useState("");
     const [openAnnouncementDialog, setOpenAnnouncementDialog] = useState(false);
     const [editingAnnouncement, setEditingAnnouncement] = useState(null);
     const [announcements, setAnnouncements] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedEventForAnnouncement, setSelectedEventForAnnouncement] = useState(null);
+    const [selectedTicketTypeForAnnouncement, setSelectedTicketTypeForAnnouncement] = useState(null);
+    const [openDeleteAnnouncementDialog, setOpenDeleteAnnouncementDialog] = useState(false);
+    const [announcementToDelete, setAnnouncementToDelete] = useState(null);
+    const [announcementFilter, setAnnouncementFilter] = useState("GENERAL");
+    const [selectedEventForAnnouncements, setSelectedEventForAnnouncements] = useState(null);
+    const [selectedTicketTypeForAnnouncements, setSelectedTicketTypeForAnnouncements] = useState(null);
+
+
+
     
     const [totalPages, setTotalPages] = useState(0);
 
@@ -256,8 +265,10 @@ const OrganizerDashboardPanel = ({ userId }) => {
     };
 
     const fetchTicketTypes = async (eventId) => {
+        console.log("Fetching ticket types for event:", eventId);
         try {
             const response = await TicketTypeService.getAllByEventId(eventId);
+            console.log("Fetched ticket types:", response);
             if (response?.content) {
                 setTicketTypes(response.content);
             } else {
@@ -297,6 +308,22 @@ const OrganizerDashboardPanel = ({ userId }) => {
     
 
     // --------------------------- EVENT ACTIONS ---------------------------
+    const handleEventSelect = (event) => {
+        setSelectedEvent(event);
+        fetchTicketTypes(event.id); // Load tickets for this event
+        fetchEventAnnouncements(event.id); // Load announcements for this event
+    };
+
+    const handleAnnouncementEventSelect = (event) => {
+        console.log("Selected event for announcement:", event);
+        setSelectedEventForAnnouncements(event);
+    
+        if (event) {
+            fetchTicketTypes(event.id); // Ensure this is triggered
+        }
+    };
+    
+    
     const handleOpenEventDialog = (event) => {
         setSelectedEvent({
             ...event,
@@ -490,46 +517,103 @@ const OrganizerDashboardPanel = ({ userId }) => {
         fetchGeneralAnnouncements();
     }, []);
     
-    const fetchGeneralAnnouncements = async () => {
+    const fetchGeneralAnnouncements = async (page = 0) => {
         try {
-            const response = await GeneralAnnouncementService.getGeneralAnnouncements();
+            const response = await GeneralAnnouncementService.getGeneralAnnouncements(page, size);
             setAnnouncements(response.content || []);
+            setTotalPages(response.totalPages);
         } catch (error) {
-            notifications.show("Failed to fetch announcements", {autoHideDuration: 3000, severity: "error" });
+            notifications.show("Failed to fetch general announcements", { autoHideDuration: 3000, severity: "error" });
         }
     };
 
+    const handleAnnouncementFilterChange = (newValue) => {
+        setAnnouncementType(newValue);
+        setPage(0);
+    
+        if (newValue === "GENERAL") {
+            fetchGeneralAnnouncements(0);
+            setSelectedEventForAnnouncements(null);
+            setSelectedTicketTypeForAnnouncements(null);
+        } else if (newValue === "EVENT") {
+            setSelectedEventForAnnouncements(null);
+        } else if (newValue === "TICKET" || newValue === "DELAY") {
+            setSelectedEventForAnnouncements(null);
+            setSelectedTicketTypeForAnnouncements(null);
+        }
+    };
+
+    const fetchTicketOrDelayAnnouncements = async (announcementType, eventId, ticketTypeId) => {
+        console.log("fetchTicketOrDelayAnnouncements called with:", announcementType, eventId, ticketTypeId);
+    
+        if (!eventId) {
+            console.log("No eventId provided, fetch will not proceed.");
+            return;
+        }
+    
+        try {
+            let response;
+            if (announcementType === "EVENT") {
+                console.log("Fetching event announcements...");
+                response = await GeneralAnnouncementService.getAnnouncementsByEventId(eventId);
+            } else if (announcementType === "TICKET") {
+                response = await GeneralAnnouncementService.getAnnouncementsByTicketType(eventId, ticketTypeId, page, size);
+            } else if (announcementType === "DELAY") {
+                response = await GeneralAnnouncementService.getDelayAnnouncements(eventId, ticketTypeId, page, size);
+            }
+    
+            console.log("API response:", response);
+    
+            if (response?.content) {
+                setAnnouncements(response.content);
+                setTotalPages(response.totalPages);
+            } else {
+                setAnnouncements([]);
+            }
+        } catch (error) {
+            console.error("Error fetching announcements:", error);
+            notifications.show(`Failed to fetch ${announcementType.toLowerCase()} announcements`, {
+                autoHideDuration: 3000,
+                severity: "error",
+            });
+        }
+    };
+    
+    
+    
+    
+
     const handleSaveAnnouncement = async () => {
         if (!announcementText) {
-            notifications.show("Please enter an announcement message", {autoHideDuration: 3000, severity: "warning" });
+            notifications.show("Please enter an announcement message", { autoHideDuration: 3000, severity: "warning" });
             return;
         }
     
         const announcementData = {
-            eventId: selectedEvent?.id,
-            message: announcementText,
             type: announcementType,
-            ticketTypeId: announcementType === "ticket" ? selectedTicketType?.id : null,
-            recipientUserId: announcementType === "personal" ? selectedUser?.id : null,
+            message: announcementText,
+            eventId: (announcementType === "EVENT" || announcementType === "TICKET" || announcementType === "DELAY") ? selectedEventForAnnouncements?.id : null,
+            targetTicketTypeId: (announcementType === "TICKET" || announcementType === "DELAY") ? selectedTicketTypeForAnnouncements?.id : null,
         };
     
         try {
             if (editingAnnouncement) {
                 await GeneralAnnouncementService.updateAnnouncement(editingAnnouncement.id, announcementData);
-                notifications.show("Announcement updated successfully!", {autoHideDuration: 3000, severity: "success" });
+                notifications.show("Announcement updated successfully!", { autoHideDuration: 3000, severity: "success" });
             } else {
                 await GeneralAnnouncementService.createAnnouncement(announcementData);
-                notifications.show("Announcement created successfully!", {autoHideDuration: 3000, severity: "success" });
+                notifications.show("Announcement created successfully!", { autoHideDuration: 3000, severity: "success" });
             }
     
-            fetchGeneralAnnouncements(); // Refresh announcements
+            fetchGeneralAnnouncements();
             setOpenAnnouncementDialog(false);
             setAnnouncementText("");
             setEditingAnnouncement(null);
         } catch (error) {
-            notifications.show("Failed to save announcement", {autoHideDuration: 3000, severity: "error" });
+            notifications.show("Failed to save announcement", { autoHideDuration: 3000, severity: "error" });
         }
     };
+    
 
     const handleEditAnnouncement = (announcement) => {
         setEditingAnnouncement(announcement);
@@ -549,6 +633,48 @@ const OrganizerDashboardPanel = ({ userId }) => {
             notifications.show("Failed to delete announcement", {autoHideDuration: 3000, severity: "error" });
         }
     };
+
+    const fetchEventAnnouncements = async (eventId) => {
+        console.log("Fetching announcements for event ID:", eventId);
+        try {
+            const response = await GeneralAnnouncementService.getAnnouncementsByEventId(eventId);
+            console.log("Fetched announcements:", response);
+
+            if (response?.content) {
+                setAnnouncements(response.content|| []);
+                setTotalPages(response.totalPages);
+            } else {
+                setAnnouncements([]);
+            }
+        } catch (error) {
+            notifications.show("Failed to fetch event announcements", { autoHideDuration: 3000, severity: "error" });
+        }
+    };
+    
+
+    const openDeleteAnnouncementDialogHandler = (announcement) => {
+        setAnnouncementToDelete(announcement);
+        setOpenDeleteAnnouncementDialog(true);
+    };
+
+    const handleDeleteAnnouncementConfirm = async () => {
+        if (!announcementToDelete) return;
+    
+        try {
+            await GeneralAnnouncementService.deleteAnnouncement(announcementToDelete.id);
+            notifications.show("Announcement deleted successfully!", { autoHideDuration: 3000, severity: "success" });
+    
+            // Refresh announcements after deletion
+            fetchEventAnnouncements(selectedEvent.id);
+        } catch (error) {
+            notifications.show("Failed to delete announcement.", { autoHideDuration: 3000, severity: "error" });
+        }
+    
+        // Close dialog
+        setOpenDeleteAnnouncementDialog(false);
+        setAnnouncementToDelete(null);
+    };
+    
     
     
     
@@ -588,10 +714,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
                         (isFiltered ? filteredEvents : events).map((event) => (
                             <ListItem
                                 key={event.id}
-                                onClick={() => {
-                                    setSelectedEvent(event); 
-                                    fetchTicketTypes(event.id); 
-                                }}
+                                 onClick={() => handleEventSelect(event)}
                             >
                                 <ListItemText primary={event.name} secondary={`Date: ${event.date}`} />
                                 
@@ -615,9 +738,20 @@ const OrganizerDashboardPanel = ({ userId }) => {
                                     <DeleteIcon />
                                 </IconButton>
                             </ListItem>
+                            
                         ))
+                        
                     )}
+                    <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                        <Pagination
+                            count={totalPages} // Total pages from API response
+                            page={page + 1} // Material-UI Pagination uses 1-indexed pages
+                            onChange={handlePageChange}
+                            color="primary"
+                        />
+                    </Box>
                 </List>
+                
                 
                 )}
 
@@ -658,9 +792,46 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 {/* Announcements Tab */}
                 {activeTab === 2 && (
                     <Box sx={{ textAlign: 'center', mt: 2 }}>
-                        <Button variant="contained" onClick={() => setOpenAnnouncementDialog(true)}>
-                            Create Announcement
-                        </Button>
+                        
+                        <Autocomplete
+                            options={["GENERAL", "EVENT", "TICKET", "DELAY"]}
+                            value={announcementType}
+                            onChange={(event, newValue) => handleAnnouncementFilterChange(newValue)}
+                            renderInput={(params) => <TextField {...params} label="Filter Announcements" variant="filled" />}
+                        />
+
+                        {announcementType === "EVENT" || announcementType === "TICKET" || announcementType === "DELAY" ? (
+                            <Autocomplete
+                            options={events}
+                            getOptionLabel={(option) => option.name}
+                            value={selectedEventForAnnouncements}
+                            onChange={(event, newValue) => {
+                                console.log("Autocomplete changed, selected event:", newValue);
+                                setSelectedEventForAnnouncements(newValue);
+                                if (newValue) {
+                                    fetchTicketTypes(newValue.id);  // 🔥 Ensure ticket types are fetched
+                                    fetchTicketOrDelayAnnouncements(announcementType, newValue.id, null);
+                                } else {
+                                    setTicketTypes([]); // Clear ticket types if no event is selected
+                                }
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Select Event" variant="filled" />}
+                    />
+                        ) : null}
+
+                        {announcementType === "TICKET" || announcementType === "DELAY" ? (
+                            <Autocomplete
+                            options={ticketTypes}
+                            getOptionLabel={(option) => option.name}
+                            value={selectedTicketTypeForAnnouncements}
+                            onChange={(event, newValue) => {
+                                setSelectedTicketTypeForAnnouncements(newValue);
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Select Ticket Type" variant="filled" />}
+                        />
+                        
+                        ) : null}
+
                         <List sx={{ mt: 2 }}>
                             {announcements.length === 0 ? (
                                 <Typography sx={{ textAlign: "center", padding: "10px" }}>
@@ -673,7 +844,7 @@ const OrganizerDashboardPanel = ({ userId }) => {
                                             <IconButton onClick={() => handleEditAnnouncement(announcement)}>
                                                 <EditIcon />
                                             </IconButton>
-                                            <IconButton onClick={() => handleDeleteAnnouncement(announcement.id)}>
+                                            <IconButton onClick={() => openDeleteAnnouncementDialogHandler(announcement)}>
                                                 <DeleteIcon />
                                             </IconButton>
                                         </>
@@ -686,6 +857,25 @@ const OrganizerDashboardPanel = ({ userId }) => {
                                 ))
                             )}
                         </List>
+                        <Button variant="contained" onClick={() => setOpenAnnouncementDialog(true)}>
+                            Create Announcement
+                        </Button>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                            <Pagination
+                                count={totalPages} // Total pages from API response
+                                page={page + 1} // Material-UI Pagination uses 1-indexed pages
+                                onChange={(event, value) => {
+                                    setPage(value - 1);
+                                    if (announcementFilter === "GENERAL") {
+                                        fetchGeneralAnnouncements(value - 1);
+                                    } else if (announcementFilter === "EVENT" && selectedEvent) {
+                                        fetchEventAnnouncements(selectedEvent.id, value - 1);
+                                    }
+                                }}
+                                color="primary"
+                            />
+                        </Box>
+
                     </Box>
                 )}
             </Paper>
@@ -915,67 +1105,54 @@ const OrganizerDashboardPanel = ({ userId }) => {
                 </DialogActions>
             </Dialog>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-                <Pagination
-                    count={totalPages} // Total pages from API response
-                    page={page + 1} // Material-UI Pagination uses 1-indexed pages
-                    onChange={handlePageChange}
-                    color="primary"
-                />
-            </Box>
+            
 
             <Dialog open={openAnnouncementDialog} onClose={() => setOpenAnnouncementDialog(false)}>
-                <DialogTitle>{editingAnnouncement ? "Edit Announcement" : "Create Announcement"}</DialogTitle>
+                <DialogTitle>Create Announcement</DialogTitle>
                 <DialogContent>
-                    <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        label="Announcement Message"
-                        variant="filled"
-                        value={announcementText}
-                        onChange={(e) => setAnnouncementText(e.target.value)}
-                        sx={{ mb: 2 }}
-                    />
-
                     <Autocomplete
-                        options={["general", "ticket", "personal"]}
-                        getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
+                        options={["GENERAL", "EVENT", "TICKET", "PERSONAL", "DELAY"]}
                         value={announcementType}
                         onChange={(event, newValue) => setAnnouncementType(newValue)}
                         renderInput={(params) => <TextField {...params} label="Announcement Type" variant="filled" />}
-                        sx={{ mb: 2 }}
                     />
-
-                    {announcementType === "ticket" && (
+                    {announcementType === "EVENT" || announcementType === "TICKET" ? (
+                        <Autocomplete
+                            options={events}
+                            getOptionLabel={(option) => option.name}
+                            value={selectedEvent}
+                            onChange={(event, newValue) => {
+                                setSelectedEvent(newValue);
+                                fetchTicketTypes(newValue?.id);
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Select Event" variant="filled" />}
+                        />
+                    ) : null}
+                    {announcementType === "TICKET" && (
                         <Autocomplete
                             options={ticketTypes}
                             getOptionLabel={(option) => option.name}
                             value={selectedTicketType}
                             onChange={(event, newValue) => setSelectedTicketType(newValue)}
-                            renderInput={(params) => <TextField {...params} label="Ticket Type" variant="filled" />}
+                            renderInput={(params) => <TextField {...params} label="Select Ticket Type" variant="filled" />}
                         />
                     )}
-
-                    {announcementType === "personal" && (
-                        <Autocomplete
-                            /*options={users}*/ 
-                            getOptionLabel={(option) => option.name}
-                            value={selectedUser}
-                            onChange={(event, newValue) => setSelectedUser(newValue)}
-                            renderInput={(params) => <TextField {...params} label="Select User" variant="filled" />}
-                        />
-                    )}
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Message"
+                        variant="filled"
+                        value={announcementText}
+                        onChange={(e) => setAnnouncementText(e.target.value)}
+                    />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenAnnouncementDialog(false)} color="primary" variant="outlined">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSaveAnnouncement} color="primary" variant="contained">
-                        {editingAnnouncement ? "Update" : "Create"}
-                    </Button>
+                    <Button onClick={() => setOpenAnnouncementDialog(false)}>Cancel</Button>
+                    <Button onClick={handleSaveAnnouncement} variant="contained">Create</Button>
                 </DialogActions>
             </Dialog>
+
 
             <Dialog open={openDeleteTicketDialog} onClose={() => setOpenDeleteTicketDialog(false)}>
                 <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>
@@ -1044,6 +1221,31 @@ const OrganizerDashboardPanel = ({ userId }) => {
                     </Button>
                     <Button onClick={handleCreateTicketType} color="primary" variant="contained">
                         Create
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            
+            <Dialog open={openDeleteAnnouncementDialog} onClose={() => setOpenDeleteAnnouncementDialog(false)}>
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                    Confirm Announcement Deletion
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to delete this announcement?
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                        {announcementToDelete?.message || "Unknown Announcement"}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ marginTop: 1 }}>
+                        This action <strong>cannot</strong> be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDeleteAnnouncementDialog(false)} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteAnnouncementConfirm} color="error" variant="contained">
+                        Delete Announcement
                     </Button>
                 </DialogActions>
             </Dialog>
