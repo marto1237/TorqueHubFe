@@ -201,6 +201,9 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
     const handleShowcaseClick = () => {
         navigate('/showcase');
     }
+    const handleCarPriceClick = () => {
+        navigate('/CarPricePredictor');
+    }
     const handleAccountSettingClick = () => {
         navigate('/accountsettings');
     }
@@ -349,6 +352,9 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                             <MenuItem onClick={() => {handleCloseNavMenu();handleShowcaseClick();}} className="MuiMenuItem-root">
                                 Showcase
                             </MenuItem>
+                            <MenuItem onClick={() => {handleCloseNavMenu();handleCarPriceClick();}} className="MuiMenuItem-root">
+                                Car price prediction
+                            </MenuItem>
                             <MenuItem onClick={() => {handleCloseNavMenu();}} className="MuiMenuItem-root">
                                 Search
                             </MenuItem>
@@ -415,6 +421,19 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                             }}
                         >
                             Showcase
+                        </Button>
+                        <Button
+                            color="inherit"
+                            onClick={handleCarPriceClick}
+                            sx={{
+                                mr: 2,
+                                color: theme.palette.mode === 'light' ? 'black' : 'white',
+                                '&:hover': {
+                                    color: theme.palette.primary.main,
+                                },
+                            }}
+                        >
+                            Car price prediction
                         </Button>
                         <Button
                             color="inherit"

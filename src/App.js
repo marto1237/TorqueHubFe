@@ -59,6 +59,8 @@ const GeneralAnnouncements = lazy(() => import('./components/forum/ManageGeneral
 const AnnouncementDetails = lazy(() => import('./components/common/AnnouncementDetails')) ;
 const EventAnnouncements = lazy(() => import('./components/forum/ManageEventAnnouncements'))
 const OrginizerAnnouncements = lazy(() => import('./pages/OrganizerAnnouncementsPanel'))
+const CarPricePredictor = lazy(() => import('./pages/CarPricePredictor'));
+const SubscriptionPlans = lazy(() => import('./pages/SubscriptionPlans'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -177,6 +179,7 @@ const App = () => {
                                 <Route path="*" element={<NotFoundPage />} />
                                 <Route path="/notifications" element={<NotificationsPage />} />
                                 <Route path="/manage-events" element={<EventManagement />} />
+                                <Route path="/subscription" element={<SubscriptionPlans />} />
                                 <Route
                                     path="/create-tag"
                                     element={
@@ -292,6 +295,8 @@ const App = () => {
                                         </RoleProtectedRoute>
                                     }
                                 />
+
+                                <Route path="/CarPricePredictor" element={<CarPricePredictor />} />
 
                                 
                             </Routes>

@@ -16,11 +16,12 @@ const AnnouncementDropdown = ({ userId }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [activeTab, setActiveTab] = useState('personal'); // Default to personal announcements
     const [generalLoaded, setGeneralLoaded] = useState(false); // Track if general announcements have been loaded
+    const [pageIndex, setPageIndex] = useState({ personal: 0, general: 0, event: 0 });
     const navigate = useNavigate();
 
     useEffect(() => {
         if (userId) {
-            fetchPersonalAnnouncements();
+            fetchPersonalAnnouncements(0);
         }
 
         // Initialize WebSocket Client
@@ -39,9 +40,9 @@ const AnnouncementDropdown = ({ userId }) => {
 
     }, [userId]);
 
-    const fetchPersonalAnnouncements = async () => {
+    const fetchPersonalAnnouncements = async (page = 0) => {
         try {
-            const response = await UserAnnouncementService.getLatestAnnouncements(userId);
+            const response = await UserAnnouncementService.getLatestAnnouncements(userId, page, 5);
             if (response?.content && Array.isArray(response.content)) {
                 setPersonalAnnouncements(response.content); // Extract 'content' array
                 const personalUnread = response.content.filter(ann => !ann.isRead).length;
@@ -54,10 +55,10 @@ const AnnouncementDropdown = ({ userId }) => {
         }
     };
 
-    const fetchGeneralAnnouncements = async () => {
+    const fetchGeneralAnnouncements = async (page = 0) => {
         try {
             if (!generalLoaded) {
-                const response = await GeneralAnnouncementService.getGeneralAnnouncements();
+                const response = await GeneralAnnouncementService.getGeneralAnnouncements(page, 5);
                 if (response?.content && Array.isArray(response.content)) {
                     setGeneralAnnouncements(response.content);
                     setGeneralLoaded(true);
@@ -72,9 +73,9 @@ const AnnouncementDropdown = ({ userId }) => {
         }
     };
 
-    const fetchEventAnnouncements = async () => {
+    const fetchEventAnnouncements = async (page = 0) => {
         try {
-            const response = await GeneralAnnouncementService.getUserAnnouncements(userId);
+            const response = await GeneralAnnouncementService.getUserAnnouncements(userId, page, 5);
             if (response?.content && Array.isArray(response.content)) {
                 setEventAnnouncements(response.content);
             } else {
@@ -87,17 +88,17 @@ const AnnouncementDropdown = ({ userId }) => {
     };
 
     const handleNewGeneralAnnouncement = (announcement) => {
-        setGeneralAnnouncements(prev => [announcement, ...prev]);
+        setGeneralAnnouncements(prev => [announcement, ...prev.slice(0, 4)]);
         setUnreadCount(prev => prev + 1);
     };
 
     const handleNewEventAnnouncement = (announcement) => {
-        setEventAnnouncements(prev => [announcement, ...prev]);
+        setEventAnnouncements(prev => [announcement, ...prev.slice(0, 4)]);
         setUnreadCount(prev => prev + 1);
     };
 
     const handleNewPersonalAnnouncement = (announcement) => {
-        setPersonalAnnouncements(prev => [announcement, ...prev]);
+        setPersonalAnnouncements(prev => [announcement, ...prev.slice(0, 4)]);
         setUnreadCount(prev => prev + 1);
     };
 
@@ -113,9 +114,9 @@ const AnnouncementDropdown = ({ userId }) => {
     const handleTabChange = (event, newTab) => {
         setActiveTab(newTab);
         if (newTab === 'general') {
-            fetchGeneralAnnouncements();
+            fetchGeneralAnnouncements(pageIndex.general);
         } else if (newTab === 'event') {
-            fetchEventAnnouncements();
+            fetchEventAnnouncements(pageIndex.event);
         }
     };
 
@@ -128,18 +129,71 @@ const AnnouncementDropdown = ({ userId }) => {
     const markAsRead = async (announcementId, category) => {
         try {
             await UserAnnouncementService.markAnnouncementAsRead(announcementId, userId);
-
+    
             if (category === 'personal') {
-                setPersonalAnnouncements(prev => prev.filter(ann => ann.id !== announcementId));
+                setPersonalAnnouncements(prev => {
+                    const updated = prev.filter(ann => ann.id !== announcementId);
+    
+                    // Fetch one more if less than 5 are displayed
+                    if (updated.length < 5) {
+                        fetchNextAnnouncement('personal', updated);
+                    }
+    
+                    return updated;
+                });
             } else if (category === 'event') {
-                setEventAnnouncements(prev => prev.filter(ann => ann.id !== announcementId));
+                setEventAnnouncements(prev => {
+                    const updated = prev.filter(ann => ann.id !== announcementId);
+    
+                    if (updated.length < 5) {
+                        fetchNextAnnouncement('event', updated);
+                    }
+    
+                    return updated;
+                });
             } else {
-                setGeneralAnnouncements(prev => prev.filter(ann => ann.id !== announcementId));
+                setGeneralAnnouncements(prev => {
+                    const updated = prev.filter(ann => ann.id !== announcementId);
+    
+                    if (updated.length < 5) {
+                        fetchNextAnnouncement('general', updated);
+                    }
+    
+                    return updated;
+                });
             }
         } catch (error) {
             console.error('Error marking announcement as read:', error);
         }
     };
+
+    const fetchNextAnnouncement = async (category, currentList) => {
+        try {
+            let response = null;
+    
+            if (category === 'personal') {
+                response = await UserAnnouncementService.getLatestAnnouncements(userId, pageIndex.personal + 1, 1);
+                if (response?.content?.length) {
+                    setPersonalAnnouncements([...currentList, ...response.content]);
+                }
+            } else if (category === 'event') {
+                response = await GeneralAnnouncementService.getUserAnnouncements(userId, pageIndex.event + 1, 1);
+                if (response?.content?.length) {
+                    setEventAnnouncements([...currentList, ...response.content]);
+                }
+            } else if (category === 'general') {
+                response = await GeneralAnnouncementService.getGeneralAnnouncements(pageIndex.general + 1, 1);
+                if (response?.content?.length) {
+                    setGeneralAnnouncements([...currentList, ...response.content]);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching next announcement:', error);
+        }
+    };
+
+    
+    
 
     const markAllAsRead = async () => {
         try {
