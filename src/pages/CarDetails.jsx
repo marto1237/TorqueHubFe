@@ -60,8 +60,8 @@ const CarDetails = () => {
 
     const userDetails = sessionStorage.getItem('userDetails');
 
-    const parsedDetails = JSON.parse(userDetails);
-    const userId = parsedDetails.id;
+    const parsedDetails =  userDetails ? JSON.parse(userDetails): null;
+    const userId = parsedDetails?.id ?? null;
     
 
     

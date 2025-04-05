@@ -1,6 +1,7 @@
 import React, {useState, Suspense, lazy, useEffect} from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
+import { Typography, } from '@mui/material';
 import Fab from '@mui/material/Fab';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LightModeIcon from '@mui/icons-material/LightMode';
@@ -61,6 +62,11 @@ const EventAnnouncements = lazy(() => import('./components/forum/ManageEventAnno
 const OrginizerAnnouncements = lazy(() => import('./pages/OrganizerAnnouncementsPanel'))
 const CarPricePredictor = lazy(() => import('./pages/CarPricePredictor'));
 const SubscriptionPlans = lazy(() => import('./pages/SubscriptionPlans'));
+const SuccessfulPayment = lazy(() => import('./pages/PaymentSuccessPage'));
+const PaymentFailedPage = lazy(() => import('./pages/PaymentFailedPage'));
+const AdFreeDonationPage = lazy(() => import('./pages/AdFreeDonationPage'));
+const DonationPage = lazy(() => import('./pages/Donation'));
+const RankPage = lazy(() => import('./pages/Ranks'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -180,6 +186,10 @@ const App = () => {
                                 <Route path="/notifications" element={<NotificationsPage />} />
                                 <Route path="/manage-events" element={<EventManagement />} />
                                 <Route path="/subscription" element={<SubscriptionPlans />} />
+                                <Route path="/payment-success" element={<SuccessfulPayment/> }/>
+                                <Route path="/payment-failed" element={<PaymentFailedPage />} />
+                                <Route path="/donate" element={<DonationPage />} /> 
+                                <Route path="/rank" element={<RankPage />} />  
                                 <Route
                                     path="/create-tag"
                                     element={
@@ -295,6 +305,8 @@ const App = () => {
                                         </RoleProtectedRoute>
                                     }
                                 />
+
+                                <Route path="/AdFreeDonation" element={<AdFreeDonationPage />} />
 
                                 <Route path="/CarPricePredictor" element={<CarPricePredictor />} />
 

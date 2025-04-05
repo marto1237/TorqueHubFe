@@ -11,80 +11,6 @@ import EventFilterService from "../components/configuration/Services/EventFilter
 import { format } from 'date-fns';
 
 // Event data with image URL, tickets left, price, etc.
-const events = [
-    {
-        id: 1,
-        name: 'Wonderland #3',
-        location: 'Ainterexpo, Bourg en Bresse (FR)',
-        date: 'September 21, 2024 - September 22, 2024',
-        hour: "10:00 AM - 6:00 PM",
-        ticketsLeft: 50,
-        price: '$25',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1801.jpg?uncache=1718278097',
-        carsAllowed: ['Sports cars'],
-        tags: ['Tuning', 'Expo', 'Happening', 'FR']
-    },
-    {
-        id: 2,
-        name: 'Let\'s Go Tokyo - At Night',
-        location: 'Quarter 51, Dorpsstraat, Damme (BE)',
-        hour: "10:00 AM - 6:00 PM",
-        date: 'Saturday, September 21, 2024',
-        ticketsLeft: 30,
-        price: '$35',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1815.jpg?uncache=1721750651',
-        carsAllowed: ['JDM'],
-        tags: ['Tuning', 'Expo', 'Happening', 'FR']
-    },
-    {
-        id: 3,
-        name: 'Antwerp Tuning Day',
-        location: 'The Schorre, Boom (BE)',
-        hour: "10:00 AM - 6:00 PM",
-        date: 'Sunday, September 22, 2024',
-        ticketsLeft: 0,
-        price: '$20',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1767.jpg',
-        carsAllowed: ['Sports cars'],
-        tags: ['Tuning', 'Expo', 'Happening', 'FR']
-    },
-    {
-        id: 4,
-        name: 'Antwerp Tuning Day',
-        location: 'The Schorre, Boom (BE)',
-        hour: "10:00 AM - 6:00 PM",
-        date: 'Sunday, September 22, 2024',
-        ticketsLeft: 10,
-        price: '$20',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1767.jpg',
-        carsAllowed: ['Sports cars'],
-        tags: ['Meeting', 'Asian Cars', 'Bikes', 'BE']
-    },
-    {
-        id: 5,
-        name: 'Wonderland #3',
-        location: 'Ainterexpo, Bourg en Bresse (FR)',
-        hour: "10:00 AM - 6:00 PM",
-        date: 'September 21, 2024 - September 22, 2024',
-        ticketsLeft: 50,
-        price: '$25',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1801.jpg?uncache=1718278097',
-        carsAllowed: ['Sports cars'],
-        tags: ['Tuning', 'BE', 'Expo']
-    },
-    {
-        id: 6,
-        name: 'Let\'s Go Tokyo - At Night',
-        location: 'Quarter 51, Dorpsstraat, Damme (BE)',
-        hour: "10:00 AM - 6:00 PM",
-        date: 'Saturday, September 21, 2024',
-        ticketsLeft: 30,
-        price: '$35',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1815.jpg?uncache=1721750651',
-        carsAllowed: ['JDM'],
-        tags: ['Tuning', 'Expo', 'Happening', 'FR']
-    },
-];
 
 const EventList = () => {
     const theme = useTheme();
@@ -99,6 +25,8 @@ const EventList = () => {
     const location = useLocation();
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [selectedFilters, setSelectedFilters] = useState({});
+    const [isFilterMode, setIsFilterMode] = useState(false);
+
 
     const fetchFilteredEvents = async () => {
         try {
@@ -134,7 +62,9 @@ const EventList = () => {
     };
 
     useEffect(() => {
-        fetchFilteredEvents();
+        if (isFilterMode) {
+            fetchFilteredEvents();
+        }
     }, [selectedFilters, page, sort]);
 
     useEffect(() => {
@@ -158,21 +88,22 @@ const EventList = () => {
 
     // Dynamically fetch images for events
     useEffect(() => {
-        const fetchEventImages = async () => {
-            if (!events?.content?.length) return;
-
-            const updatedEvents = await Promise.all(
-                events.content.map(async (event) => {
-                    const imageUrl = await getFirebaseImage(event.id);
-                    return { ...event, imageUrl }; // Attach the fetched image URL to the event
-                })
-            );
-
-            setEventsWithImages(updatedEvents); // Set the updated events with images
-        };
-
-        fetchEventImages();
-    }, [events]);
+        if (!isFilterMode) {
+            const fetchDefaultEvents = async () => {
+                const response = await EventService.findAllEvents(page, size);
+                const updatedEvents = await Promise.all(
+                    response.content.map(async (event) => {
+                        const imageUrl = await getFirebaseImage(event.id);
+                        return { ...event, imageUrl };
+                    })
+                );
+                setEventsWithImages(updatedEvents);
+                setTotalPages(response.totalPages);
+            };
+            fetchDefaultEvents();
+        }
+    }, [page, sort, isFilterMode]);
+    
 
     // Function to fetch the first image from Firebase Storage
     const getFirebaseImage = async (eventId) => {
@@ -241,6 +172,8 @@ const EventList = () => {
     const handleApplyFilters = (filters) => {
         console.log("Final Selected Filters:", filters); // Log final filters
         setSelectedFilters(filters); // Update the filters state in EventList
+        setIsFilterMode(true);
+        setPage(0);
     };
     
 
