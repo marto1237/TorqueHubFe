@@ -17,6 +17,7 @@ import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import EventService from '../components/configuration/Services/EventService';
 import TicketTypeService from '../components/configuration/Services/TicketTypeService';
 import { format } from 'date-fns';
+import NotFoundPage from '../components/common/NotFoundPage';
 
 
 const carDetails = {
@@ -65,16 +66,24 @@ const EventDetail = () => {
     const [selectedCar, setSelectedCar] = useState(null);
     const [eventImages, setEventImages] = useState([]);
     const [selectedTicket, setSelectedTicket] = useState(null);
-
+    const [notFound, setNotFound] = useState(false);
 
     const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
 
     const { data: event, isLoading, isError } = useQuery({
         queryKey: ['event', id],
         queryFn: async () => {
+            try {
             const response =  await EventService.getEventById(id);
             console.log(response);
-            return response
+            return response;
+            }
+            catch (error) {
+                if (error?.response?.status === 404) {
+                    setNotFound(true);
+                }
+                throw error;
+            }
         },
     });
 
@@ -161,7 +170,7 @@ const EventDetail = () => {
     };
 
     if (!event) {
-        return <Typography variant="h6">Event not found</Typography>;
+        return <NotFoundPage />;
     }
 
     const handleBuyTicket = () => {
@@ -242,6 +251,9 @@ const EventDetail = () => {
         return 'https://www.google.com/maps/embed?pb=!1m18&center=0,0&zoom=2';
     };
     
+    if (!event) {
+        return <NotFoundPage />;
+    }
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>

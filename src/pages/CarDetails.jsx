@@ -15,35 +15,7 @@ import PostForm  from "../components/forum/PostForm";
 import WorldFlag from 'react-world-flags';
 import { format } from 'date-fns';
 import ShowcaseCommentsService from '../components/configuration/Services/ShowcaseCommentsService';
-
-const carShowcases = [
-    {
-        id: 1,
-        user: { username: 'Chris Murphy', profileLink: '/profile/chris-murphy' },
-        year: '1985',
-        make: 'Volkswagen',
-        model: 'Cabriolet',
-        color: 'Blue',
-        packages: 'Karman',
-        image: 'https://i.kinja-img.com/image/upload/c_fill,h_675,pg_1,q_80,w_1200/ob8mmpmrcoysw55nhpc1.png',
-        modifications: [
-            { category: 'Drivetrain', description: 'Cam oil baffle, Upgraded valve cover gasket' },
-            { category: 'Interior', description: 'Recaro trophy w/power ba, Custom steering wheel' },
-            { category: 'Exterior', description: 'Custom painted Krylon ocean glass blue, Canvas Black Top' },
-            { category: 'Audio', description: '5” sony speakers, 10”Rockford 300w sub' },
-            { category: 'Suspension', description: 'Airlift 3H management, CK2W double bellow Front Bags' },
-            { category: 'Exhaust', description: 'Stainless 4-2-1 Header, Borla Pro exhaust' },
-        ],
-        history: 'Barn find $500, three years and $12k later…',
-        comments: [
-            { user: { username: 'John Doe', profileLink: '/profile/john-doe' }, text: 'Love the custom mods!', votes:0 },
-            { user: { username: 'Jane Smith', profileLink: '/profile/jane-smith' }, text: 'Such a clean build, well done!', votes: 0 }
-        ],
-        views: 520,
-        postDate: 'May 13, 2024'
-    }
-    // Add more cars as needed
-];
+import NotFoundPage from '../components/common/NotFoundPage';
 
 const CarDetails = () => {
     const theme = useTheme();
@@ -56,6 +28,7 @@ const CarDetails = () => {
     const [selectionEnd, setSelectionEnd] = useState(0);
     const [answers, setAnswers] = useState([]);
     const [carImages, setCarImages] = useState([]);
+    const [notFound, setNotFound] = useState(false);
 
 
     const userDetails = sessionStorage.getItem('userDetails');
@@ -219,6 +192,10 @@ const CarDetails = () => {
             console.error("Error voting on comment:", error.response ? error.response.data : error.message);
         }
     };  
+
+    if (!showcase) {
+                return <NotFoundPage />;
+    }
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.default, minHeight: '100vh' }}>

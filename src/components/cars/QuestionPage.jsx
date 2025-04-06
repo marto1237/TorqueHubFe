@@ -15,6 +15,7 @@ import AnswerWebSocketService from '../configuration/WebSocket/AnswersWebSocketS
 import FollowService from '../configuration/Services/FollowService';
 import BookmarkService from '../configuration/Services/BookmarkService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import NotFoundPage from '../common/NotFoundPage';
 
 const QuestionPage = () => {
 
@@ -29,6 +30,8 @@ const QuestionPage = () => {
     const queryParams = new URLSearchParams(location.search);
     const initialPage = parseInt(queryParams.get('page') || '0', 10);
     const pageSize = parseInt(queryParams.get('size') || '10', 10);
+
+    const [notFound, setNotFound] = useState(false);
 
     const commentsPageSize = 5;  // Number of comments to load initially per answer
     const [answer, setAnswer] = useState('');
@@ -151,25 +154,33 @@ const QuestionPage = () => {
     const { data: question, isLoading: isQuestionLoading } = useQuery({
         queryKey: ['question', questionId, currentPage], // Include page number in queryKey for pagination
         queryFn: async () => {
-            const cachedData = queryClient.getQueryData(['question', questionId, currentPage]);
-            if (cachedData) {
-                initializeFollowAndBookmarkStates(cachedData.answers.content);
-                return cachedData; // Return cached question data if available
-            }
-            const response = await QuestionService.getQuestionById(questionId, currentPage, pageSize);
-            console.log(response)
-            setVotes(response.votes);
-            setAnswers(response.answers.content);
-            setTotalPages(response.answers.totalPages);
-            setCurrentPage(response.answers.pageable.pageNumber);
-            setUserVote(response.userVote);
-            setIsFollowing(response.isFollowing);
-            setIsBookmarked(response.isBookmarked);
-            initializeFollowAndBookmarkStates(response.answers.content);
+            try {
+                const cachedData = queryClient.getQueryData(['question', questionId, currentPage]);
+                if (cachedData) {
+                    initializeFollowAndBookmarkStates(cachedData.answers.content);
+                    return cachedData; // Return cached question data if available
+                }
+                const response = await QuestionService.getQuestionById(questionId, currentPage, pageSize);
+                console.log(response)
+                setVotes(response.votes);
+                setAnswers(response.answers.content);
+                setTotalPages(response.answers.totalPages);
+                setCurrentPage(response.answers.pageable.pageNumber);
+                setUserVote(response.userVote);
+                setIsFollowing(response.isFollowing);
+                setIsBookmarked(response.isBookmarked);
+                initializeFollowAndBookmarkStates(response.answers.content);
 
-            queryClient.setQueryData(['question', questionId, currentPage], response); // Cache the fetched question data
-            return response;
+                queryClient.setQueryData(['question', questionId, currentPage], response); // Cache the fetched question data
+                return response;
+            } catch (err) {
+                if (err?.response?.status === 404) {
+                    setNotFound(true);
+                }
+                throw err;
+            }
         }
+        
     });
 
     const initializeFollowAndBookmarkStates = (answersContent) => {
@@ -707,14 +718,7 @@ const QuestionPage = () => {
 
 
     if (!question) {
-        return (
-            <Box sx={{ textAlign: 'center', marginTop: '50px' }}>
-                <Typography variant="h6">Question not found</Typography>
-                <Button onClick={() => navigate('/questions')} variant="contained" color="primary">
-                    Go back to Questions List
-                </Button>
-            </Box>
-        );
+            return <NotFoundPage />;
     }
 
     return (

@@ -23,6 +23,8 @@ import { styled } from '@mui/material/styles';
 import '../../styles/SignUp.css';
 import AuthService from '../configuration/Services/AuthService';
 import { useAppNotifications } from '../common/NotificationProvider';
+import { useEffect } from 'react';
+
 
 function Copyright() {
     return (
@@ -143,7 +145,7 @@ function Login({ setLoggedIn }) {
                 <Typography component="h1" variant="h5" className="signInText">
                     Sign Up
                 </Typography>
-                <form className="form" noValidate onSubmit={handleSubmit}>
+                <form className="form" autoComplete="on" onSubmit={handleSubmit}>
                     <TextField
                         variant="outlined"
                         margin="normal"

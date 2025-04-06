@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom'; 
+import { useParams, useNavigate } from 'react-router-dom'; 
 import { useQuery } from '@tanstack/react-query';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '../../firebase';
@@ -15,7 +15,8 @@ import {
     TextField, 
     Rating, 
     Chip, 
-    ButtonGroup 
+    ButtonGroup,
+    LinearProgress 
 } from '@mui/material';
 import { 
     Cake, 
@@ -28,6 +29,7 @@ import ProfileService from '../configuration/Services/ProfileService';
 
 const ProfilePage = ({ avatar, userDetails }) => {
     const theme = useTheme();
+    const navigate = useNavigate();
     const { id } = useParams();
     
     // State for editing About Me section
@@ -161,47 +163,139 @@ const ProfilePage = ({ avatar, userDetails }) => {
             .replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>');
     };
 
+    // EXP Rank Calculation
+    const donationRanks = [
+        { name: 'Garage Rookie', min: 1, icon: '🧰' },
+        { name: 'Piston Patron', min: 25, icon: '🔩' },
+        { name: 'Turbo Supporter', min: 50, icon: '🌀' },
+        { name: 'Gearhead Giver', min: 100, icon: '⚙️' },
+        { name: 'V8 Visionary', min: 250, icon: '🏎️' },
+        { name: 'Supercharger Elite', min: 500, icon: '💨' },
+        { name: 'Nitro Champion', min: 1000, icon: '🏆' }
+    ];
+    
+    const activityRanks = [
+        { name: 'Engine Starter', points: 0, icon: '🚗' },
+    { name: 'Street Tuner', points: 501, icon: '🛠️' },
+    { name: 'Track Day Driver', points: 1501, icon: '🏁' },
+    { name: 'Dyno Dominator', points: 4501, icon: '📊' },
+    { name: 'Pit Crew Chief', points: 15000, icon: '👨‍🔧' },
+    { name: 'Torque Master', points: 40000, icon: '🔧' },
+    { name: 'Fuel Injected Guru', points: 100000, icon: '⛽' }
+    ];
+    
+    const getCurrentRank = (value, ranks, key) => {
+        return [...ranks].reverse().find(rank => value >= rank[key]) || ranks[0];
+    };
+    
+    const getNextRank = (value, ranks, key) => {
+        return ranks.find(rank => value < rank[key]);
+    };
+  
+  const RankProgressBar = ({ title, value, ranks, keyName, onClick }) => {
+    const theme = useTheme();
+    const currentRank = getCurrentRank(value, ranks, keyName);
+    const nextRank = getNextRank(value, ranks, keyName);
+    const progress = nextRank ? ((value - currentRank[keyName]) / (nextRank[keyName] - currentRank[keyName])) * 100 : 100;
+  
+    return (
+        <Box 
+            onClick={onClick}
+            sx={{ 
+                p: 2, 
+                mb: 2, 
+                borderRadius: 2,
+                backgroundColor: theme.palette.background.default, 
+                cursor: 'pointer', 
+                '&:hover': { boxShadow: 4 },
+                border: `1px solid ${theme.palette.divider}`
+            }}
+        >
+            <Typography variant="subtitle1" color="primary" fontWeight="bold">{title}</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography variant="body2" color="textPrimary">
+                    {currentRank.icon} {currentRank.name} ({value})
+                </Typography>
+                {nextRank && (
+                    <Typography variant="body2" color="textPrimary">
+                        {nextRank.icon} {nextRank.name} in {nextRank[keyName] - value}
+                    </Typography>
+                )}
+            </Box>
+            <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{ mt: 1, height: 8, borderRadius: 5, backgroundColor: theme.palette.grey[800], '& .MuiLinearProgress-bar': { backgroundColor: theme.palette.error.main } }}
+            />
+            {!nextRank && (
+                <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+                    Max rank achieved! 🚀
+                </Typography>
+            )}
+        </Box>
+    );
+  };
+  
+
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
             {/* Profile Header Card */}
-            <Card sx={{ padding: '20px', mb: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
-                    {avatarURL ? (
-                        <Avatar 
-                            src={avatarURL} 
-                            sx={{ 
-                                width: { xs: 80, sm: 120, md: 160, lg: 180 }, 
-                                height: { xs: 80, sm: 120, md: 160, lg: 180 } 
-                            }}
-                            alt={`${profile.user.username}'s profile picture`} 
-                        />
-                    ) : (
-                        <Avatar 
-                            {...stringAvatar(profile.user.username)} 
-                        />
-                    )}
-                    <Box>
-                        <Typography variant="h5" color="textPrimary">
-                            {profile.user.username}
-                        </Typography>
-                        <Box sx={{ mt: 1 }}>
-                {/* Display Member Since */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Cake fontSize="small" sx={{ mr: 1 }} />
-                        <Typography variant="body2" color="textSecondary">
-                            Member Since: {new Date(profile.user.accountCreationDate).toLocaleDateString()}
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <AccessTime fontSize="small" sx={{ mr: 1 }} />
-                        <Typography variant="body2" color="textSecondary">
-                            Last Seen: {new Date(profile.user.accountCreationDate).toLocaleTimeString()}
-                        </Typography>
-                    </Box>
-                </Box>
-                    </Box>
-                </Box>
-            </Card>
+            <Grid container spacing={3}>
+                <Grid item xs={12} md={8}>
+                    <Card sx={{ padding: '20px' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
+                            {avatarURL ? (
+                                <Avatar src={avatarURL} sx={{ 
+                                    width: { xs: 80, sm: 120, md: 160, lg: 180 }, 
+                                    height: { xs: 80, sm: 120, md: 160, lg: 180 } 
+                                }}
+                                 />
+                            ) : (
+                                <Avatar 
+                                    {...stringAvatar(profile.user.username)} 
+                                />
+                            )}
+                            <Box>
+                                <Typography variant="h5" color="textPrimary">
+                                    {profile.user.username}
+                                </Typography>
+                                <Box sx={{ mt: 1 }}>
+                                    {/* Display Member Since */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                        <Cake fontSize="small" sx={{ mr: 1 }} />
+                                        <Typography variant="body2">
+                                            Member Since: {new Date(profile.user.accountCreationDate).toLocaleDateString()}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                        <AccessTime fontSize="small" sx={{ mr: 1 }} />
+                                        <Typography variant="body2">
+                                            Last Seen: {new Date(profile.user.accountCreationDate).toLocaleTimeString()}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        </Box>
+                    </Card>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                    <RankProgressBar
+                        title="Donation Progress"
+                        value={profile.user.totalDonated || 0}
+                        ranks={donationRanks}
+                        keyName="min"
+                        onClick={() => navigate('/donate')}
+                    />
+                    <RankProgressBar
+                        title="Activity Progress"
+                        value={profile.user.points || 0}
+                        ranks={activityRanks}
+                        keyName="points"
+                        onClick={() => navigate('/rank')}
+                    />
+                </Grid>
+            </Grid>
 
             <Grid container spacing={3}>
                 {/* User Stats Column */}
