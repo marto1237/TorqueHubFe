@@ -16,6 +16,7 @@ import WorldFlag from 'react-world-flags';
 import { format } from 'date-fns';
 import ShowcaseCommentsService from '../components/configuration/Services/ShowcaseCommentsService';
 import NotFoundPage from '../components/common/NotFoundPage';
+import LoadingComponent from '../components/common/Loader';
 
 const CarDetails = () => {
     const theme = useTheme();
@@ -29,6 +30,7 @@ const CarDetails = () => {
     const [answers, setAnswers] = useState([]);
     const [carImages, setCarImages] = useState([]);
     const [notFound, setNotFound] = useState(false);
+    const [isFetchingImages, setIsFetchingImages] = useState(true);
 
 
     const userDetails = sessionStorage.getItem('userDetails');
@@ -39,14 +41,26 @@ const CarDetails = () => {
 
     
      // Fetch showcase data using ShowcaseService and React Query
-     const { data: showcase, isLoading, isError } = useQuery({
-        queryKey: ['showcase', id, userId], // Include userId in the queryKey to refetch when it changes
+     const { data: showcase, isLoading, isError, error } = useQuery({
+        queryKey: ['showcase', id, userId],
         queryFn: async () => {
-            const response = await ShowcaseService.getShowcaseByID(id, userId);
-            console.log("Fetched car details:", response)
-            return response;
+            try{
+                const response = await ShowcaseService.getShowcaseByID(id, userId);
+                return response;
+            } catch (err) {
+                console.error('Error fetching showcase data:', err);
+                if (err?.response?.status === 404 || err?.response?.status === 500) {
+                    setNotFound(true);
+                    console.log("Not found:", notFound); // Log the fetched showcase data
+                }
+            }
         },
+        retry: false, // important to prevent retry loops on server error
+        enabled: !!id,
     });
+    
+    
+    
 
     // Comments state (initialized empty, updated after fetching data)
     const [comments, setComments] = useState([]);
@@ -63,6 +77,7 @@ const CarDetails = () => {
 
     useEffect(() => {
         const fetchShowcaseImage = async () => {
+            setIsFetchingImages(true);
             try {
                 const storage = getStorage();
                 const folderRef = ref(storage, `showcaseImages/${id}/`); // Adjust path as per your storage setup
@@ -78,9 +93,15 @@ const CarDetails = () => {
                     console.warn(`No images found for showcase ID ${id}`);
                     setCarImages([]); // Fallback to empty array
                 }
-            } catch (error) {
-                console.error('Error fetching showcase image:', error);
+            } catch (err) {
+                console.error('Error fetching showcase image:', err);
                 setShowcaseImageUrl(''); // Fallback to default or placeholder image
+                if (err?.response?.status === 404 || err?.response?.status === 500) {
+                    setNotFound(true);
+                }
+                throw err;
+            } finally {
+                setIsFetchingImages(false);
             }
         };
 
@@ -116,9 +137,6 @@ const CarDetails = () => {
         }
     };
 
-    if (isLoading) return <Typography>Loading...</Typography>;
-    if (isError) return <Typography>Error loading showcase data.</Typography>;
-    if (!showcase) return <Typography>No data found.</Typography>;
 
     // Apply formatting to the selected text
     const applyFormatting = (tag) => {
@@ -193,9 +211,8 @@ const CarDetails = () => {
         }
     };  
 
-    if (!showcase) {
-                return <NotFoundPage />;
-    }
+    if (isLoading || isFetchingImages) return <LoadingComponent />;
+    if (isError || notFound || !showcase) return <NotFoundPage />;
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.default, minHeight: '100vh' }}>

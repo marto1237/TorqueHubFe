@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Button, Typography, IconButton, Grid, Divider, Paper, Tooltip, Link, Chip, Skeleton } from '@mui/material';
 import { Bookmark, CheckCircle, KeyboardArrowUp, KeyboardArrowDown } from '@mui/icons-material';
-import {BookmarkBorder} from "@material-ui/icons";
+import { BookmarkBorder } from "@material-ui/icons";
 import { useTheme } from '@mui/material/styles';
 import PostForm from "../forum/PostForm";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
@@ -16,11 +16,13 @@ import FollowService from '../configuration/Services/FollowService';
 import BookmarkService from '../configuration/Services/BookmarkService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import NotFoundPage from '../common/NotFoundPage';
+import QueryWrapper from '../common/QueryWrapper';
+import LoadingComponent from '../common/Loader';
 
 const QuestionPage = () => {
 
     const { questionId } = useParams();
-    
+
     const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -64,7 +66,7 @@ const QuestionPage = () => {
     const validateAnswer = (answerText) => {
         return answerText.trim().length >= 3 && answerText.trim().length <= 100000;
     };
-    
+
     const validateComment = (commentText) => {
         return commentText.trim().length >= 3 && commentText.trim().length <= 100000;
     };
@@ -75,15 +77,15 @@ const QuestionPage = () => {
             notifications.show("Your answer is too short or too long", { autoHideDuration: 3000, severity: "error" });
             return;
         }
-    
+
         const userDetails = JSON.parse(sessionStorage.getItem('userDetails'));
         if (!userDetails || !userDetails.id) {
             notifications.show('You need to be logged in to answer', { autoHideDuration: 3000, severity: 'error' });
             return;
         }
-    
+
         const userId = userDetails.id;
-    
+
         try {
             const response = await AnswerService.createAnswer({ text: submittedAnswer, questionId, userId });
             notifications.show("Answer posted successfully", { autoHideDuration: 3000, severity: "success" });
@@ -100,58 +102,58 @@ const QuestionPage = () => {
             notifications.show("Your comment is too short or too long", { autoHideDuration: 3000, severity: "error" });
             return;
         }
-    
+
         const userDetails = JSON.parse(sessionStorage.getItem('userDetails'));
         if (!userDetails || !userDetails.id) {
             notifications.show('You need to be logged in to comment', { autoHideDuration: 3000, severity: 'error' });
             return;
         }
-    
+
         const userId = userDetails.id;
 
         try {
             const newComment = await CommentService.addComment({ text: commentText, answerId, userId });
             notifications.show("Comment posted successfully!", { autoHideDuration: 3000, severity: "success" });
-    
+
             // Update the state to immediately show the new comment
-        setComments((prevComments) => ({
-            ...prevComments,
-            [answerId]: [...(prevComments[answerId] || []), newComment],
-        }));
+            setComments((prevComments) => ({
+                ...prevComments,
+                [answerId]: [...(prevComments[answerId] || []), newComment],
+            }));
 
-        // Update the query cache directly for immediate UI feedback
-        queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
-            if (!oldData) return oldData;
+            // Update the query cache directly for immediate UI feedback
+            queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
+                if (!oldData) return oldData;
 
-            const updatedAnswers = oldData.answers.content.map((answer) => {
-                if (answer.id === answerId) {
-                    return {
-                        ...answer,
-                        comments: [...(answer.comments || []), newComment], // Ensure existing comments are maintained
-                    };
-                }
-                return answer;
+                const updatedAnswers = oldData.answers.content.map((answer) => {
+                    if (answer.id === answerId) {
+                        return {
+                            ...answer,
+                            comments: [...(answer.comments || []), newComment], // Ensure existing comments are maintained
+                        };
+                    }
+                    return answer;
+                });
+
+                return {
+                    ...oldData,
+                    answers: {
+                        ...oldData.answers,
+                        content: updatedAnswers,
+                    },
+                };
             });
 
-            return {
-                ...oldData,
-                answers: {
-                    ...oldData.answers,
-                    content: updatedAnswers,
-                },
-            };
-        });
-
-        setAnswerText(""); // Clear the comment input
-        toggleCommentForm(answerId);
-        }  catch (error) {
+            setAnswerText(""); // Clear the comment input
+            toggleCommentForm(answerId);
+        } catch (error) {
             const errorMessage = error.message || JSON.stringify(error);
             notifications.show("Failed to post comment", { autoHideDuration: 3000, severity: "error" });
         }
     };
 
     // Fetch Question details and its answers using useQuery
-    const { data: question, isLoading: isQuestionLoading } = useQuery({
+    const { data: question, isLoading: isQuestionLoading, isError, error } = useQuery({
         queryKey: ['question', questionId, currentPage], // Include page number in queryKey for pagination
         queryFn: async () => {
             try {
@@ -174,26 +176,27 @@ const QuestionPage = () => {
                 queryClient.setQueryData(['question', questionId, currentPage], response); // Cache the fetched question data
                 return response;
             } catch (err) {
-                if (err?.response?.status === 404) {
+                if (err?.response?.status === 404 || err?.response?.status === 500) {
+                    console.error("Error fetching question:", err);
                     setNotFound(true);
                 }
                 throw err;
             }
         }
-        
+
     });
 
     const initializeFollowAndBookmarkStates = (answersContent) => {
         if (initialized.current) return; // Skip re-initialization
         initialized.current = true;
-    
+
         const followState = {};
         const bookmarkState = {};
         const answerVotesState = {};
         const answerUserVotesState = {};
         const commentVotesState = {};
         const commentUserVotesState = {};
-        
+
         answersContent.forEach((answer) => {
             followState[answer.id] = answer.isFollowing;
             bookmarkState[answer.id] = answer.isBookmarked;
@@ -201,9 +204,9 @@ const QuestionPage = () => {
             answer.comments.forEach((comment) => {
                 commentUserVotesState[comment.id] = comment.userVote;
             });
-            
+
         });
-    
+
         setIsAnswerFollowing((prev) => ({ ...prev, ...followState }));
         setIsAnswerBookmarked((prev) => ({ ...prev, ...bookmarkState }));
         setAnswerVotes(answerVotesState);  // Initialize votes state
@@ -211,7 +214,7 @@ const QuestionPage = () => {
         setCommentVotes(commentVotesState);
         setUserCommentVotes(commentUserVotesState);
     };
-    
+
     useEffect(() => {
         // When page changes, check cache and initialize follow/bookmark states
         const cachedData = queryClient.getQueryData(['question', questionId, currentPage]);
@@ -300,19 +303,19 @@ const QuestionPage = () => {
             notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
             return;
         }
-    
+
         // Clear the previous debounce timeout if the user clicks again before delay
         if (debounceTimeout) {
             clearTimeout(debounceTimeout);
         }
-    
+
         const newDebounceTimeout = setTimeout(async () => {
             try {
                 let response;
                 const currentVote = userAnswerVotes[answerId] || null;
                 const currentVotes = answerVotes[answerId] || 0;
                 let newVotes;
-    
+
                 if (type === 'up') {
                     if (currentVote === 'up') {
                         // Neutralize the upvote by removing it
@@ -348,10 +351,10 @@ const QuestionPage = () => {
                         setUserAnswerVotes((prev) => ({ ...prev, [answerId]: 'down' }));
                     }
                 }
-    
+
                 // Update UI state immediately
                 setAnswerVotes((prevVotes) => ({ ...prevVotes, [answerId]: newVotes }));
-    
+
                 // Update query cache to maintain consistency
                 queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
                     if (!oldData) return oldData;
@@ -366,13 +369,13 @@ const QuestionPage = () => {
                         answers: { ...oldData.answers, content: updatedAnswers },
                     };
                 });
-    
+
                 notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
             } catch (error) {
                 notifications.show('Error occurred while voting on answer', { autoHideDuration: 3000, severity: 'error' });
             }
         }, 500);
-    
+
         setDebounceTimeout(newDebounceTimeout);
     };
 
@@ -386,13 +389,13 @@ const QuestionPage = () => {
             notifications.show('You need to be logged in to vote', { autoHideDuration: 3000, severity: 'error' });
             return;
         }
-    
+
         try {
             let response;
             const currentVote = commentUserVotes[commentId] || null;
             const currentVotes = commentVotes[commentId] || 0;
             let newVotes = currentVotes;
-    
+
             if (type === 'up') {
                 if (currentVote === 'up') {
                     response = await CommentService.upvoteComment(commentId);
@@ -412,7 +415,7 @@ const QuestionPage = () => {
             } else if (type === 'down') {
                 if (currentVote === 'down') {
                     // Neutralize the downvote by removing it
-                    response = await CommentService.downvoteComment(commentId); 
+                    response = await CommentService.downvoteComment(commentId);
                     newVotes += 1;
                     setUserCommentVotes((prev) => ({ ...prev, [commentId]: null }));
                 } else if (currentVote === 'up') {
@@ -427,10 +430,10 @@ const QuestionPage = () => {
                     setUserCommentVotes((prev) => ({ ...prev, [commentId]: 'down' }));
                 }
             }
-    
+
             // Update the UI state immediately
             setCommentVotes((prevVotes) => ({ ...prevVotes, [commentId]: newVotes }));
-    
+
             // Update the query cache to maintain consistency
             queryClient.setQueryData(['question', questionId, currentPage], (oldData) => {
                 if (!oldData) return oldData;
@@ -444,15 +447,15 @@ const QuestionPage = () => {
             });
 
             queryClient.invalidateQueries(['question', questionId]);
-    
+
             notifications.show(response.message, { autoHideDuration: 3000, severity: 'success' });
         } catch (error) {
             notifications.show('Error occurred while voting on comment', { autoHideDuration: 3000, severity: 'error' });
             console.error("Error voting on comment:", error);
         }
     };
-    
-    
+
+
 
 
     // Handle bookmarking the question
@@ -462,20 +465,20 @@ const QuestionPage = () => {
             notifications.show('You need to be logged in to bookmark', { autoHideDuration: 3000, severity: 'error' });
             return; // Stop if user is not logged in
         }
-    
+
         try {
             // Call the BookmarkService to toggle the bookmark for the question
             const response = await BookmarkService.toggleBookmarkQuestion(questionId);
-            
+
             // Update `isBookmarked` based on the response from the server
             setIsBookmarked((prevIsBookmarked) => !prevIsBookmarked);
-    
+
             // Show notification based on action
             notifications.show(response ? 'Bookmarked successfully' : 'Bookmark removed', {
                 autoHideDuration: 3000,
                 severity: response ? 'success' : 'info',
             });
-    
+
             // Invalidate cache for consistent data
             queryClient.invalidateQueries(['question', questionId]);
         } catch (error) {
@@ -502,7 +505,7 @@ const QuestionPage = () => {
             }));
 
             queryClient.invalidateQueries(['question', questionId]); // Invalidate cache for consistent state
-            
+
             notifications.show(response ? 'Bookmarked successfully' : 'Bookmark removed', {
                 autoHideDuration: 3000,
                 severity: response ? 'success' : 'info',
@@ -586,7 +589,7 @@ const QuestionPage = () => {
             [answerId]: !prev[answerId],  // Toggle visibility for the specific answer ID
         }));
     };
-    
+
 
     const getTagStyles = () => ({
         backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#e1ecf4',
@@ -608,8 +611,8 @@ const QuestionPage = () => {
     };
 
 
-    
-    
+
+
 
     const fetchAnswers = async (page) => {
         try {
@@ -632,7 +635,7 @@ const QuestionPage = () => {
 
     const fetchAllComments = async (answerId) => {
         try {
-            const response = await CommentService.getCommentsByAnswerId(answerId,commentPages[answerId] + 1,commentsPageSize)
+            const response = await CommentService.getCommentsByAnswerId(answerId, commentPages[answerId] + 1, commentsPageSize)
             setComments(prev => ({
                 ...prev,
                 [answerId]: [...prev[answerId], ...response.data.content] // Append new comments
@@ -642,7 +645,7 @@ const QuestionPage = () => {
             console.error("Error fetching all comments:", error);
         }
     };
-    
+
     // Fetch next 10 comments
     const fetchMoreComments = async (answerId) => {
         try {
@@ -679,9 +682,9 @@ const QuestionPage = () => {
             initializeFollowAndBookmarkStates(question.answers.content);
         }
     }, [question]);
-    
 
-    
+
+
 
     const handleNewAnswer = (message) => {
         try {
@@ -715,155 +718,202 @@ const QuestionPage = () => {
         }
     };
 
+    const renderPaginationButtons = () => {
+        const buttons = [];
+        const maxVisible = 2; // how many pages to show around current page
+      
+        const addButton = (page) => {
+          buttons.push(
+            <Button
+              key={page}
+              variant={page === currentPage ? "contained" : "outlined"}
+              onClick={() => handlePageChange(page)}
+              sx={{ mx: 0.5 }}
+            >
+              {page + 1}
+            </Button>
+          );
+        };
+      
+        if (totalPages <= 7) {
+          for (let i = 0; i < totalPages; i++) {
+            addButton(i);
+          }
+        } else {
+          addButton(0); // First page
+      
+          if (currentPage > maxVisible + 1) {
+            buttons.push(<span key="start-ellipsis">...</span>);
+          }
+      
+          const start = Math.max(1, currentPage - maxVisible);
+          const end = Math.min(totalPages - 2, currentPage + maxVisible);
+          for (let i = start; i <= end; i++) {
+            addButton(i);
+          }
+      
+          if (currentPage < totalPages - maxVisible - 2) {
+            buttons.push(<span key="end-ellipsis">...</span>);
+          }
+      
+          addButton(totalPages - 1); // Last page
+        }
+      
+        return buttons;
+      };
+      
 
+    if (notFound) return <NotFoundPage />;
 
-    if (!question) {
-            return <NotFoundPage />;
-    }
 
     return (
-        <Box sx={{ padding: { xs: '20px', sm: '100px' }, backgroundColor: theme.palette.background.paper }}>
-            <Box sx={{  padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, maxWidth: '1000px', margin: 'auto', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}>
+        <QueryWrapper
+            isLoading={isQuestionLoading}
+            isError={isError}
+            error={error}
+        >
+        <Box sx={{ padding: { xs: '20px', sm: '100px' },  backgroundColor: theme.palette.background.paper }}>
+            <Box sx={{ padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, maxWidth: '1000px', margin: 'auto', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}>
                 {/* Question Title */}
                 {isQuestionLoading ? (
                     <Skeleton variant="text" width="80%" height={40} />
                 ) : (
                     <Typography variant="h5"
-                                dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.title) }}
-                                sx={{
-                                    fontWeight: 'bold', marginBottom: '20px',
-                                    wordWrap: 'break-word',   // Breaks long words
-                                    overflowWrap: 'anywhere', // Allows breaking words anywhere
-                                    whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
-                                }}>
+                        dangerouslySetInnerHTML={{ __html: formatTextWithTags(question?.title || "") }}
+                        sx={{
+                            fontWeight: 'bold', marginBottom: '20px',
+                            wordWrap: 'break-word',   // Breaks long words
+                            overflowWrap: 'anywhere', // Allows breaking words anywhere
+                            whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
+                        }}>
                     </Typography>
                 )}
-                
-                <Paper sx={{  padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, marginBottom: '40px', backgroundColor: theme.palette.background.paper }}>
+
+                <Paper sx={{ padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, marginBottom: '40px', backgroundColor: theme.palette.background.paper }}>
                     <Grid container spacing={2}>
                         <Grid item xs={2} sm={1} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                             {/* Vote Buttons and Bookmark Icon with Skeletons */}
-                             {isQuestionLoading ? (
+                            {/* Vote Buttons and Bookmark Icon with Skeletons */}
+                            {isQuestionLoading ? (
                                 <>
                                     <Skeleton variant="circular" width={40} height={40} />
                                     <Skeleton variant="text" width={40} height={30} />
                                     <Skeleton variant="circular" width={40} height={40} />
                                 </>
                             ) : (
-                                    <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
-                                        <IconButton onClick={() => handleQuestionVote('up')}  sx={{ padding: 0 }}>
-                                            <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'}/>
-                                        </IconButton>
-                                    </Tooltip>
-                                    )}
-                                    <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
-                                    <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleQuestionVote('down')}  sx={{ padding: 0 }}>
-                                            <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
-                                        </IconButton>
-                                    </Tooltip>
-                                    
-                                    {/* Bookmark Button */}
-                                    <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
-                                                <IconButton onClick={handleBookmarkToggle}>
-                                                    {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
-                                                </IconButton>
-                                    </Tooltip>
-                                
+                                <Tooltip title="This question shows research effort; it is useful and clear" placement="right" arrow>
+                                    <IconButton onClick={() => handleQuestionVote('up')} sx={{ padding: 0 }}>
+                                        <KeyboardArrowUp color={userVote === 'up' ? 'primary' : 'inherit'} />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{votes}</Typography>
+                            <Tooltip title="This question does not show any research effort; it is unclear or not useful" placement="right" arrow>
+                                <IconButton onClick={() => handleQuestionVote('down')} sx={{ padding: 0 }}>
+                                    <KeyboardArrowDown color={userVote === 'down' ? 'primary' : 'inherit'} />
+                                </IconButton>
+                            </Tooltip>
+
+                            {/* Bookmark Button */}
+                            <Tooltip title={isBookmarked ? "Remove Bookmark" : "Bookmark this question"} placement="right" arrow>
+                                <IconButton onClick={handleBookmarkToggle}>
+                                    {isBookmarked ? <Bookmark /> : <BookmarkBorder />}
+                                </IconButton>
+                            </Tooltip>
+
                         </Grid>
 
                         <Grid item xs={10} sm={11}>
-    {isQuestionLoading ? (
-        <>
-            <Skeleton variant="text" width="100%" height={30} />
-            <Skeleton variant="text" width="90%" height={30} />
-            <Skeleton variant="text" width="80%" height={30} />
-        </>
-    ) : (
-        <>
-            {/* Question Description */}
-            <Typography
-                variant="body1"
-                dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.description) }}
-                sx={{
-                    marginBottom: '10px',
-                    wordWrap: 'break-word',
-                    overflowWrap: 'anywhere',
-                    whiteSpace: 'pre-wrap',
-                }}
-            />
+                            {isQuestionLoading ? (
+                                <>
+                                    <Skeleton variant="text" width="100%" height={30} />
+                                    <Skeleton variant="text" width="90%" height={30} />
+                                    <Skeleton variant="text" width="80%" height={30} />
+                                </>
+                            ) : (
+                                <>
+                                    {/* Question Description */}
+                                    <Typography
+                                        variant="body1"
+                                        dangerouslySetInnerHTML={{ __html: formatTextWithTags(question.description) }}
+                                        sx={{
+                                            marginBottom: '10px',
+                                            wordWrap: 'break-word',
+                                            overflowWrap: 'anywhere',
+                                            whiteSpace: 'pre-wrap',
+                                        }}
+                                    />
 
-            {/* Question Images */}
-            {imageUrls.length > 0 && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' }}>
-                    {imageUrls.map((url, index) => (
-                        <img
-                            key={index}
-                            src={url}
-                            alt={`Question Image ${index + 1}`}
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '300px',
-                                borderRadius: '8px',
-                                border: '1px solid #ccc',
-                            }}
-                        />
-                    ))}
-                </Box>
-            )}
+                                    {/* Question Images */}
+                                    {imageUrls.length > 0 && (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' }}>
+                                            {imageUrls.map((url, index) => (
+                                                <img
+                                                    key={index}
+                                                    src={url}
+                                                    alt={`Question Image ${index + 1}`}
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        maxHeight: '300px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #ccc',
+                                                    }}
+                                                />
+                                            ))}
+                                        </Box>
+                                    )}
 
-            {/* Question Tags */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                {question.tags.map((tag, index) => (
-                    <Chip
-                        key={index}
-                        label={tag}
-                        className={'Mui-unselected'}
-                        sx={{
-                            cursor: 'pointer',
-                            '&:hover': {
-                                opacity: 0.8, // Adds a hover effect
-                            },
-                        }}
-                    />
-                ))}
-            </Box>
+                                    {/* Question Tags */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                        {question.tags.map((tag, index) => (
+                                            <Chip
+                                                key={index}
+                                                label={tag}
+                                                className={'Mui-unselected'}
+                                                sx={{
+                                                    cursor: 'pointer',
+                                                    '&:hover': {
+                                                        opacity: 0.8, // Adds a hover effect
+                                                    },
+                                                }}
+                                            />
+                                        ))}
+                                    </Box>
 
-            {/* Question Metadata */}
-            <Box sx={{ marginTop: '20px', textAlign: 'right' }}>
-                <Box sx={{ textAlign: 'left' }}>
-                    {/* Follow Button */}
-                    <Tooltip title={isFollowing ? "Unfollow this question" : "Follow this question"} placement="right" arrow>
-                        <Button onClick={handleFollowQuestionToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
-                            {isFollowing ? "Following" : "Follow"}
-                        </Button>
-                    </Tooltip>
-                </Box>
-                {/* Ask Time */}
-                <Typography variant="caption" color="textSecondary" sx={{ marginBottom: '5px', display: 'block' }}>
-                    {timeAgo(question.askedTime)}
-                </Typography>
+                                    {/* Question Metadata */}
+                                    <Box sx={{ marginTop: '20px', textAlign: 'right' }}>
+                                        <Box sx={{ textAlign: 'left' }}>
+                                            {/* Follow Button */}
+                                            <Tooltip title={isFollowing ? "Unfollow this question" : "Follow this question"} placement="right" arrow>
+                                                <Button onClick={handleFollowQuestionToggle} variant={isFollowing ? "contained" : "outlined"} size="small">
+                                                    {isFollowing ? "Following" : "Follow"}
+                                                </Button>
+                                            </Tooltip>
+                                        </Box>
+                                        {/* Ask Time */}
+                                        <Typography variant="caption" color="textSecondary" sx={{ marginBottom: '5px', display: 'block' }}>
+                                            {timeAgo(question.askedTime)}
+                                        </Typography>
 
-                {/* Username and Reputation Points */}
-                <Typography variant="caption" color="textSecondary">
-                    Asked by{' '}
-                    <Link href={`/user/${question.userName}`} color="primary" underline="hover">
-                        {question.userName} ({question.userPoints})
-                    </Link>
-                </Typography>
+                                        {/* Username and Reputation Points */}
+                                        <Typography variant="caption" color="textSecondary">
+                                            Asked by{' '}
+                                            <Link href={`/user/${question.userName}`} color="primary" underline="hover">
+                                                {question.userName} ({question.userPoints})
+                                            </Link>
+                                        </Typography>
 
-                {/* Points (if needed) */}
-                <Box sx={{ marginTop: '5px' }}>
-                    <Tooltip title="Reputation score" placement="left-start" arrow>
-                        <Typography variant="caption" color="textSecondary">
-                            {question.userPoints} {/* Replace with the correct field */}
-                        </Typography>
-                    </Tooltip>
-                </Box>
-            </Box>
-        </>
-    )}
-</Grid>
+                                        {/* Points (if needed) */}
+                                        <Box sx={{ marginTop: '5px' }}>
+                                            <Tooltip title="Reputation score" placement="left-start" arrow>
+                                                <Typography variant="caption" color="textSecondary">
+                                                    {question.userPoints} {/* Replace with the correct field */}
+                                                </Typography>
+                                            </Tooltip>
+                                        </Box>
+                                    </Box>
+                                </>
+                            )}
+                        </Grid>
 
                     </Grid>
                 </Paper>
@@ -872,20 +922,23 @@ const QuestionPage = () => {
 
                 <Box sx={{ marginTop: '20px' }}>
                     <Typography variant="h6" sx={{ marginBottom: '20px' }}>Answers</Typography>
-
-                    {question.answers.content.map((answer, index) => (
+                    {question?.answers?.content?.length === 0 ? (
+                    <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: 'text.secondary', textAlign: 'center' }}>
+                        No answers yet. Be the first to answer!
+                    </Typography>
+                    ) : ( question?.answers?.content?.map((answer, index) => (
                         <Paper key={answer.id} sx={{ padding: '20px', marginBottom: '20px' }}>
                             <Grid container spacing={2}>
                                 <Grid item xs={2} sm={1} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <Tooltip title="This answer is useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleAnswerVote(answer.id,'up')} sx={{ padding: 0 }}>
-                                            <KeyboardArrowUp color={userAnswerVotes[answer.id] === 'up' ? 'primary' : 'inherit'}/>
+                                        <IconButton onClick={() => handleAnswerVote(answer.id, 'up')} sx={{ padding: 0 }}>
+                                            <KeyboardArrowUp color={userAnswerVotes[answer.id] === 'up' ? 'primary' : 'inherit'} />
                                         </IconButton>
                                     </Tooltip>
                                     <Typography variant="body1" sx={{ marginTop: '5px', marginBottom: '5px' }}>{answer.votes}</Typography>
                                     <Tooltip title="This answer is not useful" placement="right" arrow>
-                                        <IconButton onClick={() => handleAnswerVote(answer.id,'down')} sx={{ padding: 0 }}>
-                                            <KeyboardArrowDown color={userAnswerVotes[answer.id] === 'down' ? 'primary' : 'inherit'}/>
+                                        <IconButton onClick={() => handleAnswerVote(answer.id, 'down')} sx={{ padding: 0 }}>
+                                            <KeyboardArrowDown color={userAnswerVotes[answer.id] === 'down' ? 'primary' : 'inherit'} />
                                         </IconButton>
                                     </Tooltip>
                                     {/* Bookmark Button */}
@@ -952,17 +1005,17 @@ const QuestionPage = () => {
                                     </Box>
 
                                     {/* Comments Section */}
-                                     {answer.comments.slice(0, 5).map((comment, commentIndex) => (
+                                    {answer.comments.slice(0, 5).map((comment, commentIndex) => (
                                         <Box key={commentIndex} sx={{ marginTop: '10px', paddingLeft: { xs: 0, sm: '20px' }, borderLeft: '3px solid #ccc' }}>
                                             <Grid container>
                                                 <Grid item xs={9}>
                                                     <Typography variant="body2"
-                                                                dangerouslySetInnerHTML={{ __html: formatTextWithTags(comment.text) }}
-                                                                sx={{
-                                                                    wordWrap: 'break-word',   // Breaks long words
-                                                                    overflowWrap: 'anywhere', // Allows breaking words anywhere
-                                                                    whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
-                                                                }}
+                                                        dangerouslySetInnerHTML={{ __html: formatTextWithTags(comment.text) }}
+                                                        sx={{
+                                                            wordWrap: 'break-word',   // Breaks long words
+                                                            overflowWrap: 'anywhere', // Allows breaking words anywhere
+                                                            whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
+                                                        }}
                                                     >
                                                     </Typography>
                                                 </Grid>
@@ -978,7 +1031,7 @@ const QuestionPage = () => {
                                                         </Link>
                                                     </Typography>
 
-                                                    
+
                                                 </Grid>
                                             </Grid>
 
@@ -1036,26 +1089,24 @@ const QuestionPage = () => {
                                 </Grid>
                             </Grid>
                         </Paper>
-                    ))}
+                        ))
+                    )}
                     {/* Pagination Controls */}
-                    <Box sx={{ textAlign: 'center', marginTop: '20px' }}>
-                        <Button variant="outlined" disabled={currentPage === 0} onClick={() => handlePageChange(currentPage - 1)}>
-                            Previous
-                        </Button>
-                        {Array.from({ length: totalPages }, (_, index) => (
-                            <Button
-                                key={index}
-                                variant={currentPage === index ? "contained" : "outlined"}
-                                onClick={() => handlePageChange(index)}
-                                sx={{ mx: 1 }}
-                            >
-                                {index + 1}
-                            </Button>
-                        ))}
-                        <Button variant="outlined" disabled={currentPage + 1 >= totalPages} onClick={() => handlePageChange(currentPage + 1)}>
-                            Next
-                        </Button>
-                    </Box>
+                    {totalPages > 1 && (
+                    <Box sx={{ textAlign: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
+                    <Button variant="outlined" disabled={currentPage === 0} onClick={() => handlePageChange(currentPage - 1)}>
+                      Previous
+                    </Button>
+                  
+                    {renderPaginationButtons()}
+                  
+                    <Button variant="outlined" disabled={currentPage + 1 >= totalPages} onClick={() => handlePageChange(currentPage + 1)}>
+                      Next
+                    </Button>
+                  </Box>
+                  
+                    )}
+
                 </Box>
 
                 <Box sx={{ marginTop: '40px' }}>
@@ -1072,6 +1123,7 @@ const QuestionPage = () => {
                 </Box>
             </Box>
         </Box>
+        </QueryWrapper>
     );
 };
 

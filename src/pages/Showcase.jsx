@@ -18,6 +18,7 @@ import { getStorage, ref, getDownloadURL, listAll } from "firebase/storage";
 import ShowcaseFilterPanel from "../components/common/ShowcaseFilterPanel";
 import ShowcaseService from "../components/configuration/Services/ShowcaseService";
 import ShowcaseFilterService from "../components/configuration/Services/ShowcaseFilterService";
+import LoadingComponent from '../components/common/Loader';
 
 const Showcase = () => {
     const theme = useTheme();
@@ -147,9 +148,10 @@ const Showcase = () => {
         setPage(0);
     };
 
-    if (loading) {
-        return <Typography>Loading...</Typography>;
+    if (loading || showcases.length === 0) {
+        return <LoadingComponent />;
     }
+    
 
     if (error) {
         return <Typography color="error">{error}</Typography>;

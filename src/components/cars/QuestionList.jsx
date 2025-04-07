@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import QuestionService from '../configuration/Services/QuestionService';
 import FilterService from '../configuration/Services/FilterService';
+import QueryWrapper from '../common/QueryWrapper';
 
 const QuestionListPage = () => {
     const theme = useTheme();
@@ -55,6 +56,7 @@ const QuestionListPage = () => {
         if (filters.sortOption) params.set('sortOption', filters.sortOption);
         params.set('page', filters.page || 1);
         params.set('size', filters.pageSize || 10);
+
         navigate({ search: params.toString() });
     };
 
@@ -103,7 +105,7 @@ const QuestionListPage = () => {
     // Fetch questions using react-query
     const { data, isLoading, error } = useQuery({
         queryKey: [
-            isFiltering ? 'filteredQuestions' : 'allQuestions',
+            isFiltering ? 'filteredQuestions' : 'questions',
             selectedTags,
             noAnswers,
             noAcceptedAnswer,
@@ -161,7 +163,7 @@ const QuestionListPage = () => {
 
     return (
         <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
-            <Box sx={{ maxWidth: '900px', margin: 'auto', minHeight: '60vh' }}>
+            <Box sx={{ maxWidth: '900px', margin: 'auto', minHeight: '100vh' }}>
                 {/* Filter Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <Button variant="outlined" onClick={() => setIsFiltering(!isFiltering)} sx={{ fontWeight: 'bold' }}>
@@ -219,6 +221,7 @@ const QuestionListPage = () => {
                 )}
 
                 {/* Render questions or loading/skeleton */}
+                <QueryWrapper isLoading={isLoading} isError={!!error} error={error} notFound={data?.content?.length === 0}>
                 {isLoading ? (
                     <Grid container spacing={3}>
                         {[...Array(5)].map((_, index) => (
@@ -285,6 +288,7 @@ const QuestionListPage = () => {
                         <Typography>No questions found.</Typography>
                     )
                 )}
+                </QueryWrapper>
 
                 {/* Pagination Component */}
                 {data && data.totalPages > 1 && (
@@ -294,6 +298,11 @@ const QuestionListPage = () => {
                             page={page}
                             onChange={handlePageChange}
                             color="primary"
+                            siblingCount={1}         // Number of pages shown on each side of the current page
+                            boundaryCount={1}        // Number of pages always shown at the beginning and end
+                            shape="rounded"
+                            showFirstButton
+                            showLastButton
                         />
                     </Box>
                 )}

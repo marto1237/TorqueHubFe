@@ -18,7 +18,7 @@ import EventService from '../components/configuration/Services/EventService';
 import TicketTypeService from '../components/configuration/Services/TicketTypeService';
 import { format } from 'date-fns';
 import NotFoundPage from '../components/common/NotFoundPage';
-
+import LoadingComponent from '../components/common/Loader';
 
 const carDetails = {
     'JDM Only': {
@@ -35,28 +35,6 @@ const carDetails = {
     }
 };
 
-const events = [
-    {
-        id: 1,
-        name: 'Wonderland #3',
-        location: 'Ainterexpo, Bourg en Bresse (FR)',
-        date: 'September 21, 2024 - September 22, 2024',
-        hour: "10:00 AM - 6:00 PM",
-        ticketsLeft: 50,
-        price: '$25',
-        imageUrl: 'https://www.auto-evenementen.be/img/events/1801.jpg?uncache=1718278097',
-        carsAllowed: ['Sports cars', 'JDM Only'],
-        tags: ['Tuning', 'Expo', 'Happening', 'FR'],
-        description: 'Join us at Wonderland #3, a thrilling two-day event featuring car shows, tuning expos, and much more! Enjoy an exciting atmosphere filled with stunning cars, expert talks, and fun for all ages. Located at the iconic Ainterexpo in Bourg en Bresse, this is the place to be for all car enthusiasts.',
-        highlights: ['Live Tuning Demonstrations', 'Exclusive Merchandise', 'Meet the Experts', 'Food and Beverages'],
-        organizer: {
-            name: 'Auto Event Organizers',
-            contact: 'autoevents@example.com',
-            avatar: 'https://randomuser.me/api/portraits/men/75.jpg'
-        },
-        mapUrl: 'https://maps.google.com/maps?q=Ainterexpo,+Bourg+en+Bresse,+France&t=&z=13&ie=UTF8&iwloc=&output=embed'
-    },
-];
 
 const EventDetail = () => {
     const theme = useTheme();
@@ -69,8 +47,10 @@ const EventDetail = () => {
     const [notFound, setNotFound] = useState(false);
 
     const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
+    const [isImagesLoading, setIsImagesLoading] = useState(true);
 
-    const { data: event, isLoading, isError } = useQuery({
+
+    const { data: event, isLoading, isError, error } = useQuery({
         queryKey: ['event', id],
         queryFn: async () => {
             try {
@@ -100,6 +80,7 @@ const EventDetail = () => {
     useEffect(() => {
         const fetchEventImages = async () => {
             try {
+                setIsImagesLoading(true);
                 const storage = getStorage();
                 const folderRef = ref(storage, `eventImages/${id}/`);
                 const folderContents = await listAll(folderRef);
@@ -117,6 +98,8 @@ const EventDetail = () => {
             } catch (error) {
                 console.error(`Error fetching images for event ID ${id}:`, error);
                 setEventImages([]); // Fallback to empty array
+            } finally {
+                setIsImagesLoading(false); // Done loading
             }
         };
     
@@ -169,9 +152,10 @@ const EventDetail = () => {
         };
     };
 
-    if (!event) {
-        return <NotFoundPage />;
-    }
+    if (isLoading || isImagesLoading) return <LoadingComponent />;
+    if (isError && error?.response?.status === 404) return <NotFoundPage />;
+    if (isError) return <Typography color="error">Something went wrong.</Typography>;
+    if (!event) return null;
 
     const handleBuyTicket = () => {
         navigate('/payment');
@@ -256,15 +240,15 @@ const EventDetail = () => {
     }
 
     return (
-        <Box sx={{ padding: '20px', paddingTop: '100px', backgroundColor: theme.palette.background.paper }}>
+        <Box sx={{ padding: '20px', paddingTop: '100px', minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
             <Grid container spacing={4}>
                 {/* Event Details and Highlights Section */}
                 <Grid item xs={12} md={8}>
                     <Card sx={{ boxShadow: theme.shadows[4] }}>
                     <Card>
-                        <Carousel showThumbs={false} showArrows infiniteLoop emulateTouch>
-                            {eventImages && eventImages.length > 0 ? (
-                                eventImages.map((img, index) => (
+                    {eventImages && eventImages.length > 0 ? (
+                            <Carousel showThumbs={false} showArrows infiniteLoop emulateTouch>
+                                {eventImages.map((img, index) => (
                                     <Box key={index}>
                                         <CardMedia
                                             component="img"
@@ -273,13 +257,15 @@ const EventDetail = () => {
                                             sx={{ maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
                                         />
                                     </Box>
-                                ))
-                            ) : (
-                                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', padding: 2 }}>
+                                ))}
+                            </Carousel>
+                        ) : (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                                <Typography variant="body2" color="textSecondary">
                                     No images available for this event.
                                 </Typography>
-                            )}
-                        </Carousel>
+                            </Box>
+                        )}
                     </Card>
 
                         <CardContent>

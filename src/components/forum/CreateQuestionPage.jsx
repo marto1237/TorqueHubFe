@@ -39,6 +39,9 @@ const AskQuestion = () => {
     const [uploadedUrls, setUploadedUrls] = useState([]);
     const maxImages = 3;
 
+    const [availableTags, setAvailableTags] = useState([]);
+    const [loadingTags, setLoadingTags] = useState(false);
+
     const [error, setError] = useState({
         title: false,
         description: false,
@@ -48,13 +51,7 @@ const AskQuestion = () => {
     const [tagSearch, setTagSearch] = useState('');
 
     const maxTags = 5;
-    const { data: availableTags = [] } = useQuery({
-        queryKey: ['tags'],
-        queryFn: TagService.getAllTags,
-        staleTime: 5 * 60 * 1000, // Cache tags for 5 minutes
-        refetchOnWindowFocus: false,
-    });
-
+    
     // Filter tags based on search input
     const filteredTags = useMemo(() => {
         return availableTags.filter(tag =>
@@ -187,6 +184,27 @@ const AskQuestion = () => {
         }
     };
 
+    const handleTagInputChange = async (event, value, reason) => {
+        if (reason === 'input') {
+            setTagSearch(value);
+    
+            if (value.trim() === '') {
+                setAvailableTags([]);
+                return;
+            }
+    
+            setLoadingTags(true);
+            try {
+                const result = await TagService.searchTags(value);
+                setAvailableTags(result);
+            } catch (err) {
+                console.error("Failed to fetch tags:", err);
+            } finally {
+                setLoadingTags(false);
+            }
+        }
+    };
+    
     const handleEmojiClick = (emojiObject, target) => {
         const emoji = emojiObject.emoji;
         if (target === 'title') setTitle(title + emoji);
@@ -358,9 +376,18 @@ const AskQuestion = () => {
                         {/* Tags Input */}
                         <Autocomplete
                             multiple
-                            options={filteredTags}
+                            freeSolo={false}
+                            options={availableTags}
                             getOptionLabel={(option) => option.name}
-                            onChange={handleTagChange}
+                            filterSelectedOptions
+                            loading={loadingTags}
+                            inputValue={tagSearch}
+                            onInputChange={handleTagInputChange}
+                            onChange={(event, newValue) => {
+                                const unique = [...new Set(newValue.map(tag => typeof tag === 'string' ? tag : tag.name))];
+                                setTags(unique.slice(0, maxTags));
+                                setTagSearch('');
+                            }}
                             value={tags.map(tag => ({ name: tag }))}
                             renderTags={(value, getTagProps) =>
                                 value.map((option, index) => (
@@ -385,6 +412,7 @@ const AskQuestion = () => {
                             limitTags={maxTags}
                             sx={{ mb: { xs: '1rem', md: '1.5rem' } }}
                         />
+
                         {/* Image Upload */}
                         <Typography variant="h6" sx={{ marginBottom: '0.5rem' }}>Upload Images</Typography>
                         <Button variant="contained" component="label" sx={{ marginBottom: '1rem' }}>
