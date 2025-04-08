@@ -20,19 +20,26 @@ const EventList = () => {
     const [selectedTags, setSelectedTags] = useState([]); // Initialize as empty array
     const navigate = useNavigate(); // For programmatic navigation
     const [userRole, setUserRole] = useState(null);
-    const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
-    const size = 9;
     const [eventsWithImages, setEventsWithImages] = useState([]);
     const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const initialPage = parseInt(queryParams.get('page') || '0', 10); // 0-indexed
+    const initialSize = parseInt(queryParams.get('size') || '9', 10);
+
+    const [page, setPage] = useState(initialPage);
+    const [size, setPageSize] = useState(initialSize);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [selectedFilters, setSelectedFilters] = useState({});
     const [isFilterMode, setIsFilterMode] = useState(false);
     const [isImagesLoading, setIsImagesLoading] = useState(true);
 
+    const [defaultEvents, setDefaultEvents] = useState([]);
+    const [filteredEvents, setFilteredEvents] = useState([]);
 
     const fetchFilteredEvents = async () => {
         try {
+            setIsImagesLoading(true);
             const validFilters = Object.fromEntries(
                 Object.entries(selectedFilters).filter(
                     ([_, value]) => value !== null && value !== ""
@@ -50,15 +57,15 @@ const EventList = () => {
             const events = response.content;
 
             // Fetch images for each event
-            const eventsWithImages = await Promise.all(
-                setIsImagesLoading(true),
+            const filteredWithImages = await Promise.all(
                 events.map(async (event) => {
                     const imageUrl = await getFirebaseImage(event.id);
                     return { ...event, imageUrl };
                 })
             );
 
-            setEventsWithImages(eventsWithImages);
+
+            setFilteredEvents(filteredWithImages);
             setTotalPages(response.totalPages);
         } catch (err) {
             console.error("Error fetching events:", err);
@@ -97,18 +104,19 @@ const EventList = () => {
         if (!isFilterMode) {
             const fetchDefaultEvents = async () => {
                 const response = await EventService.findAllEvents(page, size);
-                const updatedEvents = await Promise.all(
+                const eventsWithImages = await Promise.all(
                     response.content.map(async (event) => {
                         const imageUrl = await getFirebaseImage(event.id);
                         return { ...event, imageUrl };
                     })
                 );
-                setEventsWithImages(updatedEvents);
+                setDefaultEvents(eventsWithImages);
                 setTotalPages(response.totalPages);
             };
             fetchDefaultEvents();
         }
     }, [page, sort, isFilterMode]);
+    
     
 
     // Function to fetch the first image from Firebase Storage
@@ -147,15 +155,16 @@ const EventList = () => {
     };
 
     // Filter events by selected tags
-    const filteredEvents = selectedTags.length > 0
-        ? eventsWithImages.filter((event) =>
-            selectedTags.every((tag) =>
+    const visibleEvents = isFilterMode
+    ? filteredEvents
+    : (selectedTags.length > 0
+        ? defaultEvents.filter(event =>
+            selectedTags.every(tag =>
                 (event.tags || []).includes(tag) ||
                 (event.carsAllowed || []).includes(tag)
             )
         )
-        : eventsWithImages;
-
+        : defaultEvents);
     const handleCreateEventClick = () => {
         navigate('/create-event');
     };
@@ -179,17 +188,43 @@ const EventList = () => {
 
     const handleApplyFilters = (filters) => {
         console.log("Final Selected Filters:", filters); // Log final filters
+        
         setSelectedFilters(filters); // Update the filters state in EventList
         setIsFilterMode(true);
         setPage(0);
+        setShowFilterPanel(true); // Keep panel open ✅
+        updateURLParams(0, size, filters);
+    };
+    
+    const updateURLParams = (newPage, newSize, currentFilters = selectedFilters) => {
+        const params = new URLSearchParams();
+    
+        Object.entries(currentFilters).forEach(([key, value]) => {
+            if (value !== null && value !== "" && !Array.isArray(value)) {
+                params.set(key, value);
+            }
+            if (Array.isArray(value) && value.length > 0) {
+                params.set(key, value.join(",")); // For arrays like tagIds
+            }
+        });
+    
+        params.set("page", newPage + 1); // URL is 1-based
+        params.set("size", newSize);
+        navigate({ search: params.toString() });
     };
     
 
     const handleClearFilters = () => {
         setSelectedFilters({});
+        setFilteredEvents([]);
+        setIsFilterMode(false);
+        setSelectedTags([]);
+        setPage(0);
     };
 
     if (isLoading || isImagesLoading) return <LoadingComponent />;
+
+    
 
 
     return (
@@ -198,27 +233,28 @@ const EventList = () => {
                 <Box>
 
                     <Box>
-                        <Button
-                            variant="outlined"
-                            onClick={() => setShowFilterPanel(!showFilterPanel)}
-                            sx={{ mr: 2 }}
+                    <Button
+                        variant="outlined"
+                        onClick={() => {
+                            if (isFilterMode) {
+                            handleClearFilters();            // Reset all filters and state
+                            setShowFilterPanel(false);
+                            } else {
+                            setShowFilterPanel((prev) => !prev); // Just toggle panel open/close
+                            }
+                        }}
+                        sx={{ fontWeight: 'bold', mb: 2 }}
                         >
-                            {showFilterPanel ? 'Close Filters' : 'Show Filters'}
+                        {isFilterMode ? 'Clear Filters' : (showFilterPanel ? 'Hide Filters' : 'Show Filters')}
                         </Button>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleClearFilters}
-                            disabled={!Object.keys(selectedFilters).length}
-                        >
-                            Clear Filters
-                        </Button>
+
+
                     </Box>
                     {showFilterPanel && (
                         <EventFilterPanel
                             selectedFilters={selectedFilters}
                             setSelectedFilters={setSelectedFilters}
-                            onApplyFilters={handleApplyFilters}
+                            onFilter={handleApplyFilters}
                             isFilterPanelOpen={showFilterPanel}
                         />
                     )}
@@ -270,7 +306,7 @@ const EventList = () => {
 
                             {/* Render the filtered events */}
                             <Grid container spacing={3}>
-                                {filteredEvents.map((event) => (
+                                {visibleEvents.map((event) => (
                                     <Grid item xs={12} sm={6} md={4} lg={4} xl={4} key={event.id} sx={{ padding: '15px' }}>
                                         <Card sx={{ borderRadius: '15px', overflow: 'hidden' }}>
                                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -377,6 +413,10 @@ const EventList = () => {
                                         count={totalPages} // Total pages from API response
                                         page={page+1} // Material-UI Pagination uses 1-indexed pages
                                         onChange={handlePageChange}
+                                        siblingCount={1}         // Number of pages shown on each side of the current page
+                                        boundaryCount={1}        // Number of pages always shown at the beginning and end
+                                        showFirstButton
+                                        showLastButton
                                         color="primary"
                                     />
                                 </Box>

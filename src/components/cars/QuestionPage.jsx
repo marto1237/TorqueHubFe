@@ -28,6 +28,7 @@ const QuestionPage = () => {
     const location = useLocation();
     const queryClient = useQueryClient(); // Access queryClient to manage cache
     const initialized = useRef(false);
+    const answersRef = useRef(null);
 
     const queryParams = new URLSearchParams(location.search);
     const initialPage = parseInt(queryParams.get('page') || '0', 10);
@@ -96,6 +97,12 @@ const QuestionPage = () => {
         }
     };
 
+    useEffect(() => {
+        if (answersRef.current) {
+            answersRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [currentPage]);
+    
 
     const handleAnswerCommentSubmit = async (commentText, answerId) => {
         if (!validateComment(commentText)) {
@@ -920,7 +927,7 @@ const QuestionPage = () => {
 
                 <Divider />
 
-                <Box sx={{ marginTop: '20px' }}>
+                <Box ref={answersRef} sx={{ marginTop: '20px' }}>
                     <Typography variant="h6" sx={{ marginBottom: '20px' }}>Answers</Typography>
                     {question?.answers?.content?.length === 0 ? (
                     <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: 'text.secondary', textAlign: 'center' }}>

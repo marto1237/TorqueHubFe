@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
     Box,
     Card,
@@ -28,7 +28,7 @@ const Showcase = () => {
     const [loading, setLoading] = useState(true); // Loading state
     const [error, setError] = useState(null); // Error state
     const [isFiltering, setIsFiltering] = useState(false); // Filter toggle
-    const [showFilters, setShowFilters] = useState(true); // Toggle filter panel visibility
+    const [showFilters, setShowFilters] = useState(false); // Toggle filter panel visibility
     const [filters, setFilters] = useState({
         title: "",
         brandId: null,
@@ -37,10 +37,17 @@ const Showcase = () => {
         countryId: null,
         sortOption: "newest",
     });
-    const [page, setPage] = useState(0); // Pagination
-    const [totalPages, setTotalPages] = useState(1);
-    const size = 9;
+    
+    const location = useLocation();
     const navigate = useNavigate();
+
+    const queryParams = new URLSearchParams(location.search);
+    const initialPage = parseInt(queryParams.get("page") || "0", 10);
+    const initialSize = parseInt(queryParams.get("size") || "9", 10);
+
+    const [page, setPage] = useState(0); // Pagination
+    const [size, setSize] = useState(initialSize);
+    const [totalPages, setTotalPages] = useState(1);
 
     const handleShowcaseClick = (id) => {
         navigate(`/car/${id}`); // Navigate to car detail page
@@ -61,6 +68,7 @@ const Showcase = () => {
                 );
                 setShowcases(showcasesWithImages);
                 setTotalPages(response.totalPages);
+                setIsFiltering(false);
             } catch (err) {
                 console.error("Error fetching showcases:", err);
                 setError("Failed to load showcases.");
@@ -72,45 +80,66 @@ const Showcase = () => {
         fetchShowcases();
     }, [page, size, isFiltering]);
 
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const urlFilters = {
+            title: params.get("title") || "",
+            brandId: params.get("brandId"),
+            modelId: params.get("modelId"),
+            categoryId: params.get("categoryId"),
+            countryId: params.get("countryId"),
+            sortOption: params.get("sortOption") || "newest",
+        };
+    
+        const hasFilters = Object.values(urlFilters).some((val) => val);
+        setFilters(urlFilters);
+        setIsFiltering(hasFilters); // ✅ retain filtering state
+    
+        const urlPage = parseInt(params.get("page") || "0", 10);
+        const urlSize = parseInt(params.get("size") || "9", 10);
+        setPage(urlPage);
+        setSize(urlSize);
+    
+    }, [location.search]);
+    
+    
     // Fetch filtered showcases
     const handleApplyFilters = async () => {
+        const newPage = 0;
+        setPage(newPage);
         setLoading(true);
+        setShowcases([]); // Clear current view to prevent flashes
+    
         try {
-            // Remove null or empty filters from the request
             const validFilters = Object.fromEntries(
-                Object.entries(filters).filter(
-                    ([_, value]) => value !== null && value !== ""
-                )
+                Object.entries(filters).filter(([_, value]) => value !== null && value !== "")
             );
-
-            const params = new URLSearchParams({
-                ...validFilters,
-                page,
-                size,
-            });
-
-            const apiUrl = `http://localhost:8082/showcases/filter?${params.toString()}`;
-            console.log("Generated Filter API URL:", apiUrl);
-
-            const response = await ShowcaseFilterService.filterShowcases(validFilters, page, size);
+    
+            updateURLParams(newPage, size, filters); // 👈 move this here
+    
+            const response = await ShowcaseFilterService.filterShowcases(validFilters, newPage, size);
+            console.log("Filtered showcases response:", response); // Debugging log
             const filteredWithImages = await Promise.all(
                 response.content.map(async (showcase) => {
                     const imageUrl = await getFirebaseImage(showcase.id);
                     return { ...showcase, image: imageUrl };
                 })
             );
-
-            // Update the showcase data with the filtered results
+    
             setShowcases(filteredWithImages);
             setTotalPages(response.totalPages);
             setIsFiltering(true);
+            setError(null);
         } catch (err) {
             console.error("Error fetching filtered showcases:", err);
             setError("Failed to load filtered showcases.");
+            isFiltering(false); // Reset filtering state on error
+            setShowcases([]);
         } finally {
             setLoading(false);
         }
     };
+    
 
     // Fetch Firebase image
     const getFirebaseImage = async (showcaseId) => {
@@ -128,10 +157,32 @@ const Showcase = () => {
         }
     };
 
+    const updateURLParams = (newPage, newSize, currentFilters = filters) => {
+        const params = new URLSearchParams();
+    
+        Object.entries(currentFilters).forEach(([key, value]) => {
+            if (
+                value !== null &&
+                value !== "" &&
+                !key.endsWith("Name") // 🛠️ Exclude 'countryName', 'brandName', etc.
+            ) {
+                params.set(key, value);
+            }
+        });
+        
+    
+        params.set("page", newPage + 1); // URL is 1-based
+        params.set("size", newSize);
+        navigate({ search: params.toString() });
+    };
+    
+
+
     // Handle pagination
     const handlePageChange = (event, value) => {
         const zeroBasedPage = value - 1;
         setPage(zeroBasedPage);
+        updateURLParams(zeroBasedPage, size, filters);
     };
 
     // Clear filters and reload all showcases
@@ -148,9 +199,71 @@ const Showcase = () => {
         setPage(0);
     };
 
-    if (loading || showcases.length === 0) {
+    if (loading ) {
         return <LoadingComponent />;
     }
+    
+    if (!loading && showcases.length === 0 && isFiltering) {
+        return (
+            <Box
+                sx={{
+                    padding: "20px",
+                    paddingTop: "100px",
+                    minHeight: "100vh",
+                    backgroundColor: theme.palette.background.paper,
+                }}
+            >
+                {/* Filter toggle + panel still shown */}
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                    <Button
+                        variant="outlined"
+                        onClick={() => {
+                            if (isFiltering) {
+                                handleClearFilters();
+                                setShowFilters(false);
+                            } else {
+                                setIsFiltering(true);
+                                setShowFilters(true);
+                            }
+                        }}
+                        sx={{ fontWeight: 'bold' }}
+                    >
+                        {isFiltering ? 'Clear Filters' : 'Show Filters'}
+                    </Button>
+                </Box>
+    
+                {showFilters && isFiltering && (
+                    <ShowcaseFilterPanel
+                        selectedFilters={filters}
+                        setSelectedFilters={setFilters}
+                        onApplyFilters={(updatedFilters) => {
+                            setFilters(updatedFilters);
+                            handleApplyFilters(updatedFilters);
+                        }}
+                    />
+                )}
+    
+                {/* No results message */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "50vh",
+                        textAlign: "center",
+                        color: "gray",
+                    }}
+                >
+                    <Typography variant="h5" color="error" gutterBottom>
+                        🚫 No results found for the applied filters.
+                    </Typography>
+                    <Typography variant="body1">Try changing your filter criteria.</Typography>
+                </Box>
+            </Box>
+        );
+    }
+        
     
 
     if (error) {
@@ -177,19 +290,20 @@ const Showcase = () => {
             >
                 <Button
                     variant="outlined"
-                    onClick={isFiltering ? handleClearFilters : () => setIsFiltering(true)}
-                    sx={{ fontWeight: "bold" }}
+                    onClick={() => {
+                        if (isFiltering) {
+                            handleClearFilters();
+                            setShowFilters(false);
+                        } else {
+                            setIsFiltering(true);
+                            setShowFilters(true);
+                        }
+                    }}
+                    sx={{ fontWeight: 'bold' }}
                 >
-                    {isFiltering ? "Clear Filters" : "Show Filters"}
+                    {isFiltering ? 'Clear Filters' : 'Show Filters'}
                 </Button>
 
-                <IconButton
-                    onClick={() => setShowFilters(!showFilters)}
-                    color="primary"
-                    sx={{ fontWeight: "bold" }}
-                >
-                    {showFilters ? <FilterListOff /> : <FilterList />}
-                </IconButton>
             </Box>
 
             {/* Filter Panel */}
@@ -197,7 +311,10 @@ const Showcase = () => {
                 <ShowcaseFilterPanel
                     selectedFilters={filters}
                     setSelectedFilters={setFilters}
-                    onApplyFilters={handleApplyFilters}
+                    onApplyFilters={(updatedFilters) => {
+                        setFilters(updatedFilters); // ✅ Save to parent
+                        handleApplyFilters(updatedFilters); // ✅ Then apply
+                      }}
                 />
             )}
 
@@ -280,6 +397,10 @@ const Showcase = () => {
                     count={totalPages}
                     page={page + 1}
                     onChange={handlePageChange}
+                    siblingCount={1}         // Number of pages shown on each side of the current page
+                    boundaryCount={1}        // Number of pages always shown at the beginning and end
+                    showFirstButton
+                    showLastButton
                     color="primary"
                 />
             </Box>

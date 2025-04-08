@@ -300,7 +300,6 @@ const QuestionListPage = () => {
                             color="primary"
                             siblingCount={1}         // Number of pages shown on each side of the current page
                             boundaryCount={1}        // Number of pages always shown at the beginning and end
-                            shape="rounded"
                             showFirstButton
                             showLastButton
                         />

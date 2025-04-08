@@ -105,7 +105,8 @@ const ShowcaseFilterPanel = ({ selectedFilters, setSelectedFilters, onApplyFilte
     // Apply filters and log final filters
     const handleApplyFilters = () => {
         console.log("Final Selected Filters:", selectedFilters); // Log final filters
-        onApplyFilters(selectedFilters);
+        onApplyFilters(prev => ({ ...prev }));
+
     };
 
     return (

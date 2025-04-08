@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Paper, Chip, Pagination, Skeleton,Button } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import ShowcaseService from '../configuration/Services/ShowcaseService';
 import { useTheme, useMediaQuery } from '@mui/material';
 
@@ -8,13 +8,22 @@ const ShowcaseListPage = () => {
     const { userId } = useParams(); // Extract userId from route
     const navigate = useNavigate();
     const theme = useTheme();
-
-    const [page, setPage] = useState(1);
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const initialPage = parseInt(queryParams.get('page') || '1', 10);
+    const [page, setPage] = useState(initialPage);
+    const initialSize = parseInt(queryParams.get('size') || '10', 10);
+    const [pageSize, setPageSize] = useState(initialSize);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
 
-    const pageSize = 10;
+    
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [page]);
+    
 
     useEffect(() => {
         const fetchData = async () => {
@@ -46,6 +55,11 @@ const ShowcaseListPage = () => {
 
     const handlePageChange = (event, value) => {
         setPage(value);
+
+        const params = new URLSearchParams(location.search);
+        params.set('page', value);
+        params.set('size', pageSize);
+        navigate({ search: params.toString() });
     };
 
     const handleShowcaseClick = (showcaseId) => {
@@ -153,7 +167,10 @@ const ShowcaseListPage = () => {
             )}
             {data && data.totalPages > 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-                    <Pagination count={data.totalPages} page={page} onChange={handlePageChange} color="primary" />
+                    <Pagination count={data.totalPages} page={page} onChange={handlePageChange} siblingCount={1}         // Number of pages shown on each side of the current page
+                                        boundaryCount={1}        // Number of pages always shown at the beginning and end
+                                        showFirstButton
+                                        showLastButton color="primary" />
                 </Box>
             )}
         </Box>
