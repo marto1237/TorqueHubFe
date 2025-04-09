@@ -145,7 +145,7 @@ function Login({ setLoggedIn }) {
                 <Typography component="h1" variant="h5" className="signInText">
                     Sign Up
                 </Typography>
-                <form className="form" autoComplete="on" onSubmit={handleSubmit}>
+                <form className="form" autoComplete="on" onSubmit={handleSubmit} noValidate>
                     <TextField
                         variant="outlined"
                         margin="normal"
