@@ -54,6 +54,17 @@ const EventService = {
         }
     },
 
+    findAllNotPassedEvents: async (page = 0, size = 10) => {
+        try {
+            const response = await ticktsAPI.get('/events/notpassed', {
+                params: { page, size },
+            });
+            return response.data;
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    },
+
     findAllEventsByUserId: async (userId, page = 0, size = 10) => {
         try {
             const response = await ticktsAPI.get(`/events/creator/${userId}`, {

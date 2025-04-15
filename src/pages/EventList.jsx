@@ -93,7 +93,7 @@ const EventList = () => {
         queryKey: ['events', { page, size }],
         queryFn: async ({ queryKey }) => {
             const [, { page, size }] = queryKey;
-            const response = await EventService.findAllEvents(page, size);
+            const response = await EventService.findAllNotPassedEvents(page, size);
             console.log(response);
             return response;
         },
@@ -103,7 +103,7 @@ const EventList = () => {
     useEffect(() => {
         if (!isFilterMode) {
             const fetchDefaultEvents = async () => {
-                const response = await EventService.findAllEvents(page, size);
+                const response = await EventService.findAllNotPassedEvents(page, size);
                 const eventsWithImages = await Promise.all(
                     response.content.map(async (event) => {
                         const imageUrl = await getFirebaseImage(event.id);

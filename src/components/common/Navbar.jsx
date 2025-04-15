@@ -16,7 +16,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '../../firebase';
-import axios from 'axios';
 import '../../styles/NavBar.css';
 import NotificationWebSocketService from '../configuration/WebSocket/NotificationWebSocketService'; // Adjust path as necessary
 import NotificationService from "../configuration/Services/NotificationService";
@@ -341,9 +340,6 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                             sx={{ display: { xs: 'block', md: 'none' } }}
                         >
                             <MenuItem onClick={() => {handleCloseNavMenu();handleCarFormClick();}} className="MuiMenuItem-root">
-                                <AccountCircle sx={{ mr: 2 }} /> My Profile
-                            </MenuItem>
-                            <MenuItem onClick={() => {handleCloseNavMenu();handleCarFormClick();}} className="MuiMenuItem-root">
                                 Car Forms
                             </MenuItem>
                             <MenuItem onClick={() => {handleCloseNavMenu();handleEventClick();}} className="MuiMenuItem-root">
@@ -473,7 +469,7 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                 sx={{ padding: { xs: '4px', sm: '6px' } }}
                             >
                                 <Badge badgeContent={unreadCount} color="error">
-                                    <NotificationsIcon sx={{ fontSize: { xs: '1.0rem', sm: '1.5rem' }, color: theme.palette.mode === 'light' ? 'black' : 'white' }}/>
+                                    <NotificationsIcon sx={{ fontSize: { xs: '1.5rem', sm: '1.5rem' }, color: theme.palette.mode === 'light' ? 'black' : 'white' }}/>
                                 </Badge>
                             </IconButton>
 
