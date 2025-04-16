@@ -7,6 +7,7 @@
   NODE_VERSION = "20"
   # Pass --legacy-peer-deps to every npm install
   NPM_FLAGS   = "--legacy-peer-deps"
+  CI = "false"
 
 # Optional: set the npm‑level env var if you want belt‑and‑braces
 # npm_config_legacy_peer_deps = "true"
