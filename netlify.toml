@@ -16,10 +16,6 @@
   # Still installing the platform‑specific esbuild binary
   onPreBuild = "npm install @esbuild/linux-x64 --no-save || true"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 
 [[redirects]]
   from = "/api/*"
@@ -69,3 +65,8 @@
   for = "/*.webp"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
