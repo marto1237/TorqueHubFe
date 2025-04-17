@@ -21,6 +21,21 @@
   to = "/index.html"
   status = 200
 
+[[redirects]]
+  from = "/api/*"
+  to   = "http://backend.torque-hub.com/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/showcase-api/*"
+  to   = "http://backend.torque-hub.com/showcase-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/ticket-api/*"
+  to   = "http://backend.torque-hub.com/ticket-api/:splat"
+  status = 200
+
 # Cache headers (unchanged)
 [[headers]]
   for = "/static/*"
