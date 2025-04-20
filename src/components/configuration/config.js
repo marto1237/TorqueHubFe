@@ -1,17 +1,17 @@
 const API_BASE_URL =
     process.env.NODE_ENV === "development"
         ? "http://localhost:8080"
-        : "/api";
+        : "https://backend.torque-hub.com/api";
 
 const WEBSOCKET_URL =
     process.env.NODE_ENV === "development"
         ? "ws://localhost:8080/ws"
-        : "ws://api/ws";
+        : "wss://backend.torque-hub.com/ws";
 
 const ANNOUNCEMENT_WEBSOCKET_URL =
     process.env.NODE_ENV === "development"
             ? "ws://localhost:8081/ws"
-            : "wss://ticket-api/ws";
+            : "wss://backend.torque-hub.com/ws";
 
 const API_BASE_URL_SHOWCASE =
 process.env.NODE_ENV === "development"
