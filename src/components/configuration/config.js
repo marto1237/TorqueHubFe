@@ -1,7 +1,7 @@
 const API_BASE_URL =
     process.env.NODE_ENV === "development"
         ? "http://localhost:8080"
-        : "https://backend.torque-hub.com/api";
+        : "/api";
 
 const WEBSOCKET_URL =
     process.env.NODE_ENV === "development"
