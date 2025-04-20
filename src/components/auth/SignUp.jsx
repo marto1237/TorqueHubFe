@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles'; // Correct hook to access the theme
 import '../../styles/SignUp.css';
 import AuthService from "../configuration/Services/AuthService";
+import EmailService from "../configuration/Services/EmailService";
 import { useNavigate } from 'react-router-dom';
 import { useAppNotifications } from '../common/NotificationProvider';
 
@@ -96,6 +97,16 @@ export default function SignUp() {
         try {
             // Send signup request to the server
             const response = await AuthService.register({ username, email, password });
+
+            //Only send welcome email if registration succeeded
+            try {
+                await EmailService.sendWelcomeEmail({
+                    to: email,
+                    userName: username
+                });
+            } catch (emailError) {
+                console.warn("User registered, but failed to send welcome email:", emailError);
+            }
 
             // Notify user of successful account creation
             notifications.show('Account created successfully! Please log in.', {

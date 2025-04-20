@@ -10,6 +10,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import LanguageIcon from '@mui/icons-material/Language';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -21,6 +22,12 @@ const AdminPanel = ({ userDetails }) => {
             icon: <ManageAccountsIcon fontSize="large" />,
             route: '/manage-carModels',
         },
+        {
+            label: 'Email Panel',
+            icon: <MailOutlineIcon fontSize="large" />,
+            route: '/admin/emails',
+        },
+          
         {
             label: 'Manage Events',
             icon: <EventIcon fontSize="large" />,

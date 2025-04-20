@@ -67,6 +67,7 @@ const PaymentFailedPage = lazy(() => import('./pages/PaymentFailedPage'));
 const AdFreeDonationPage = lazy(() => import('./pages/AdFreeDonationPage'));
 const DonationPage = lazy(() => import('./pages/Donation'));
 const RankPage = lazy(() => import('./pages/Ranks'));
+const EmailPanel = lazy(() => import('./components/forum/EmailPanel'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -305,6 +306,16 @@ const App = () => {
                                         </RoleProtectedRoute>
                                     }
                                 />
+
+                                <Route
+                                path="/admin/emails"
+                                element={
+                                    <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} userDetails={userDetails}>
+                                    <EmailPanel />
+                                    </RoleProtectedRoute>
+                                }
+                                />
+
 
                                 <Route path="/AdFreeDonation" element={<AdFreeDonationPage />} />
 
