@@ -19,19 +19,19 @@
 
 [[redirects]]
   from = "/api/*"
-  to   = "http://69.62.116.15/api/:splat"
+  to   = "http://backend.torque-hub.com/api/:splat"
   status = 200
-  force = true
+  force = true        # (prevents any earlier rule winning)
 
 [[redirects]]
   from = "/showcase-api/*"
-  to   = "http://69.62.116.15/showcase-api/:splat"
+  to   = "http://backend.torque-hub.com/showcase-api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/ticket-api/*"
-  to   = "http://69.62.116.15/ticket-api/:splat"
+  to   = "http://backend.torque-hub.com/ticket-api/:splat"
   status = 200
   force = true
 
