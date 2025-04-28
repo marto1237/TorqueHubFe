@@ -18,6 +18,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import NotFoundPage from '../common/NotFoundPage';
 import QueryWrapper from '../common/QueryWrapper';
 import LoadingComponent from '../common/Loader';
+import ReportService from '../configuration/Services/ReportService';
+import PageReportButton from '../common/PageReportButton';
+import ReportButton from '../common/ReportButton';
 
 const QuestionPage = () => {
 
@@ -781,20 +784,28 @@ const QuestionPage = () => {
         >
         <Box sx={{ padding: { xs: '20px', sm: '100px' },  backgroundColor: theme.palette.background.paper }}>
             <Box sx={{ padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, maxWidth: '1000px', margin: 'auto', backgroundColor: theme.palette.background.paper, color: theme.palette.text.primary }}>
-                {/* Question Title */}
-                {isQuestionLoading ? (
-                    <Skeleton variant="text" width="80%" height={40} />
-                ) : (
-                    <Typography variant="h5"
-                        dangerouslySetInnerHTML={{ __html: formatTextWithTags(question?.title || "") }}
-                        sx={{
-                            fontWeight: 'bold', marginBottom: '20px',
-                            wordWrap: 'break-word',   // Breaks long words
-                            overflowWrap: 'anywhere', // Allows breaking words anywhere
-                            whiteSpace: 'pre-wrap',   // Preserves newlines and spaces while allowing wrapping
-                        }}>
-                    </Typography>
-                )}
+                {/* Question Title with PageReportButton */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        {isQuestionLoading ? (
+                            <Skeleton variant="text" width="80%" height={40} />
+                        ) : (
+                            <Typography variant="h5"
+                                dangerouslySetInnerHTML={{ __html: formatTextWithTags(question?.title || "") }}
+                                sx={{
+                                    fontWeight: 'bold',
+                                    wordWrap: 'break-word',
+                                    overflowWrap: 'anywhere',
+                                    whiteSpace: 'pre-wrap',
+                                }}>
+                            </Typography>
+                        )}
+                        {!isQuestionLoading && question && (
+                            <PageReportButton 
+                                targetId={question.id}
+                                targetType="QUESTION"
+                            />
+                        )}
+                    </Box>
 
                 <Paper sx={{ padding: { xs: '4px 0', sm: '10px 0', lg: '20px' }, marginBottom: '40px', backgroundColor: theme.palette.background.paper }}>
                     <Grid container spacing={2}>
@@ -957,6 +968,7 @@ const QuestionPage = () => {
                                 </Grid>
 
                                 <Grid item xs={10} sm={11}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <Typography
                                         variant="body1"
                                         dangerouslySetInnerHTML={{ __html: formatTextWithTags(answer.text) }}
@@ -967,6 +979,11 @@ const QuestionPage = () => {
                                             (Edited)
                                         </Typography>
                                     )}
+                                    <ReportButton 
+                                        targetId={answer.id}
+                                        targetType="ANSWER"
+                                    />
+                                    </Box>
 
                                     <Box sx={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                         <Button
@@ -1027,6 +1044,12 @@ const QuestionPage = () => {
                                                     </Typography>
                                                 </Grid>
                                                 <Grid item xs={3} sx={{ textAlign: 'right' }}>
+                                                    <ReportButton 
+                                                        targetId={comment.id}
+                                                        targetType="COMMENT"
+                                                        iconColor="action"
+                                                        sx={{ padding: '2px' }}
+                                                    />
                                                     <Typography variant="caption" color="textSecondary" sx={{ marginBottom: '5px', display: 'block' }}>
                                                         {timeAgo(comment.postedTime)}
                                                     </Typography>
