@@ -11,6 +11,8 @@ import LanguageIcon from '@mui/icons-material/Language';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import FlagIcon from '@mui/icons-material/Flag';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -18,35 +20,32 @@ const AdminPanel = ({ userDetails }) => {
     // Define the admin options with their routes, labels, and icons
     const adminOptions = [
         {
-            label: 'Manage Models',
-            icon: <ManageAccountsIcon fontSize="large" />,
-            route: '/manage-carModels',
+            label: 'Manage Users',
+            icon: <AccountCircleIcon fontSize="large" />,
+            route: '/usersManagement',
         },
+        
         {
             label: 'Email Panel',
             icon: <MailOutlineIcon fontSize="large" />,
             route: '/admin/emails',
         },
-          
+        
+        { label: 'Manage General Announcements', icon: <AnnouncementIcon fontSize="large" />, route: '/manage-general-announcements' },
+        {
+            label: 'Create Questions Tag',
+            icon: <TagIcon fontSize="large" />,
+            route: '/create-tag',
+        }, 
         {
             label: 'Manage Events',
             icon: <EventIcon fontSize="large" />,
             route: '/manage-events',
         },
         {
-            label: 'Create Tag Category',
+            label: 'Tickets Car Tag Category',
             icon: <CategoryIcon fontSize="large" />,
             route: '/create-category',
-        },
-        {
-            label: 'Create Tag',
-            icon: <TagIcon fontSize="large" />,
-            route: '/create-tag',
-        },
-        {
-            label: 'Manage Brands',
-            icon: <CarRepairIcon fontSize="large" />,
-            route: '/create-brand',
         },
         {
             label: 'Manage Event tags',
@@ -54,21 +53,36 @@ const AdminPanel = ({ userDetails }) => {
             route: '/eventTicketsTags',
         },
         {
-            label: 'Manage Cars category',
+            label: 'Manage Showcase Brands',
+            icon: <CarRepairIcon fontSize="large" />,
+            route: '/create-brand',
+        },
+        
+        {
+            label: 'Manage Showcase Cars Category',
             icon: <LocalOfferIcon fontSize="large" />,
             route: '/carCategory',
+        },
+        {
+            label: 'Manage Models',
+            icon: <ManageAccountsIcon fontSize="large" />,
+            route: '/manage-carModels',
         },
         {
             label: 'Manage Countries',
             icon: <LanguageIcon fontSize="large" />,
             route: '/countries',
         },
-        {
-            label: 'Manage Users',
-            icon: <AccountCircleIcon fontSize="large" />,
-            route: '/usersManagement',
+        {    label: 'Report Management',
+            icon: <FlagIcon fontSize="large" />,
+            route: '/report-management',
         },
-        { label: 'Manage General Announcements', icon: <AnnouncementIcon fontSize="large" />, route: '/manage-general-announcements' },
+        {
+            label: 'Report Configuration',
+            icon: <SettingsIcon fontSize="large" />,
+            route: '/report-config',
+        }, 
+        
 
     ];
 

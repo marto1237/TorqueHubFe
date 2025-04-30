@@ -12,10 +12,6 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import  {jwtDecode} from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-import {
-    NotificationsProvider,
-    useNotifications,
-} from '@toolpad/core/useNotifications';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '../../firebase';
 import Snackbar from '@mui/material/Snackbar';
@@ -24,6 +20,7 @@ import '../../styles/SignUp.css';
 import AuthService from '../configuration/Services/AuthService';
 import { useAppNotifications } from '../common/NotificationProvider';
 import { useEffect } from 'react';
+import BannedUserModal from './BannedUserModal';
 
 
 function Copyright() {
@@ -46,6 +43,8 @@ function Login({ setLoggedIn }) {
     const [error, setError] = useState('');
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
+    const [banModalOpen, setBanModalOpen] = useState(false);
+    const [banDetails, setBanDetails] = useState(null);
     const navigate = useNavigate();
     const notifications = useAppNotifications();
     const [userDetails, setUserDetails] = useState(null);
@@ -96,8 +95,23 @@ function Login({ setLoggedIn }) {
             setLoggedIn(true, userDetails);
             navigate('/');
 
-
         } catch (error) {
+            // Check if this is a banned user error
+            if (error.response && error.response.status === 403) {
+                const banData = error.response.data;
+                if (banData && banData.error === 'Account banned') {
+                    // Show ban modal with details
+                    setBanDetails({
+                        reason: banData.reason,
+                        duration: banData.duration,
+                        expiration: banData.expiration
+                    });
+                    setBanModalOpen(true);
+                    return;
+                }
+            }
+            
+            // Regular authentication error
             setError('Invalid email or password');
             notifications.show('Invalid credentials', { autoHideDuration: 3000, severity: 'error' });
         }
@@ -203,8 +217,15 @@ function Login({ setLoggedIn }) {
                     </Box>
                 </form>
             </div>
+            
+            {/* Ban Modal */}
+            <BannedUserModal
+                open={banModalOpen}
+                onClose={() => setBanModalOpen(false)}
+                banDetails={banDetails}
+            />
         </div>
     );
 }
 
-export default Login;
+export default Login; 

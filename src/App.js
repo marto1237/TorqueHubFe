@@ -68,6 +68,10 @@ const AdFreeDonationPage = lazy(() => import('./pages/AdFreeDonationPage'));
 const DonationPage = lazy(() => import('./pages/Donation'));
 const RankPage = lazy(() => import('./pages/Ranks'));
 const EmailPanel = lazy(() => import('./components/forum/EmailPanel'));
+const ReportManagement = lazy(() => import('./pages/ReportManagement'));
+const ModeratorPanel = lazy(() => import('./pages/ModeratorPanel'));
+const ModerationLogs = lazy(() => import('./pages/ModerationLogs'));
+const ReportConfigManagement = lazy(() => import('./pages/ReportConfigManagement'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -321,7 +325,42 @@ const App = () => {
 
                                 <Route path="/CarPricePredictor" element={<CarPricePredictor />} />
 
-                                
+                                <Route
+                                    path="/report-management"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} userDetails={userDetails}>
+                                            <ReportManagement />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/moderator-panel"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} userDetails={userDetails}>
+                                            <ModeratorPanel />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/moderation-logs"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN', 'MODERATOR']} userDetails={userDetails}>
+                                            <ModerationLogs />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
+                                <Route
+                                    path="/report-config"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN']} userDetails={userDetails}>
+                                            <ReportConfigManagement />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
+
                             </Routes>
                         </NotificationProvider>
                     </Suspense>

@@ -14,7 +14,8 @@ import {
   MenuItem,
   Box,
   IconButton,
-  Alert
+  Alert,
+  Snackbar
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
@@ -22,7 +23,6 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import ReportService from '../configuration/Services/ReportService';
 import ReportTypeService from '../configuration/Services/ReportTypeService';
 import ReportReasonService from '../configuration/Services/ReportReasonService';
-import { useAppNotifications } from './NotificationProvider';
 import { useTheme } from '@mui/material/styles';
 
 const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
@@ -35,8 +35,9 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
   const [loadingTypes, setLoadingTypes] = useState(false);
   const [loadingReasons, setLoadingReasons] = useState(false);
   const [error, setError] = useState('');
-  const { showNotification } = useAppNotifications();
-    const theme = useTheme();
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccessSnackbar, setShowSuccessSnackbar] = useState(false);
+  const theme = useTheme();
 
   // Fetch report types when dialog opens
   useEffect(() => {
@@ -109,12 +110,11 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
     ReportService.createReport(reportData)
       .then(() => {
         setLoading(false);
-        showNotification({
-          message: 'Report submitted successfully. Thank you for helping keep our community safe.',
-          severity: 'success',
-          duration: 4000
-        });
-        handleClose();
+        setSuccessMessage('Report submitted successfully. Thank you for helping keep our community safe.');
+        setShowSuccessSnackbar(true);
+        setTimeout(() => {
+          handleClose();
+        }, 1500);
       })
       .catch(err => {
         setLoading(false);
@@ -122,6 +122,8 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
         
         if (err.response && err.response.status === 429) {
           setError('You have submitted too many reports recently. Please try again later.');
+        } else if (err.response && err.response.status === 401) {
+          setError('Authentication error. Please log in again and try once more.');
         } else {
           setError('Error submitting report. Please try again later.');
         }
@@ -133,141 +135,177 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
     setSelectedReasonId('');
     setDetails('');
     setError('');
+    setSuccessMessage('');
+    setShowSuccessSnackbar(false);
     onClose();
   };
 
+  const handleSnackbarClose = () => {
+    setShowSuccessSnackbar(false);
+  };
+
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
-        }
-      }}
-    >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        backgroundColor: theme => theme.palette.background.default,
-        color: theme.palette.text.primary,
-        borderBottom: '1px solid',
-        borderColor: 'divider'
-      }}>
-        <Box display="flex" alignItems="center">
-          <FlagIcon color="error" sx={{ mr: 1 }} />
-          <Typography variant="h6">Report Content</Typography>
-        </Box>
-        <IconButton onClick={handleClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      
-      <DialogContent sx={{ py: 2, mt: 1 }}>
-        {error && (
-          <Alert 
-            severity="error" 
-            sx={{ mb: 2 }}
-            action={
-              <IconButton
-                aria-label="close"
-                color="inherit"
-                size="small"
-                onClick={() => setError('')}
-              >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-            }
-          >
-            {error}
-          </Alert>
-        )}
+    <>
+      <Dialog 
+        open={open} 
+        onClose={handleClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          backgroundColor: theme => theme.palette.background.default,
+          color: theme.palette.text.primary,
+          borderBottom: '1px solid',
+          borderColor: 'divider'
+        }}>
+          <Box display="flex" alignItems="center">
+            <FlagIcon color="error" sx={{ mr: 1 }} />
+            <Typography variant="h6">Report Content</Typography>
+          </Box>
+          <IconButton onClick={handleClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
         
-        <Box mb={2}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Help us understand what's wrong with this content. Your report will be reviewed by our moderation team.
-          </Typography>
-        </Box>
-        
-        <FormControl fullWidth margin="normal" disabled>
-            <InputLabel>Report Type</InputLabel>
-            <Select
-                value={selectedTypeId}
-                label="Report Type"
-                // Remove onChange so it can't be changed
-                inputProps={{ readOnly: true }}
+        <DialogContent sx={{ py: 2, mt: 1 }}>
+          {error && (
+            <Alert 
+              severity="error" 
+              sx={{ mb: 2 }}
+              action={
+                <IconButton
+                  aria-label="close"
+                  color="inherit"
+                  size="small"
+                  onClick={() => setError('')}
+                >
+                  <CloseIcon fontSize="inherit" />
+                </IconButton>
+              }
             >
-                {reportTypes
-                .filter((type) => type.id === selectedTypeId)
-                .map((type) => (
-                    <MenuItem key={type.id} value={type.id}>
-                    {type.name}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-        
-        <FormControl fullWidth margin="normal" disabled={loadingReasons || !selectedTypeId}>
-          <InputLabel>Report Reason</InputLabel>
-          <Select
-            value={selectedReasonId}
-            onChange={(e) => setSelectedReasonId(e.target.value)}
-            label="Report Reason"
-          >
-            {loadingReasons ? (
-              <MenuItem disabled>
-                <CircularProgress size={20} sx={{ mr: 1 }} />
-                Loading...
-              </MenuItem>
-            ) : (
-              reportReasons.map((reason) => (
-                <MenuItem key={reason.id} value={reason.id}>
-                  {reason.name.replace(/_/g, ' ')}
+              {error}
+            </Alert>
+          )}
+          
+          {successMessage && (
+            <Alert 
+              severity="success" 
+              sx={{ mb: 2 }}
+              action={
+                <IconButton
+                  aria-label="close"
+                  color="inherit"
+                  size="small"
+                  onClick={() => setSuccessMessage('')}
+                >
+                  <CloseIcon fontSize="inherit" />
+                </IconButton>
+              }
+            >
+              {successMessage}
+            </Alert>
+          )}
+          
+          <Box mb={2}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Help us understand what's wrong with this content. Your report will be reviewed by our moderation team.
+            </Typography>
+          </Box>
+          
+          <FormControl fullWidth margin="normal" disabled>
+              <InputLabel>Report Type</InputLabel>
+              <Select
+                  value={selectedTypeId}
+                  label="Report Type"
+                  // Remove onChange so it can't be changed
+                  inputProps={{ readOnly: true }}
+              >
+                  {reportTypes
+                  .filter((type) => type.id === selectedTypeId)
+                  .map((type) => (
+                      <MenuItem key={type.id} value={type.id}>
+                      {type.name}
+                      </MenuItem>
+                  ))}
+              </Select>
+          </FormControl>
+          
+          <FormControl fullWidth margin="normal" disabled={loadingReasons || !selectedTypeId}>
+            <InputLabel>Report Reason</InputLabel>
+            <Select
+              value={selectedReasonId}
+              onChange={(e) => setSelectedReasonId(e.target.value)}
+              label="Report Reason"
+            >
+              {loadingReasons ? (
+                <MenuItem disabled>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  Loading...
                 </MenuItem>
-              ))
-            )}
-          </Select>
-        </FormControl>
+              ) : (
+                reportReasons.map((reason) => (
+                  <MenuItem key={reason.id} value={reason.id}>
+                    {reason.name.replace(/_/g, ' ')}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+          
+          <TextField
+            label="Additional Details (Optional)"
+            multiline
+            rows={4}
+            fullWidth
+            margin="normal"
+            variant="filled"
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder="Please provide any additional context that will help us understand the issue..."
+            inputProps={{ maxLength: 2000 }}
+            helperText={`${details.length}/2000 characters`}
+          />
+        </DialogContent>
         
-        <TextField
-          label="Additional Details (Optional)"
-          multiline
-          rows={4}
-          fullWidth
-          margin="normal"
-          variant="filled"
-          value={details}
-          onChange={(e) => setDetails(e.target.value)}
-          placeholder="Please provide any additional context that will help us understand the issue..."
-          inputProps={{ maxLength: 2000 }}
-          helperText={`${details.length}/2000 characters`}
-        />
-      </DialogContent>
-      
-      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Button 
-          onClick={handleClose} 
-          variant="outlined"
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          color="primary" 
-          disabled={loading || !selectedTypeId || !selectedReasonId}
-          startIcon={loading ? <CircularProgress size={20} /> : <ReportProblemIcon />}
-        >
-          {loading ? 'Submitting...' : 'Submit Report'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button 
+            onClick={handleClose} 
+            variant="outlined"
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained" 
+            color="primary" 
+            disabled={loading || !selectedTypeId || !selectedReasonId}
+            startIcon={loading ? <CircularProgress size={20} /> : <ReportProblemIcon />}
+          >
+            {loading ? 'Submitting...' : 'Submit Report'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={showSuccessSnackbar}
+        autoHideDuration={4000}
+        onClose={handleSnackbarClose}
+        message={successMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+    </>
   );
 };
 
-export default ReportDialog; 
+export default ReportDialog;

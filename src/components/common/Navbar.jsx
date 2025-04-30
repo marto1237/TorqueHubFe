@@ -8,6 +8,8 @@ import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import FlagIcon from '@mui/icons-material/Flag';
+import SecurityIcon from '@mui/icons-material/Security';
 import {
     AppBar, Box, Badge, Toolbar, IconButton, Typography, Menu, MenuItem,
     Avatar, Button, Tooltip, Container, Divider, ListItemText, ListItemIcon
@@ -241,6 +243,10 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
         }
     };
 
+    // Add a method to handle moderator panel navigation
+    const handleModeratorPanelClick = () => {
+        navigate('/moderator-panel');
+    };
 
     function stringToColor(string) {
         let hash = 0;
@@ -593,9 +599,19 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                     <MenuItem onClick={() => {handleCloseUserMenu(); handleAccountSettingClick() }}>
                                         <ManageAccountsIcon sx={{ mr: 2 }} /> Account Settings
                                     </MenuItem>
-                                    {loggedIn && (userRole === 'ADMIN' || userRole === 'MODERATOR') && (
+                                    {loggedIn && (userRole === 'ADMIN') && (
                                         <MenuItem onClick={() => {handleCloseUserMenu(); handleAdminPanelClick() }}>
                                         <AdminPanelSettingsIcon sx={{ mr: 2 }} /> Admin Panel
+                                        </MenuItem>
+                                    )}
+                                    {loggedIn && (userRole === 'ADMIN' || userRole === 'MODERATOR') && (
+                                        <MenuItem onClick={() => {handleCloseUserMenu(); handleModeratorPanelClick() }}>
+                                        <SecurityIcon sx={{ mr: 2 }} /> Moderator Panel
+                                        </MenuItem>
+                                    )}
+                                    {loggedIn && (userRole === 'ADMIN' || userRole === 'MODERATOR') && (
+                                        <MenuItem onClick={() => {handleCloseUserMenu(); navigate('/report-management') }}>
+                                        <FlagIcon sx={{ mr: 2 }} /> Report Management
                                         </MenuItem>
                                     )}
                                     <MenuItem sx={{ justifyContent: 'center' }} onClick={() => { handleLogout(); handleCloseUserMenu(); }}>

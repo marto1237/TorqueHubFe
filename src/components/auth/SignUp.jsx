@@ -117,8 +117,22 @@ export default function SignUp() {
             // Redirect to login page
             navigate('/login');
         } catch (error) {
-            setError('Account creation failed');
-            notifications.show('Account creation failed. Please try again.', {
+            // Handle specific error cases
+            if (error.status === 409) { // Conflict - duplicate username or email
+                if (error.field === 'username') {
+                    setUsernameError('Username already exists');
+                } else if (error.field === 'email') {
+                    setEmailError('Email address already in use');
+                } else {
+                    // If we can't determine which field caused the conflict
+                    setError('Username or email already exists');
+                }
+            } else {
+                // Generic error
+                setError('Account creation failed');
+            }
+            
+            notifications.show(error.message || 'Account creation failed. Please try again.', {
                 autoHideDuration: 3000,
                 severity: 'error',
             });

@@ -8,7 +8,7 @@ const ReportTypeService = {
             .catch(err => Promise.reject(err));
     },
     getById: (id) => {
-        return api.get(`/report-types/${id}`)
+        return api.get(`/report-types/${id}`, { requiresAuth: true })
             .then(res => res.data)
             .catch(err => Promise.reject(err));
     },
