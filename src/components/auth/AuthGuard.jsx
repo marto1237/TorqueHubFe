@@ -49,8 +49,8 @@ export default function AuthGuard({ isLoggedIn, children, requireAuth = true, re
                     setIsBanned(true);
                     setBanDetails({
                         reason: banStatus.banReason,
-                        duration: banStatus.duration,
-                        expiration: banStatus.banEnd
+                        duration: banStatus.banEnd ? 'temporary' : 'permanent',
+                        expiration: banStatus.banEnd || 'Never'
                     });
                     setBanModalOpen(true);
                     

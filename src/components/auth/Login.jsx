@@ -157,7 +157,7 @@ function Login({ setLoggedIn }) {
                     <LockOutlinedIcon />
                 </Avatar>
                 <Typography component="h1" variant="h5" className="signInText">
-                    Sign Up
+                    Sign In
                 </Typography>
                 <form className="form" autoComplete="on" onSubmit={handleSubmit} noValidate>
                     <TextField

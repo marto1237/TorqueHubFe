@@ -1,7 +1,6 @@
 import React from 'react';
 import { Modal, Box, Typography, Button } from '@mui/material';
 import BlockIcon from '@mui/icons-material/Block';
-import { useTheme } from '@mui/material/styles';
 
 const modalStyle = {
   position: 'absolute',
@@ -25,14 +24,6 @@ const iconStyle = {
   marginBottom: 2
 };
 
-/**
- * Modal to display when a user is banned
- * @param {Object} props - Component props
- * @param {boolean} props.open - Whether the modal is open
- * @param {Function} props.onClose - Function to close the modal
- * @param {Object} props.banDetails - Details of the ban including reason, duration, and expiration
- * @returns {React.ReactElement} BannedUserModal component
- */
 const BannedUserModal = ({ open, onClose, banDetails }) => {
   if (!banDetails) return null;
 
@@ -55,7 +46,7 @@ const BannedUserModal = ({ open, onClose, banDetails }) => {
           {isPermanent ? (
             "Your account has been permanently banned."
           ) : (
-            `Your account has been temporarily banned until ${banDetails.expiration}.`
+            `Your account has been temporarily banned for ${banDetails.expiration}.`
           )}
         </Typography>
         

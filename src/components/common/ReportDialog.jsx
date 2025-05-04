@@ -23,6 +23,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import ReportService from '../configuration/Services/ReportService';
 import ReportTypeService from '../configuration/Services/ReportTypeService';
 import ReportReasonService from '../configuration/Services/ReportReasonService';
+import UserBanService from '../configuration/Services/UserBanService';
 import { useTheme } from '@mui/material/styles';
 
 const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
@@ -144,6 +145,13 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
     setShowSuccessSnackbar(false);
   };
 
+  // Get selected type name for display
+  const getSelectedTypeName = () => {
+    if (!reportTypes.length || !selectedTypeId) return targetType;
+    const selectedType = reportTypes.find(type => type.id === selectedTypeId);
+    return selectedType ? selectedType.name : targetType;
+  };
+
   return (
     <>
       <Dialog 
@@ -169,7 +177,7 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
         }}>
           <Box display="flex" alignItems="center">
             <FlagIcon color="error" sx={{ mr: 1 }} />
-            <Typography variant="h6">Report Content</Typography>
+            <Typography variant="h6">Report {targetType.charAt(0).toUpperCase() + targetType.slice(1).toLowerCase()}</Typography>
           </Box>
           <IconButton onClick={handleClose} size="small">
             <CloseIcon />
@@ -221,23 +229,10 @@ const ReportDialog = ({ open, onClose, targetId, targetType = 'QUESTION' }) => {
             </Typography>
           </Box>
           
-          <FormControl fullWidth margin="normal" disabled>
-              <InputLabel>Report Type</InputLabel>
-              <Select
-                  value={selectedTypeId}
-                  label="Report Type"
-                  // Remove onChange so it can't be changed
-                  inputProps={{ readOnly: true }}
-              >
-                  {reportTypes
-                  .filter((type) => type.id === selectedTypeId)
-                  .map((type) => (
-                      <MenuItem key={type.id} value={type.id}>
-                      {type.name}
-                      </MenuItem>
-                  ))}
-              </Select>
-          </FormControl>
+          {/* Display report type as static text instead of disabled dropdown */}
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Report Type: {getSelectedTypeName()}
+          </Typography>
           
           <FormControl fullWidth margin="normal" disabled={loadingReasons || !selectedTypeId}>
             <InputLabel>Report Reason</InputLabel>

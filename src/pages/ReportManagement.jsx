@@ -53,6 +53,7 @@ import ReportTypeService from '../components/configuration/Services/ReportTypeSe
 import ModerationLogService from '../components/configuration/Services/ModerationLogService';
 import { useAppNotifications } from '../components/common/NotificationProvider';
 import ModerationActionTypeService from '../components/configuration/Services/ModerationActionTypeService';
+import UserBanService from '../components/configuration/Services/UserBanService';
 
 const ReportManagement = () => {
     const [tabValue, setTabValue] = useState(0);
@@ -255,57 +256,245 @@ const ReportManagement = () => {
 
     const handleActionTypeChange = (actionType) => {
         setSelectedActionType(actionType);
-        setShowBanOptions(actionType === 'TEMPORARY_BAN' || actionType === '2_WEEK_BAN');
+        
+        // Determine if this action type should show ban options
+        const banRelatedActions = ['TEMPORARY_BAN', '2_WEEK_BAN'];
+        setShowBanOptions(banRelatedActions.includes(actionType));
+        
+        console.log('Action type selected:', {
+            actionType,
+            showBanOptions: banRelatedActions.includes(actionType)
+        });
     };
 
     const handleSubmitAction = async () => {
         try {
-            // Update report status
-            await ReportService.updateReportStatus(selectedReport.id, {
-                statusName: actionStatus
+            // Log the current state of the component before taking action
+            console.log('Action state before submission:', {
+                selectedReport,
+                actionStatus,
+                selectedActionType,
+                actionText,
+                banDuration,
+                showBanOptions,
+                userDetails: JSON.parse(sessionStorage.getItem('userDetails') || '{}')
             });
-
-            // Prepare action data with action type
+    
+            // Find status ID from the reportStatuses array
+            const selectedStatus = reportStatuses.find(status => status.name === actionStatus);
+            
+            if (!selectedStatus) {
+                console.error('Invalid status - not found in reportStatuses:', { 
+                    actionStatus, 
+                    availableStatuses: reportStatuses.map(s => s.name) 
+                });
+                notifications.show(`Invalid status: ${actionStatus}`, {
+                    autoHideDuration: 3000,
+                    severity: 'error',
+                });
+                return;
+            }
+            
+            const statusId = selectedStatus.id;
+            console.log('Found status ID:', { statusName: actionStatus, statusId });
+            
+            // Find action type ID from the moderationActionTypes array
+            const selectedActionTypeObj = moderationActionTypes.find(type => type.name === selectedActionType);
+            
+            // If no action type is selected, we can still proceed with just a status update
+            const actionTypeId = selectedActionTypeObj?.id;
+            
+            console.log('Found action type ID:', { 
+                actionTypeName: selectedActionType, 
+                actionTypeId,
+                allActionTypes: moderationActionTypes.map(t => ({ id: t.id, name: t.name }))
+            });
+    
+            if (!actionTypeId && selectedActionType) {
+                console.error('Invalid action type - not found in moderationActionTypes:', { 
+                    selectedActionType, 
+                    availableActionTypes: moderationActionTypes.map(t => t.name) 
+                });
+                notifications.show(`Invalid action type: ${selectedActionType}`, {
+                    autoHideDuration: 3000,
+                    severity: 'error',
+                });
+                return;
+            }
+    
+            // Get the current user details from session storage
+            const userDetails = JSON.parse(sessionStorage.getItem('userDetails') || '{}');
+            const moderatorId = userDetails.id;
+            
+            if (!moderatorId) {
+                console.error('Moderator ID is missing from userDetails:', userDetails);
+                notifications.show('User authentication issue - please log in again', {
+                    autoHideDuration: 3000,
+                    severity: 'error',
+                });
+                return;
+            }
+    
+            // Check if this is a user report with a ban action
+            const isUserReport = selectedReport.typeName?.toUpperCase() === 'USER';
+            const isBanAction = ['PERMANENT_BAN', 'TEMPORARY_BAN', '2_WEEK_BAN'].includes(selectedActionType);
+            
+            // Special handling for user reports with ban actions
+            if (isUserReport && isBanAction && selectedReport.targetId) {
+                console.log('Handling user report with ban action');
+                
+                try {
+                    // Call the appropriate ban endpoint based on the action type
+                    if (selectedActionType === 'PERMANENT_BAN') {
+                        await UserBanService.permanentBan(
+                            selectedReport.targetId, 
+                            actionText || "Banned due to report", 
+                            null, // Let the backend extract the moderator ID from token
+                            selectedReport.id // Pass the report ID to update status
+                        );
+                        console.log('Permanent ban applied successfully');
+                    } else {
+                        // For temporary bans, calculate the appropriate duration
+                        const actualBanDuration = selectedActionType === '2_WEEK_BAN' ? 14 : (banDuration || 7);
+                        
+                        await UserBanService.temporaryBan(
+                            selectedReport.targetId, 
+                            actionText || `Temporarily banned for ${actualBanDuration} days due to report`, 
+                            actualBanDuration, 
+                            null, // Let the backend extract the moderator ID from token
+                            selectedReport.id // Pass the report ID to update status
+                        );
+                        console.log(`Temporary ban (${actualBanDuration} days) applied successfully`);
+                    }
+                    
+                    notifications.show('Ban applied and report status updated successfully', {
+                        autoHideDuration: 3000,
+                        severity: 'success',
+                    });
+                    
+                    // Refresh the reports list
+                    if (tabValue === 0) {
+                        fetchAllReports();
+                    } else {
+                        const statusName = tabToStatus[tabValue];
+                        if (statusName) {
+                            fetchReportsByStatus(statusName);
+                        } else {
+                            fetchAllReports();
+                        }
+                    }
+                    
+                    handleCloseAction();
+                    return;
+                    
+                } catch (banError) {
+                    console.error('Error applying ban:', banError);
+                    let errorMessage = 'Unknown error';
+                    
+                    if (banError.response && banError.response.data) {
+                        errorMessage = banError.response.data.message || JSON.stringify(banError.response.data);
+                    } else if (banError.message) {
+                        errorMessage = banError.message;
+                    }
+                    
+                    notifications.show(`Error applying ban: ${errorMessage}`, {
+                        autoHideDuration: 5000,
+                        severity: 'error',
+                    });
+                    
+                    return;
+                }
+            }
+            
+            // For non-ban actions or non-user reports, proceed with the standard moderation action
             const actionData = {
-                action: actionText,
-                moderatorId: JSON.parse(sessionStorage.getItem('userDetails')).id,
-                actionType: selectedActionType
+                reportId: selectedReport.id,
+                moderatorId: moderatorId,
+                actionTypeId: actionTypeId,
+                newStatusId: statusId,
+                notes: actionText || '' // Ensure notes is not undefined
             };
-
+    
             // Add ban duration if applicable
             if (showBanOptions && banDuration > 0) {
                 actionData.banDuration = banDuration;
             }
-
-            // Add moderation action
-            await ReportService.addModerationAction(selectedReport.id, actionData);
-
-            notifications.show('Report updated successfully', {
-                autoHideDuration: 3000,
-                severity: 'success',
-            });
-
-            // Refresh reports list
-            if (tabValue === 0) {
-                fetchAllReports();
-            } else {
-                const statusName = tabToStatus[tabValue];
-                if (statusName) {
-                    fetchReportsByStatus(statusName);
-                } else {
-                    fetchAllReports();
-                }
+    
+            // Add the target user ID if this report is about a user
+            if (isUserReport && selectedReport.targetId) {
+                actionData.targetUserId = selectedReport.targetId;
             }
-
-            handleCloseAction();
+    
+            console.log('Moderation action request data:', actionData);
+    
+            try {
+                const actionResponse = await ReportService.addModerationAction(selectedReport.id, actionData);
+                console.log('Moderation action response:', actionResponse);
+                
+                notifications.show('Moderation action submitted successfully', {
+                    autoHideDuration: 3000,
+                    severity: 'success',
+                });
+                
+                // Refresh reports list
+                if (tabValue === 0) {
+                    fetchAllReports();
+                } else {
+                    const statusName = tabToStatus[tabValue];
+                    if (statusName) {
+                        fetchReportsByStatus(statusName);
+                    } else {
+                        fetchAllReports();
+                    }
+                }
+                
+                handleCloseAction();
+            } catch (actionError) {
+                console.error('Error adding moderation action:', actionError);
+                console.error('Action error details:', {
+                    name: actionError.name,
+                    message: actionError.message,
+                    response: actionError.response,
+                    data: actionError.response?.data
+                });
+                
+                let errorMessage = 'Unknown error';
+                if (actionError.response && actionError.response.data) {
+                    errorMessage = actionError.response.data.message || JSON.stringify(actionError.response.data);
+                } else if (actionError.message) {
+                    errorMessage = actionError.message;
+                }
+                
+                notifications.show(`Error adding moderation action: ${errorMessage}`, {
+                    autoHideDuration: 5000,
+                    severity: 'error',
+                });
+            }
         } catch (error) {
-            console.error('Error updating report:', error);
-            notifications.show('Error updating report', {
-                autoHideDuration: 3000,
+            console.error('Error in handleSubmitAction:', error);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+                response: error.response,
+                request: error.request
+            });
+            
+            let errorMessage = 'Unknown error';
+            
+            if (error.response && error.response.data) {
+                console.error('Error response data:', error.response.data);
+                errorMessage = error.response.data.message || error.response.data;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            notifications.show(`Error: ${errorMessage}`, {
+                autoHideDuration: 5000,
                 severity: 'error',
             });
         }
-    };
+    }; 
 
     const getReportTypeIcon = (type) => {
         switch (type?.toLowerCase()) {
@@ -632,59 +821,56 @@ const ReportManagement = () => {
                                     Action Type:
                                 </Typography>
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                                    <Button
-                                        variant={selectedActionType === 'WARNING' ? "contained" : "outlined"}
-                                        color="warning"
-                                        startIcon={<WarningIcon />}
-                                        onClick={() => handleActionTypeChange('WARNING')}
-                                        sx={{ flexGrow: 1 }}
-                                    >
-                                        Warning
-                                    </Button>
-                                    <Button
-                                        variant={selectedActionType === 'CONTENT_REMOVAL' ? "contained" : "outlined"}
-                                        color="error"
-                                        startIcon={<DeleteIcon />}
-                                        onClick={() => handleActionTypeChange('CONTENT_REMOVAL')}
-                                        sx={{ flexGrow: 1 }}
-                                    >
-                                        Remove Content
-                                    </Button>
-                                    <Button
-                                        variant={selectedActionType === 'TEMPORARY_BAN' ? "contained" : "outlined"}
-                                        color="error"
-                                        startIcon={<TimeoutIcon />}
-                                        onClick={() => handleActionTypeChange('TEMPORARY_BAN')}
-                                        sx={{ flexGrow: 1 }}
-                                    >
-                                        Temp Ban
-                                    </Button>
-                                    <Button
-                                        variant={selectedActionType === '2_WEEK_BAN' ? "contained" : "outlined"}
-                                        color="error"
-                                        startIcon={<BlockIcon />}
-                                        onClick={() => handleActionTypeChange('2_WEEK_BAN')}
-                                        sx={{ flexGrow: 1 }}
-                                    >
-                                        2 Week Ban
-                                    </Button>
-                                    <Button
-                                        variant={selectedActionType === 'PERMANENT_BAN' ? "contained" : "outlined"}
-                                        color="error"
-                                        startIcon={<BlockIcon />}
-                                        onClick={() => handleActionTypeChange('PERMANENT_BAN')}
-                                        sx={{ flexGrow: 1 }}
-                                    >
-                                        Permanent Ban
-                                    </Button>
-                                    <Button
-                                        variant={selectedActionType === 'NO_ACTION' ? "contained" : "outlined"}
-                                        color="primary"
-                                        onClick={() => handleActionTypeChange('NO_ACTION')}
-                                        sx={{ flexGrow: 1 }}
-                                    >
-                                        No Action
-                                    </Button>
+                                    {moderationActionTypes.map((actionType) => {
+                                        // Define icon based on action type name
+                                        let icon;
+                                        let color = "primary";
+                                        
+                                        switch(actionType.name?.toUpperCase()) {
+                                            case 'WARNING':
+                                                icon = <WarningIcon />;
+                                                color = "warning";
+                                                break;
+                                            case 'TEMPORARY_BAN':
+                                            case '2_WEEK_BAN':
+                                                icon = <TimeoutIcon />;
+                                                color = "error";
+                                                break;
+                                            case 'PERMANENT_BAN':
+                                                icon = <BlockIcon />;
+                                                color = "error";
+                                                break;
+                                            case 'CONTENT_REMOVAL':
+                                                icon = <DeleteIcon />;
+                                                color = "error";
+                                                break;
+                                            case 'NO_ACTION':
+                                                icon = <Check />;
+                                                color = "primary";
+                                                break;
+                                            default:
+                                                icon = <Settings />;
+                                        }
+                                        
+                                        // Button label - convert snake case to title case
+                                        const label = actionType.displayName || 
+                                                     actionType.name?.split('_')
+                                                     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                                     .join(' ');
+                                        
+                                        return (
+                                            <Button
+                                                key={actionType.id}
+                                                variant={selectedActionType === actionType.name ? "contained" : "outlined"}
+                                                color={color}
+                                                startIcon={icon}
+                                                onClick={() => handleActionTypeChange(actionType.name)}
+                                                sx={{ flexGrow: 1 }}
+                                            >
+                                                {label}
+                                            </Button>
+                                        );
+                                    })}
                                 </Box>
                                 
                                 {showBanOptions && (
@@ -749,7 +935,7 @@ const ReportManagement = () => {
                         onClick={handleSubmitAction} 
                         color="primary" 
                         variant="contained"
-                        disabled={!actionText.trim() || !actionStatus || !selectedActionType}
+                        disabled={!actionText.trim() || !actionStatus}
                         startIcon={<Check />}
                     >
                         Submit

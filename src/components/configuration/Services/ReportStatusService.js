@@ -19,6 +19,11 @@ const ReportStatusService = {
             .catch(err => Promise.reject(err));
     },
 
+    getIdByName: async (name) => {
+        const status = await ReportStatusService.getByName(name);
+        return status ? status.id : null;
+    },
+
     // Create a new report status (admin only)
     create: (data) => {
         return api.post('/report-statuses', data, { requiresAuth: true })

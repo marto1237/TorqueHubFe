@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
 import { useQuery } from '@tanstack/react-query';
 import { getDownloadURL, ref } from 'firebase/storage';
@@ -16,29 +16,40 @@ import {
     Rating, 
     Chip, 
     ButtonGroup,
-    LinearProgress 
+    LinearProgress,
+    IconButton,
+    Tooltip
 } from '@mui/material';
 import { 
     Cake, 
     AccessTime, 
-    CalendarMonth 
+    CalendarMonth,
+    Flag as FlagIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 
 import ProfileService from '../configuration/Services/ProfileService';
+import { useAppNotifications } from '../common/NotificationProvider';
+import ReportDialog from '../common/ReportDialog';
 
 const ProfilePage = ({ avatar, userDetails }) => {
     const theme = useTheme();
     const navigate = useNavigate();
     const { id } = useParams();
+    const notifications = useAppNotifications();
+    const currentUserId = userDetails?.id;
+    const isOwnProfile = currentUserId === parseInt(id);
     
     // State for editing About Me section
     const [isEditingAboutMe, setIsEditingAboutMe] = useState(false);
-    const [aboutMe, setAboutMe] = useState("Enthusiast of classic cars, modern cars, and everything in between.");
+    const [aboutMe, setAboutMe] = useState('');
     
     // State for filtering and sorting posts
     const [filter, setFilter] = useState('All');
     const [sort, setSort] = useState('Score');
+
+    // State for reporting user
+    const [openReportDialog, setOpenReportDialog] = useState(false);
 
     // Fetch profile data using React Query
     const { 
@@ -53,6 +64,13 @@ const ProfilePage = ({ avatar, userDetails }) => {
         refetchOnWindowFocus: false,
         retry: 2
     });
+
+    // When profile data is loaded, set the about me text
+    useEffect(() => {
+        if (profile && profile.user && profile.user.aboutMe !== undefined) {
+            setAboutMe(profile.user.aboutMe || "Enthusiast of classic cars, modern cars, and everything in between.");
+        }
+    }, [profile]);
 
     // Fetch profile avatar
     const { 
@@ -113,13 +131,50 @@ const ProfilePage = ({ avatar, userDetails }) => {
         setIsEditingAboutMe(!isEditingAboutMe);
     };
 
-    const handleSaveChanges = () => {
-        // Implement save logic here
-        setIsEditingAboutMe(false);
+    const handleSaveChanges = async () => {
+        try {
+            // Use UserService as a fallback if ProfileService.updateAboutMe doesn't exist
+            if (typeof ProfileService.updateAboutMe !== 'function') {
+                const UserService = require('../configuration/Services/UserService').default;
+                await UserService.updateUser(id, { aboutMe });
+            } else {
+                await ProfileService.updateAboutMe(id, aboutMe);
+            }
+            
+            notifications.show('About me updated successfully', {
+                autoHideDuration: 3000,
+                severity: 'success',
+            });
+            
+            setIsEditingAboutMe(false);
+        } catch (error) {
+            console.error('Error updating about me:', error);
+            notifications.show('Error updating about me', {
+                autoHideDuration: 3000,
+                severity: 'error',
+            });
+        }
     };
 
-    const handlePostClick = (postTitle) => {
-        alert(`Clicked on post: ${postTitle}`);
+    const handlePostClick = (post) => {
+        if (!post || !post.id) return;
+        
+        // Navigate based on post type
+        if (post.type === 'Q') {
+            navigate(`/questions/${post.id}`);
+        } else if (post.type === 'A') {
+            // For answers, we try to navigate to the parent question if available
+            const questionId = post.questionId || post.id;
+            navigate(`/questions/${questionId}`);
+        }
+    };
+
+    const handleOpenReportDialog = () => {
+        setOpenReportDialog(true);
+    };
+
+    const handleCloseReportDialog = () => {
+        setOpenReportDialog(false);
     };
 
     // Filter and sort posts
@@ -243,7 +298,7 @@ const ProfilePage = ({ avatar, userDetails }) => {
             <Grid container spacing={3}>
                 <Grid item xs={12} md={8}>
                     <Card sx={{ padding: '20px' }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px', position: 'relative' }}>
                             {avatarURL ? (
                                 <Avatar src={avatarURL} sx={{ 
                                     width: { xs: 80, sm: 120, md: 160, lg: 180 }, 
@@ -252,29 +307,41 @@ const ProfilePage = ({ avatar, userDetails }) => {
                                  />
                             ) : (
                                 <Avatar 
-                                    {...stringAvatar(profile.user.username)} 
+                                    {...stringAvatar(profile?.user?.username || '?')} 
                                 />
                             )}
                             <Box>
                                 <Typography variant="h5" color="textPrimary">
-                                    {profile.user.username}
+                                    {profile?.user?.username || 'User'}
                                 </Typography>
                                 <Box sx={{ mt: 1 }}>
                                     {/* Display Member Since */}
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                         <Cake fontSize="small" sx={{ mr: 1 }} />
                                         <Typography variant="body2">
-                                            Member Since: {new Date(profile.user.accountCreationDate).toLocaleDateString()}
+                                            Member Since: {profile?.user?.accountCreationDate ? new Date(profile.user.accountCreationDate).toLocaleDateString() : 'N/A'}
                                         </Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                         <AccessTime fontSize="small" sx={{ mr: 1 }} />
                                         <Typography variant="body2">
-                                            Last Seen: {new Date(profile.user.accountCreationDate).toLocaleTimeString()}
+                                            Last Seen: {profile?.user?.accountCreationDate ? new Date(profile.user.accountCreationDate).toLocaleTimeString() : 'N/A'}
                                         </Typography>
                                     </Box>
                                 </Box>
                             </Box>
+                            
+                            {!isOwnProfile && userDetails && (
+                                <Tooltip title="Report User" placement="top">
+                                    <IconButton 
+                                        color="warning" 
+                                        sx={{ position: 'absolute', top: 8, right: 8 }}
+                                        onClick={handleOpenReportDialog}
+                                    >
+                                        <FlagIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
                         </Box>
                     </Card>
                 </Grid>
@@ -282,14 +349,14 @@ const ProfilePage = ({ avatar, userDetails }) => {
                 <Grid item xs={12} md={4}>
                     <RankProgressBar
                         title="Donation Progress"
-                        value={profile.user.totalDonated || 0}
+                        value={profile?.user?.totalDonated || 0}
                         ranks={donationRanks}
                         keyName="min"
                         onClick={() => navigate('/donate')}
                     />
                     <RankProgressBar
                         title="Activity Progress"
-                        value={profile.user.points || 0}
+                        value={profile?.user?.points || 0}
                         ranks={activityRanks}
                         keyName="points"
                         onClick={() => navigate('/rank')}
@@ -307,10 +374,10 @@ const ProfilePage = ({ avatar, userDetails }) => {
                         <Divider sx={{ mb: 2 }} />
                         <Grid container spacing={5}>
                             {[
-                                { label: 'Reputation', value: profile.user.points },
+                                { label: 'Reputation', value: profile?.user?.points || 0 },
                                 { label: 'Reached', value: '0' },
-                                { label: 'Answers', value: profile.answerCount },
-                                { label: 'Questions', value: profile.questionCount }
+                                { label: 'Answers', value: profile?.answerCount || 0 },
+                                { label: 'Questions', value: profile?.questionCount || 0 }
                             ].map((stat, index) => (
                                 <Grid item xs={6} key={index}>
                                     <Typography variant="body1" color="textPrimary">
@@ -366,9 +433,11 @@ const ProfilePage = ({ avatar, userDetails }) => {
                                 <Typography variant="body1" color="textPrimary">
                                     {aboutMe}
                                 </Typography>
-                                <Button variant="contained" sx={{ mt: 2 }} onClick={handleEditToggle}>
-                                    Edit
-                                </Button>
+                                {isOwnProfile && (
+                                    <Button variant="contained" sx={{ mt: 2 }} onClick={handleEditToggle}>
+                                        Edit
+                                    </Button>
+                                )}
                             </Box>
                         )}
                     </Card>
@@ -408,87 +477,116 @@ const ProfilePage = ({ avatar, userDetails }) => {
                         </Typography>
                         <Divider sx={{ marginBottom: '20px' }} />
                         <Grid container spacing={2}>
-                            {filteredPosts.map((post) => (
-                                <Grid item xs={12} key={post.id}>
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '10px',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            border: `2px solid ${theme.palette.divider}`,
-                                            '&:hover': {
-                                                backgroundColor: theme.palette.action.hover,
-                                                borderColor: theme.palette.primary.main,
-                                            },
-                                        }}
-                                        onClick={() => handlePostClick(post.title)}
-                                    >
-                                        <Chip
-                                            label={post.type === 'Q' ? 'Q' : 'A'}
+                            {filteredPosts.length > 0 ? (
+                                filteredPosts.map((post) => (
+                                    <Grid item xs={12} key={post.id}>
+                                        <Box
                                             sx={{
-                                                backgroundColor: post.type === 'Q' ? '#32a852' : '#323232',
-                                                color: 'white',
-                                                padding: '5px',
-                                                '&:hover': { opacity: 0.8 },
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '10px',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                border: `2px solid ${theme.palette.divider}`,
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.action.hover,
+                                                    borderColor: theme.palette.primary.main,
+                                                },
                                             }}
-                                        />
-                                        <Typography 
-                                            variant="body1" 
-                                            color="textPrimary" 
-                                            sx={{ 
-                                                flexGrow: 1, 
-                                                marginLeft: '15px',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap'
-                                            }}
+                                            onClick={() => handlePostClick(post)}
+                                        >
+                                            <Chip
+                                                label={post.type === 'Q' ? 'Q' : 'A'}
+                                                sx={{
+                                                    backgroundColor: post.type === 'Q' ? '#32a852' : '#323232',
+                                                    color: 'white',
+                                                    padding: '5px',
+                                                    '&:hover': { opacity: 0.8 },
+                                                }}
+                                            />
+                                            <Typography 
+                                                variant="body1" 
+                                                color="textPrimary" 
+                                                sx={{ 
+                                                    flexGrow: 1, 
+                                                    marginLeft: '15px',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}
 
-                                            dangerouslySetInnerHTML={{
-                                                __html: formatTextWithTags(post.title || post.text || 'No content available'),
-                                            }}
-                                            
-                                        >
-                                        </Typography>
-                                        <Typography 
-                                            variant="body2" 
-                                            color="textSecondary" 
-                                            sx={{ marginRight: '15px' }}
-                                        >
-                                            {post.votes} votes
-                                        </Typography>
-                                        <Typography variant="body2" color="textSecondary">
-                                            {new Date(post.date || post.askedTime || post.postedTime).toLocaleDateString()}
-                                        </Typography>
-                                    </Box>
+                                                dangerouslySetInnerHTML={{
+                                                    __html: formatTextWithTags(post.title || post.text || 'No content available'),
+                                                }}
+                                                
+                                            >
+                                            </Typography>
+                                            <Typography 
+                                                variant="body2" 
+                                                color="textSecondary" 
+                                                sx={{ marginRight: '15px' }}
+                                            >
+                                                {post.votes} votes
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary">
+                                                {new Date(post.date || post.askedTime || post.postedTime).toLocaleDateString()}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                ))
+                            ) : (
+                                <Grid item xs={12}>
+                                    <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', textAlign: 'center' }}>
+                                        No posts found
+                                    </Typography>
                                 </Grid>
-                            ))}
+                            )}
                         </Grid>
                     </Card>
 
                     {/* Events Section */}
                     <Card sx={{ padding: '20px', mb: 3, mt: 3 }}>
                         <Typography variant="h6" color="primary" sx={{ mb: 2 }}>
-                            Events You're Attending
+                            {isOwnProfile ? "Events You're Attending" : "Events This User is Attending"}
                         </Typography>
                         <Divider sx={{ mb: 2 }} />
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {events.map((event, index) => (
-                                <Chip 
-                                    key={index} 
-                                    label={`${event.title} - ${event.date}`} 
-                                    variant="outlined"
-                                />
-                            ))}
+                            {events && events.length > 0 ? (
+                                events.map((event, index) => (
+                                    <Chip 
+                                        key={index} 
+                                        label={`${event.title} - ${event.date}`} 
+                                        variant="outlined"
+                                        onClick={() => event.id && navigate(`/events/${event.id}`)}
+                                        sx={{ cursor: 'pointer' }}
+                                    />
+                                ))
+                            ) : (
+                                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 2 }}>
+                                    No events to display
+                                </Typography>
+                            )}
                         </Box>
-                        <Button variant="outlined" size="small" sx={{ mt: 2 }}>
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ mt: 2 }}
+                            onClick={() => navigate('/events')}
+                        >
                             View All Events
                         </Button>
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Use the common ReportDialog component */}
+            <ReportDialog
+                open={openReportDialog}
+                onClose={handleCloseReportDialog}
+                targetId={parseInt(id)}
+                targetType="USER"
+            />
         </Box>
     );
 };

@@ -4,7 +4,16 @@ const AuthService = {
     login: (loginData) => {
         return api.post(`/auth/login`, loginData, { withCredentials: true })
             .then(response => response.data)
-            .catch(error => Promise.reject(error));
+            .catch(error => {
+                // Check if this is a banned user error
+                if (error.response && error.response.status === 403) {
+                    const banData = error.response.data;
+                    if (banData && banData.error === 'Account banned') {
+                        return Promise.reject(error);
+                    }
+                }
+                return Promise.reject(error);
+            });
     },
 
     register: (userData) => {

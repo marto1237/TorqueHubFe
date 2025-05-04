@@ -17,6 +17,25 @@ const ModerationActionTypeService = {
             .catch(err => Promise.reject(err));
     },
 
+     // Get action type ID from name (client-side lookup from cached types)
+    getIdByName: async (name) => {
+        try {
+            // Get all action types
+            const types = await ModerationActionTypeService.getAll();
+            
+            // Find the matching type by name
+            const matchingType = types.find(type => 
+                type.name.toUpperCase() === name.toUpperCase()
+            );
+            
+            // Return the ID if found, otherwise return null
+            return matchingType ? matchingType.id : null;
+        } catch (err) {
+            console.error('Error in getIdByName:', err);
+            return null;
+        }
+    },
+
     // Create a new moderation action type (admin only)
     create: (data) => {
         // This endpoint needs to be implemented on the backend
