@@ -67,12 +67,13 @@
   force = true
   headers = {Access-Control-Allow-Origin = "https://torque-hub.com", Access-Control-Allow-Credentials = "true", Access-Control-Expose-Headers = "Content-Length, X-Total-Count"}
 
-# WebSocket support
+# WebSocket support with improved handling
 [[redirects]]
   from = "/ws/*"
   to = "wss://backend.torque-hub.com/ws/:splat"
   status = 101
   force = true
+  headers = {Access-Control-Allow-Origin = "https://torque-hub.com", Access-Control-Allow-Credentials = "true"}
 
 # Cache headers (unchanged)
 [[headers]]

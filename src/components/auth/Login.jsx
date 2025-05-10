@@ -49,7 +49,7 @@ function Login({ setLoggedIn }) {
     const notifications = useAppNotifications();
     const [userDetails, setUserDetails] = useState(null);
 
-    // Function to fetch profile image from Firebase storage
+    // Move fetchProfileImage outside handleSubmit
     const fetchProfileImage = async (username) => {
         try {
             const storageRef = ref(storage, `profileImages/${username}/profile.jpg`);
@@ -57,11 +57,9 @@ function Login({ setLoggedIn }) {
             return downloadURL;
         } catch (error) {
             console.error('Error fetching profile image:', error);
-            return null; // Return null if image not found
+            return null;
         }
     };
-
-    
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -71,28 +69,39 @@ function Login({ setLoggedIn }) {
         }
 
         try {
-            // Send login request (access and refresh tokens are stored in cookies)
+            // Send login request
             const response = await AuthService.login({ email, password, rememberMe });
-
-            // Assuming the login was successful
             const { jwtToken } = response;
+            
+            // Store token immediately
             sessionStorage.setItem('jwtToken', jwtToken);
             const decodedToken = jwtDecode(jwtToken);
-            const profileImage = await fetchProfileImage(decodedToken.username);
             const userId = decodedToken.userID;
 
-            // Store the token and user details
+            // Create initial user details without profile image
             const userDetails = {
                 username: decodedToken.username,
                 email: decodedToken.email,
                 role: decodedToken.role,
                 id: userId,
-                profileImage,
+                profileImage: null, // Initially null
             };
 
+            // Store user details and complete login
             sessionStorage.setItem('userDetails', JSON.stringify(userDetails));
             sessionStorage.setItem('loginSuccess', 'true');
             setLoggedIn(true, userDetails);
+
+            // Fetch profile image in the background
+            fetchProfileImage(decodedToken.username).then(profileImage => {
+                if (profileImage) {
+                    const updatedUserDetails = { ...userDetails, profileImage };
+                    sessionStorage.setItem('userDetails', JSON.stringify(updatedUserDetails));
+                    setLoggedIn(true, updatedUserDetails); // Update with image
+                }
+            });
+
+            // Navigate immediately, don't wait for image
             navigate('/');
 
         } catch (error) {
