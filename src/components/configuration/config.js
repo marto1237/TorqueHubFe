@@ -11,7 +11,7 @@ const WEBSOCKET_URL =
 const ANNOUNCEMENT_WEBSOCKET_URL =
     process.env.NODE_ENV === "development"
             ? "ws://localhost:8081/ws"
-            : "wss://backend.torque-hub.com/ws";
+            : "wss://backend.torque-hub.com/ticket-ws";
 
 const API_BASE_URL_SHOWCASE =
 process.env.NODE_ENV === "development"
