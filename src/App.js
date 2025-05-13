@@ -399,8 +399,6 @@ const App = () => {
                     <Footer />
                 </Router>
             </QueryClientProvider>
-
-
         </ThemeProvider>
     );
 };
