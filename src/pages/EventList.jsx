@@ -11,6 +11,9 @@ import EventFilterService from "../components/configuration/Services/EventFilter
 import { format } from 'date-fns';
 import QueryWrapper from '../components/common/QueryWrapper';
 import LoadingComponent from '../components/common/Loader';
+import NotFoundPage from '../components/common/NotFoundPage';
+import ErrorPage from '../components/common/ErrorPage';
+import EmptyState from '../components/common/EmptyState';
 
 // Event data with image URL, tickets left, price, etc.
 
@@ -32,14 +35,21 @@ const EventList = () => {
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [selectedFilters, setSelectedFilters] = useState({});
     const [isFilterMode, setIsFilterMode] = useState(false);
-    const [isImagesLoading, setIsImagesLoading] = useState(true);
+    const [isImagesLoading, setIsImagesLoading] = useState(false);
+    const [apiError, setApiError] = useState(null);
+    const [notFound, setNotFound] = useState(false);
+    const [connectionRefused, setConnectionRefused] = useState(false);
 
     const [defaultEvents, setDefaultEvents] = useState([]);
     const [filteredEvents, setFilteredEvents] = useState([]);
+    const queryClient = useQueryClient();
 
     const fetchFilteredEvents = async () => {
         try {
             setIsImagesLoading(true);
+            setApiError(null);
+            setConnectionRefused(false);
+            
             const validFilters = Object.fromEntries(
                 Object.entries(selectedFilters).filter(
                     ([_, value]) => value !== null && value !== ""
@@ -64,11 +74,15 @@ const EventList = () => {
                 })
             );
 
-
             setFilteredEvents(filteredWithImages);
             setTotalPages(response.totalPages);
         } catch (err) {
             console.error("Error fetching events:", err);
+            if (err.message && err.message.includes('Network Error')) {
+                setConnectionRefused(true);
+            }
+            setApiError("Failed to load events. Please try again later.");
+            // Don't clear filtered events to prevent UI flashing
         } finally {
             setIsImagesLoading(false); // Done loading
         } 
@@ -88,34 +102,65 @@ const EventList = () => {
     }, []);
     
 
-    // Fetch events from API
-    const { data: events = { content: [], totalPages: 0 }, isLoading, isError } = useQuery({
+    // Fetch events from API using React Query
+    const { data: events, isLoading, isError, error } = useQuery({
         queryKey: ['events', { page, size }],
         queryFn: async ({ queryKey }) => {
-            const [, { page, size }] = queryKey;
-            const response = await EventService.findAllNotPassedEvents(page, size);
-            console.log(response);
-            return response;
+            try {
+                const [, { page, size }] = queryKey;
+                const cachedData = queryClient.getQueryData(['events', { page, size }]);
+                if (cachedData) {
+                    return cachedData; // Return cached data if available
+                }
+                const response = await EventService.findAllNotPassedEvents(page, size);
+                console.log(response);
+                return response;
+            } catch (err) {
+                if (err?.response?.status === 404) {
+                    setNotFound(true);
+                }
+                if (err.message && err.message.includes('Network Error')) {
+                    setConnectionRefused(true);
+                }
+                throw err;
+            }
         },
+        retry: (failureCount, error) => {
+            // Don't retry on connection refused errors
+            if (error.message && error.message.includes('Network Error')) {
+                return false;
+            }
+            return failureCount < 1; // Only retry once for other errors
+        },
+        staleTime: 300000, // 5 minutes
+        refetchOnWindowFocus: false, // Don't refetch when window regains focus
     });
 
     // Dynamically fetch images for events
     useEffect(() => {
-        if (!isFilterMode) {
+        if (!isFilterMode && !isLoading && !isError && events) {
             const fetchDefaultEvents = async () => {
-                const response = await EventService.findAllNotPassedEvents(page, size);
-                const eventsWithImages = await Promise.all(
-                    response.content.map(async (event) => {
-                        const imageUrl = await getFirebaseImage(event.id);
-                        return { ...event, imageUrl };
-                    })
-                );
-                setDefaultEvents(eventsWithImages);
-                setTotalPages(response.totalPages);
+                setIsImagesLoading(true);
+                try {
+                    const eventsWithImages = await Promise.all(
+                        events.content.map(async (event) => {
+                            const imageUrl = await getFirebaseImage(event.id);
+                            return { ...event, imageUrl };
+                        })
+                    );
+                    setDefaultEvents(eventsWithImages);
+                    setTotalPages(events.totalPages);
+                    setApiError(null);
+                } catch (err) {
+                    console.error("Error fetching event images:", err);
+                    setApiError("Failed to load event images. Please try again later.");
+                } finally {
+                    setIsImagesLoading(false);
+                }
             };
             fetchDefaultEvents();
         }
-    }, [page, sort, isFilterMode]);
+    }, [events, isLoading, isError, isFilterMode]);
     
     
 
@@ -136,9 +181,7 @@ const EventList = () => {
         } catch (err) {
             console.error(`Error fetching image for event ID ${eventId}:`, err);
             return 'https://upload.wikimedia.org/wikipedia/commons/a/a3/Image-not-found.png?20210521171500'; // Placeholder for errors
-        } finally {
-            setIsImagesLoading(false); // Done loading
-        } 
+        }
     };
 
     const formatDateRange = (startTime, endTime) => {
@@ -220,15 +263,28 @@ const EventList = () => {
         setIsFilterMode(false);
         setSelectedTags([]);
         setPage(0);
+        setApiError(null);
     };
 
-    if (isLoading || isImagesLoading) return <LoadingComponent />;
+    // Show error state if API request failed
+    if (notFound) {
+        return <NotFoundPage />;
+    }
 
-    
-
+    if (connectionRefused) {
+        return <ErrorPage 
+            title="Connection Error" 
+            message="Unable to connect to the server. Please check your internet connection and try again."
+        />;
+    }
 
     return (
-        <QueryWrapper isLoading={isLoading} isError={isError} notFound={!events}  >
+        <QueryWrapper 
+            isLoading={isLoading || isImagesLoading} 
+            isError={isError || apiError !== null} 
+            error={error || (apiError ? new Error(apiError) : null)}
+            notFound={notFound}
+        >
             <Box sx={{ padding: '20px', paddingTop: '100px',minHeight: '100vh', backgroundColor: theme.palette.background.paper }}>
                 <Box>
 
@@ -302,6 +358,14 @@ const EventList = () => {
                                         ))}
                                     </Box>
                                 </Box>
+                            )}
+
+                            {/* Show message when no events are available */}
+                            {visibleEvents.length === 0 && !isLoading && !isImagesLoading && (
+                                <EmptyState 
+                                    title="No events found matching your criteria."
+                                    message="Try adjusting your filters or check back later for new events."
+                                />
                             )}
 
                             {/* Render the filtered events */}
@@ -408,7 +472,8 @@ const EventList = () => {
                                 
                             </Grid>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px', margin:'auto' }}>
+                            {visibleEvents.length > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: '20px', margin:'auto' }}>
                                     <Pagination
                                         count={totalPages} // Total pages from API response
                                         page={page+1} // Material-UI Pagination uses 1-indexed pages
@@ -420,6 +485,7 @@ const EventList = () => {
                                         color="primary"
                                     />
                                 </Box>
+                            )}
                         </Grid>
                     </Grid>
                 </Box>

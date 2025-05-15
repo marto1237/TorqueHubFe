@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies with legacy peer deps flag for compatibility
+RUN npm install --legacy-peer-deps
+
+# Expose port 3000 for the development server
+EXPOSE 3000
+
+# Start the development server
+CMD ["npm", "start"] 
