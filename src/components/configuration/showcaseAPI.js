@@ -31,12 +31,23 @@ showcaseAPI.interceptors.request.use(
 showcaseAPI.interceptors.response.use(
     (response) => response,
     (error) => {
+      // Handle JWT expiration
       if (error.response?.status === 401) {
         const message = error.response.data?.message || "";
         if (message.includes("JWT expired")) {
           EventBus.dispatch("logout"); // Fire logout event
         }
       }
+      
+      // Handle Bad Gateway errors (502)
+      if (error.response?.status === 502 || !error.response) {
+        // Create a custom error with more helpful information
+        const customError = new Error("Server connection error");
+        customError.isConnectionError = true;
+        customError.originalError = error;
+        return Promise.reject(customError);
+      }
+      
       return Promise.reject(error);
     }
   );

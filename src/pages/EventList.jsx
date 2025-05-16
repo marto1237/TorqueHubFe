@@ -39,6 +39,7 @@ const EventList = () => {
     const [apiError, setApiError] = useState(null);
     const [notFound, setNotFound] = useState(false);
     const [connectionRefused, setConnectionRefused] = useState(false);
+    const [isBadGateway, setIsBadGateway] = useState(false);
 
     const [defaultEvents, setDefaultEvents] = useState([]);
     const [filteredEvents, setFilteredEvents] = useState([]);
@@ -49,6 +50,7 @@ const EventList = () => {
             setIsImagesLoading(true);
             setApiError(null);
             setConnectionRefused(false);
+            setIsBadGateway(false);
             
             const validFilters = Object.fromEntries(
                 Object.entries(selectedFilters).filter(
@@ -78,7 +80,10 @@ const EventList = () => {
             setTotalPages(response.totalPages);
         } catch (err) {
             console.error("Error fetching events:", err);
-            if (err.message && err.message.includes('Network Error')) {
+            if (err?.response?.status === 502) {
+                setIsBadGateway(true);
+            }
+            if (err.isConnectionError || (err.message && err.message.includes('Network Error'))) {
                 setConnectionRefused(true);
             }
             setApiError("Failed to load events. Please try again later.");
@@ -119,15 +124,18 @@ const EventList = () => {
                 if (err?.response?.status === 404) {
                     setNotFound(true);
                 }
-                if (err.message && err.message.includes('Network Error')) {
+                if (err?.response?.status === 502) {
+                    setIsBadGateway(true);
+                }
+                if (err.isConnectionError || (err.message && err.message.includes('Network Error'))) {
                     setConnectionRefused(true);
                 }
                 throw err;
             }
         },
         retry: (failureCount, error) => {
-            // Don't retry on connection refused errors
-            if (error.message && error.message.includes('Network Error')) {
+            // Don't retry on connection refused or bad gateway errors
+            if (error.isConnectionError || error.message?.includes('Network Error') || error?.response?.status === 502) {
                 return false;
             }
             return failureCount < 1; // Only retry once for other errors
@@ -269,6 +277,14 @@ const EventList = () => {
     // Show error state if API request failed
     if (notFound) {
         return <NotFoundPage />;
+    }
+
+    if (isBadGateway) {
+        return <ErrorPage 
+            title="Server Error" 
+            message="The server is temporarily unavailable. Please try again later."
+            isBadGateway={true}
+        />;
     }
 
     if (connectionRefused) {

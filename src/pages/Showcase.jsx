@@ -34,6 +34,7 @@ const Showcase = () => {
     const [error, setError] = useState(null); // Error state
     const [notFound, setNotFound] = useState(false); // Not found state
     const [connectionRefused, setConnectionRefused] = useState(false); // Connection refused state
+    const [isBadGateway, setIsBadGateway] = useState(false); // Bad Gateway error state
     const [isFiltering, setIsFiltering] = useState(false); // Filter toggle
     const [showFilters, setShowFilters] = useState(false); // Toggle filter panel visibility
     const [filters, setFilters] = useState({
@@ -81,7 +82,10 @@ const Showcase = () => {
                 if (err?.response?.status === 404) {
                     setNotFound(true);
                 }
-                if (err.message && err.message.includes('Network Error')) {
+                if (err?.response?.status === 502) {
+                    setIsBadGateway(true);
+                }
+                if (err.isConnectionError || (err.message && err.message.includes('Network Error'))) {
                     setConnectionRefused(true);
                 }
                 throw err;
@@ -89,8 +93,8 @@ const Showcase = () => {
         },
         enabled: !isFiltering, // Only run query when not filtering
         retry: (failureCount, error) => {
-            // Don't retry on connection refused errors
-            if (error.message && error.message.includes('Network Error')) {
+            // Don't retry on connection refused or bad gateway errors
+            if (error.isConnectionError || error.message?.includes('Network Error') || error?.response?.status === 502) {
                 return false;
             }
             return failureCount < 1; // Only retry once for other errors
@@ -156,6 +160,7 @@ const Showcase = () => {
         setLoading(true);
         setShowcases([]); // Clear current view to prevent flashes
         setConnectionRefused(false);
+        setIsBadGateway(false);
     
         try {
             const validFilters = Object.fromEntries(
@@ -179,7 +184,10 @@ const Showcase = () => {
             setError(null);
         } catch (err) {
             console.error("Error fetching filtered showcases:", err);
-            if (err.message && err.message.includes('Network Error')) {
+            if (err?.response?.status === 502) {
+                setIsBadGateway(true);
+            }
+            if (err.isConnectionError || (err.message && err.message.includes('Network Error'))) {
                 setConnectionRefused(true);
             }
             setError("Failed to load filtered showcases.");
@@ -254,6 +262,14 @@ const Showcase = () => {
 
     if (notFound) {
         return <NotFoundPage />;
+    }
+
+    if (isBadGateway) {
+        return <ErrorPage 
+            title="Server Error" 
+            message="The server is temporarily unavailable. Please try again later."
+            isBadGateway={true}
+        />;
     }
 
     if (connectionRefused) {
