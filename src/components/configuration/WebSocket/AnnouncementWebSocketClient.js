@@ -4,6 +4,7 @@ import { ANNOUNCEMENT_WEBSOCKET_URL } from '../config';
 // Create a singleton instance to prevent multiple connections
 let singletonClient = null;
 let isConnecting = false;
+let hasActiveSubscriptions = false;
 
 const AnnouncementWebSocketClient = () => {
     let isConnected = false;
@@ -16,11 +17,10 @@ const AnnouncementWebSocketClient = () => {
         singletonClient = new Client({
             webSocketFactory: () => new WebSocket(ANNOUNCEMENT_WEBSOCKET_URL),
             debug: (str) => console.log('WebSocket debug:', str),
-            reconnectDelay: 5000,
+            // Disable automatic reconnection completely - we'll handle it manually
+            reconnectDelay: 0,
             heartbeatIncoming: 4000,
             heartbeatOutgoing: 4000,
-            // Prevent automatic reconnection to handle it manually
-            reconnectDelay: 0,
         });
 
         // Add disconnect handler
@@ -28,12 +28,30 @@ const AnnouncementWebSocketClient = () => {
             console.log('WebSocket connection closed:', closeEvent ? closeEvent.reason : 'Unknown reason');
             isConnected = false;
             
-            // Only attempt to reconnect if we haven't reached the max attempts
-            if (connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
+            // Only attempt to reconnect if:
+            // 1. We haven't reached max attempts
+            // 2. We have active subscriptions that need the connection
+            if (connectionAttempts < MAX_RECONNECT_ATTEMPTS && hasActiveSubscriptions) {
                 connectionAttempts++;
                 console.log(`Connection closed. Reconnection attempt ${connectionAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
-            } else {
+                
+                // Wait 5 seconds before attempting to reconnect
+                setTimeout(() => {
+                    if (hasActiveSubscriptions) {
+                        console.log('Attempting to reconnect due to active subscriptions...');
+                        try {
+                            isConnecting = true;
+                            singletonClient.activate();
+                        } catch (error) {
+                            console.error('Error during reconnection:', error);
+                            isConnecting = false;
+                        }
+                    }
+                }, 5000);
+            } else if (connectionAttempts >= MAX_RECONNECT_ATTEMPTS) {
                 console.log('Max reconnection attempts reached. Stopping reconnection.');
+            } else {
+                console.log('No active subscriptions, not attempting to reconnect.');
             }
         };
     }
@@ -98,6 +116,7 @@ const AnnouncementWebSocketClient = () => {
                 }
             });
             subscriptions[topic] = subscription;
+            hasActiveSubscriptions = true; // Mark that we have active subscriptions
             return subscription;
         } catch (error) {
             console.error(`Error subscribing to ${topic}:`, error);
@@ -111,6 +130,14 @@ const AnnouncementWebSocketClient = () => {
                 subscriptions[topic].unsubscribe();
                 delete subscriptions[topic];
                 console.log(`Unsubscribed from topic: ${topic}`);
+                
+                // Check if we still have any active subscriptions
+                hasActiveSubscriptions = Object.keys(subscriptions).length > 0;
+                
+                // If no more subscriptions, consider disconnecting
+                if (!hasActiveSubscriptions) {
+                    console.log('No more active subscriptions, considering disconnection');
+                }
             } catch (error) {
                 console.error(`Error unsubscribing from ${topic}:`, error);
             }
@@ -126,10 +153,17 @@ const AnnouncementWebSocketClient = () => {
                 client.deactivate();
                 console.log('WebSocket client deactivated');
                 isConnected = false;
+                hasActiveSubscriptions = false;
             } catch (error) {
                 console.error('Error disconnecting WebSocket:', error);
             }
         }
+    };
+
+    // Add a method to explicitly disable reconnection
+    const disableReconnection = () => {
+        console.log('Explicitly disabling WebSocket reconnection');
+        connectionAttempts = MAX_RECONNECT_ATTEMPTS;
     };
 
     return {
@@ -137,6 +171,7 @@ const AnnouncementWebSocketClient = () => {
         subscribe,
         unsubscribe,
         disconnect,
+        disableReconnection,
         isSubscribed: (topic) => !!subscriptions[topic],
         isConnected: () => isConnected,
     };

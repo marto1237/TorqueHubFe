@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Menu, MenuItem, IconButton, Badge, Typography, Divider, Box, Button, Tabs, Tab, Tooltip } from '@mui/material';
 import MailIcon from '@mui/icons-material/Mail';
 import { useNavigate } from 'react-router-dom';
@@ -18,26 +18,37 @@ const AnnouncementDropdown = ({ userId }) => {
     const [generalLoaded, setGeneralLoaded] = useState(false); // Track if general announcements have been loaded
     const [pageIndex, setPageIndex] = useState({ personal: 0, general: 0, event: 0 });
     const navigate = useNavigate();
+    
+    // Create a ref to store the WebSocket client instance
+    const wsClientRef = useRef(null);
 
     useEffect(() => {
         if (userId) {
             fetchPersonalAnnouncements(0);
         }
 
-        // Initialize WebSocket Client
-        const announcementService = AnnouncementWebSocketClient();
-        announcementService.connect(() => {
-            // Subscribe to different announcement topics
-            announcementService.subscribe('/topic/announcements/general', handleNewGeneralAnnouncement);
-            announcementService.subscribe('/topic/announcements/event', handleNewEventAnnouncement);
-            announcementService.subscribe(`/topic/announcements/user/${userId}`, handleNewPersonalAnnouncement);
-        });
+        // Initialize WebSocket Client only once
+        if (!wsClientRef.current) {
+            wsClientRef.current = AnnouncementWebSocketClient();
+            
+            wsClientRef.current.connect(() => {
+                console.log("Connected to announcement WebSocket, subscribing to topics");
+                
+                // Subscribe to different announcement topics
+                wsClientRef.current.subscribe('/topic/announcements/general', handleNewGeneralAnnouncement);
+                wsClientRef.current.subscribe('/topic/announcements/event', handleNewEventAnnouncement);
+                wsClientRef.current.subscribe(`/topic/announcements/user/${userId}`, handleNewPersonalAnnouncement);
+            });
+        }
 
         // Cleanup function to unsubscribe & disconnect WebSocket on unmount
         return () => {
-            announcementService.disconnect();
+            if (wsClientRef.current) {
+                console.log("Component unmounting, disconnecting WebSocket");
+                wsClientRef.current.disconnect();
+                wsClientRef.current = null;
+            }
         };
-
     }, [userId]);
 
     const fetchPersonalAnnouncements = async (page = 0) => {
@@ -191,9 +202,6 @@ const AnnouncementDropdown = ({ userId }) => {
             console.error('Error fetching next announcement:', error);
         }
     };
-
-    
-    
 
     const markAllAsRead = async () => {
         try {
