@@ -1,4 +1,4 @@
-import showcaseAPI from '../api/showcaseAPI';
+import showcaseAPI from '../showcaseAPI';
 
 const BrandService = {
 
