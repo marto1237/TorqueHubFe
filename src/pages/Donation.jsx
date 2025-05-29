@@ -214,7 +214,7 @@ const DonationPage = () => {
               )}
             </Button>
 
-            {/* Test Payment Button (for development) */}
+            {/* Test Payment Button (for development) 
             {process.env.NODE_ENV === 'development' && (
               <Button
                 variant="outlined"
@@ -226,7 +226,7 @@ const DonationPage = () => {
               >
                 🧪 Test Donation (No Payment)
               </Button>
-            )}
+            )}*/}
 
             <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
               You will become: <strong>{potentialRank.icon} {potentialRank.name}</strong>

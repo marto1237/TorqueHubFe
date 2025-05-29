@@ -10,6 +10,7 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import FlagIcon from '@mui/icons-material/Flag';
 import SecurityIcon from '@mui/icons-material/Security';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import {
     AppBar, Box, Badge, Toolbar, IconButton, Typography, Menu, MenuItem,
     Avatar, Button, Tooltip, Container, Divider, ListItemText, ListItemIcon
@@ -612,6 +613,11 @@ function NavBar({ toggleTheme, loggedIn, setLoggedIn, userDetails, avatar }) {
                                     {loggedIn && (userRole === 'ADMIN' || userRole === 'MODERATOR') && (
                                         <MenuItem onClick={() => {handleCloseUserMenu(); navigate('/report-management') }}>
                                         <FlagIcon sx={{ mr: 2 }} /> Report Management
+                                        </MenuItem>
+                                    )}
+                                    {loggedIn && (userRole === 'ADMIN') && (
+                                        <MenuItem onClick={() => {handleCloseUserMenu(); navigate('/admin-revenue-dashboard') }}>
+                                        <AssessmentIcon sx={{ mr: 2 }} /> Revenue Analytics
                                         </MenuItem>
                                     )}
                                     <MenuItem sx={{ justifyContent: 'center' }} onClick={() => { handleLogout(); handleCloseUserMenu(); }}>

@@ -218,9 +218,9 @@ const ProfilePage = ({ avatar, userDetails }) => {
             .replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>');
     };
 
-    // EXP Rank Calculation
+    // EXP Rank Calculation - Updated with correct thresholds
     const donationRanks = [
-        { name: 'Garage Rookie', min: 1, icon: '🧰' },
+        { name: 'Garage Rookie', min: 0, icon: '🧰' },
         { name: 'Piston Patron', min: 25, icon: '🔩' },
         { name: 'Turbo Supporter', min: 50, icon: '🌀' },
         { name: 'Gearhead Giver', min: 100, icon: '⚙️' },
@@ -231,12 +231,12 @@ const ProfilePage = ({ avatar, userDetails }) => {
     
     const activityRanks = [
         { name: 'Engine Starter', points: 0, icon: '🚗' },
-    { name: 'Street Tuner', points: 501, icon: '🛠️' },
-    { name: 'Track Day Driver', points: 1501, icon: '🏁' },
-    { name: 'Dyno Dominator', points: 4501, icon: '📊' },
-    { name: 'Pit Crew Chief', points: 15000, icon: '👨‍🔧' },
-    { name: 'Torque Master', points: 40000, icon: '🔧' },
-    { name: 'Fuel Injected Guru', points: 100000, icon: '⛽' }
+        { name: 'Street Tuner', points: 50, icon: '🛠️' },
+        { name: 'Track Day Driver', points: 150, icon: '🏁' },
+        { name: 'Dyno Dominator', points: 450, icon: '📊' },
+        { name: 'Pit Crew Chief', points: 1500, icon: '👨‍🔧' },
+        { name: 'Torque Master', points: 4000, icon: '🔧' },
+        { name: 'Fuel Injected Guru', points: 10000, icon: '⛽' }
     ];
     
     const getCurrentRank = (value, ranks, key) => {
@@ -246,8 +246,14 @@ const ProfilePage = ({ avatar, userDetails }) => {
     const getNextRank = (value, ranks, key) => {
         return ranks.find(rank => value < rank[key]);
     };
+
+    // Get donation and activity values from analytics
+    const donationAmount = profile?.analytics?.totalDonated || profile?.user?.totalDonated || 0;
+    const activityPoints = profile?.analytics?.currentPoints || profile?.user?.points || 0;
+    const supporterLevel = profile?.analytics?.supporterLevel || '';
+    const specialTitle = profile?.analytics?.specialTitle || '';
   
-  const RankProgressBar = ({ title, value, ranks, keyName, onClick }) => {
+  const RankProgressBar = ({ title, value, ranks, keyName, onClick, specialInfo }) => {
     const theme = useTheme();
     const currentRank = getCurrentRank(value, ranks, keyName);
     const nextRank = getNextRank(value, ranks, keyName);
@@ -269,23 +275,53 @@ const ProfilePage = ({ avatar, userDetails }) => {
             <Typography variant="subtitle1" color="primary" fontWeight="bold">{title}</Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                 <Typography variant="body2" color="textPrimary">
-                    {currentRank.icon} {currentRank.name} ({value})
+                    {currentRank.icon} {currentRank.name} ({keyName === 'min' ? `€${value.toFixed(2)}` : value})
                 </Typography>
                 {nextRank && (
-                    <Typography variant="body2" color="textPrimary">
-                        {nextRank.icon} {nextRank.name} in {nextRank[keyName] - value}
+                    <Typography variant="body2" color="textSecondary">
+                        {nextRank.icon} {nextRank.name} in {keyName === 'min' ? `€${(nextRank[keyName] - value).toFixed(2)}` : (nextRank[keyName] - value)}
                     </Typography>
                 )}
             </Box>
+            
+            {/* Special supporter level display */}
+            {specialInfo && specialInfo.level && (
+                <Box sx={{ mt: 1 }}>
+                    <Chip 
+                        label={`🏆 ${specialInfo.title || specialInfo.level}`}
+                        color="warning"
+                        variant="filled"
+                        size="small"
+                    />
+                </Box>
+            )}
+            
             <LinearProgress
                 variant="determinate"
                 value={progress}
-                sx={{ mt: 1, height: 8, borderRadius: 5, backgroundColor: theme.palette.grey[800], '& .MuiLinearProgress-bar': { backgroundColor: theme.palette.error.main } }}
+                sx={{ 
+                    mt: 1, 
+                    height: 8, 
+                    borderRadius: 5, 
+                    backgroundColor: theme.palette.grey[300], 
+                    '& .MuiLinearProgress-bar': { 
+                        backgroundColor: progress === 100 ? theme.palette.success.main : theme.palette.primary.main 
+                    } 
+                }}
             />
             {!nextRank && (
                 <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
                     Max rank achieved! 🚀
                 </Typography>
+            )}
+            
+            {/* Additional analytics info */}
+            {specialInfo && specialInfo.extraInfo && (
+                <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {specialInfo.extraInfo}
+                    </Typography>
+                </Box>
             )}
         </Box>
     );
@@ -349,17 +385,28 @@ const ProfilePage = ({ avatar, userDetails }) => {
                 <Grid item xs={12} md={4}>
                     <RankProgressBar
                         title="Donation Progress"
-                        value={profile?.user?.totalDonated || 0}
+                        value={donationAmount}
                         ranks={donationRanks}
                         keyName="min"
                         onClick={() => navigate('/donate')}
+                        specialInfo={{
+                            level: supporterLevel,
+                            title: specialTitle,
+                            extraInfo: profile?.analytics?.donationCount ? 
+                                `${profile.analytics.donationCount} donations • Last: ${profile.analytics.lastDonationDate ? 
+                                    new Date(profile.analytics.lastDonationDate).toLocaleDateString() : 'N/A'}` : null
+                        }}
                     />
                     <RankProgressBar
                         title="Activity Progress"
-                        value={profile?.user?.points || 0}
+                        value={activityPoints}
                         ranks={activityRanks}
                         keyName="points"
                         onClick={() => navigate('/rank')}
+                        specialInfo={{
+                            extraInfo: profile?.analytics ? 
+                                `${profile.analytics.totalPointsEarned || 0} total earned • ${profile.analytics.activityPattern || 'Unknown'} activity` : null
+                        }}
                     />
                 </Grid>
             </Grid>
@@ -374,8 +421,8 @@ const ProfilePage = ({ avatar, userDetails }) => {
                         <Divider sx={{ mb: 2 }} />
                         <Grid container spacing={5}>
                             {[
-                                { label: 'Reputation', value: profile?.user?.points || 0 },
-                                { label: 'Reached', value: '0' },
+                                { label: 'Reputation', value: profile?.analytics?.currentPoints || profile?.user?.points || 0 },
+                                { label: 'Reached', value: profile?.analytics?.questionsViewed || 0 },
                                 { label: 'Answers', value: profile?.answerCount || 0 },
                                 { label: 'Questions', value: profile?.questionCount || 0 }
                             ].map((stat, index) => (
@@ -398,6 +445,32 @@ const ProfilePage = ({ avatar, userDetails }) => {
                                     (4.5 - 2 reviews)
                                 </Typography>
                             </Grid>
+                            
+                            {/* Additional Analytics Stats */}
+                            {profile?.analytics && (
+                                <>
+                                    <Grid item xs={6}>
+                                        <Typography variant="body1" color="textPrimary">
+                                            <strong>Global Rank:</strong> #{profile.analytics.globalRank || 'N/A'}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <Typography variant="body1" color="textPrimary">
+                                            <strong>Total Donated:</strong> €{(profile.analytics.totalDonated || 0).toFixed(2)}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <Typography variant="body1" color="textPrimary">
+                                            <strong>Supporter Level:</strong> {profile.analytics.supporterLevel?.replace('_', ' ') || 'None'}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <Typography variant="body1" color="textPrimary">
+                                            <strong>Activity Pattern:</strong> {profile.analytics.activityPattern || 'Unknown'}
+                                        </Typography>
+                                    </Grid>
+                                </>
+                            )}
                         </Grid>
                     </Card>
                 </Grid>

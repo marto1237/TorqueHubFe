@@ -72,7 +72,8 @@ const ReportManagement = lazy(() => import('./pages/ReportManagement'));
 const ModeratorPanel = lazy(() => import('./pages/ModeratorPanel'));
 const ModerationLogs = lazy(() => import('./pages/ModerationLogs'));
 const ReportConfigManagement = lazy(() => import('./pages/ReportConfigManagement'));
-const PaymentTest = lazy(() => import('./components/PaymentTest'));
+const PaymentTestPage = lazy(() => import('./pages/PaymentTest'));
+const AdminRevenueDashboard = lazy(() => import('./pages/AdminRevenueDashboard'));
 
 const App = () => {
     const [themeMode, setThemeMode] = useState('dark'); // Initialize state with 'dark'
@@ -362,7 +363,16 @@ const App = () => {
                                     }
                                 />
 
-                                <Route path="/PaymentTest" element={<PaymentTest />} />
+                                <Route path="/PaymentTest" element={<PaymentTestPage />} />
+
+                                <Route
+                                    path="/admin-revenue-dashboard"
+                                    element={
+                                        <RoleProtectedRoute roles={['ADMIN']} userDetails={userDetails}>
+                                            <AdminRevenueDashboard userDetails={userDetails} />
+                                        </RoleProtectedRoute>
+                                    }
+                                />
 
                             </Routes>
                         </NotificationProvider>

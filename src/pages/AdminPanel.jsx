@@ -13,6 +13,7 @@ import AnnouncementIcon from '@mui/icons-material/Announcement';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FlagIcon from '@mui/icons-material/Flag';
 import SettingsIcon from '@mui/icons-material/Settings';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 const AdminPanel = ({ userDetails }) => {
     const navigate = useNavigate();
@@ -29,6 +30,13 @@ const AdminPanel = ({ userDetails }) => {
             label: 'Email Panel',
             icon: <MailOutlineIcon fontSize="large" />,
             route: '/admin/emails',
+        },
+        
+        {
+            label: 'Revenue Analytics',
+            icon: <AssessmentIcon fontSize="large" />,
+            route: '/admin-revenue-dashboard',
+            description: 'Comprehensive revenue and donation analytics'
         },
         
         { label: 'Manage General Announcements', icon: <AnnouncementIcon fontSize="large" />, route: '/manage-general-announcements' },
